@@ -14,6 +14,7 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Clickable seats with a simple view-quality estimate
 - Local floor-plan selection (files are not uploaded)
 - Browser persistence through local storage
+- Optional email authentication and cloud project persistence through Supabase
 - Project export as `.venuetwin.json`
 - About and fallback pages
 - Prepared environment variables for a later Supabase integration
@@ -53,7 +54,7 @@ npm run preview   # preview the production build
 
 ## Environment variables
 
-The current application works without environment variables. When cloud persistence is implemented, create `.env.local` from `.env.example` and add the public Supabase project values. Never commit `.env` or `.env.local`.
+The application works without environment variables. To enable optional cloud persistence, follow [the Supabase setup guide](docs/SUPABASE_SETUP.md), create `.env.local` from `.env.example` and add the public project values. Never commit `.env` or `.env.local`.
 
 ## Branch strategy
 
@@ -65,7 +66,7 @@ New work should branch from `develop` and return through a pull request.
 
 ## Planned architecture
 
-The frontend is intentionally deployable as a static Vite build, including on Simply.com. Supabase is the planned service for PostgreSQL data, authentication and floor-plan storage. A separate Python/FastAPI service can later handle computer-vision analysis without coupling it to the web client.
+The frontend is intentionally deployable as a static Vite build, including on Simply.com. Supabase provides optional PostgreSQL persistence and authentication, while local-only mode remains the default. A separate Python/FastAPI service can later handle computer-vision analysis without coupling it to the web client.
 
 ## Product status
 
