@@ -1,5 +1,16 @@
 export type GeometryType = 'straight' | 'fan' | 'blocks'
 
+export type RowOverride = {
+  seats?: number
+  offsetX?: number
+  curve?: number
+}
+
+export type PlanCalibration = {
+  meters: number
+  pixels: number
+}
+
 export type VenueConfig = {
   name: string
   rows: number
@@ -9,6 +20,8 @@ export type VenueConfig = {
   curve: number
   stageWidth: number
   geometry: GeometryType
+  rowOverrides: Record<number, RowOverride>
+  calibration: PlanCalibration | null
 }
 
 export type SeatRef = {
@@ -26,4 +39,6 @@ export const defaultVenue: VenueConfig = {
   curve: 0.32,
   stageWidth: 12,
   geometry: 'fan',
+  rowOverrides: {},
+  calibration: null,
 }
