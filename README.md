@@ -6,6 +6,9 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 
 - Responsive product landing page
 - Interactive Three.js venue model
+- Visual 2D floor-plan editor with an optional image overlay
+- Drag individual rows horizontally and change their seat counts
+- Two-point real-world scale calibration
 - Straight, fan and block geometry presets
 - Adjustable rows, seats, sections, rake and stage width
 - Clickable seats with a simple view-quality estimate
