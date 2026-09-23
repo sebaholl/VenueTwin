@@ -1,9 +1,11 @@
-import { ArrowLeft, Box, Download, FileImage, Map, RotateCcw, Save, Settings2, Upload } from 'lucide-react'
+import { ArrowLeft, Box, Cloud, Download, FileImage, Map, RotateCcw, Save, Settings2, Upload } from 'lucide-react'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
+import { CloudPanel } from '../components/CloudPanel'
 import { FloorplanEditor } from '../components/FloorplanEditor'
 import { VenueScene } from '../components/VenueScene'
+import { getStoredSession, saveCloudProject, type CloudSession } from '../lib/supabaseApi'
 import { useVenueStore } from '../store/venueStore'
 import type { GeometryType } from '../types/venue'
 import { estimateCapacity, estimateSeatScore } from '../utils/venue'
@@ -14,11 +16,13 @@ function RangeField({ label, value, min, max, step = 1, unit = '', onChange }: R
 }
 
 export function StudioPage() {
-  const { config, selectedSeat, floorplanName, setConfig, selectSeat, setFloorplanName, reset } = useVenueStore()
+  const { projectId, config, selectedSeat, floorplanName, setConfig, loadProject, selectSeat, setFloorplanName, reset } = useVenueStore()
   const fileInput = useRef<HTMLInputElement>(null)
-  const [saved, setSaved] = useState(false)
+  const [saveLabel, setSaveLabel] = useState('Save project')
   const [view, setView] = useState<'plan' | 'model'>('plan')
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
+  const [cloudOpen, setCloudOpen] = useState(false)
+  const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => getStoredSession())
   const capacity = useMemo(() => estimateCapacity(config), [config])
   const seatScore = selectedSeat ? estimateSeatScore(selectedSeat, config) : null
 
@@ -36,13 +40,20 @@ export function StudioPage() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${config.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.venuetwin.json`; anchor.click(); URL.revokeObjectURL(url)
   }
-  const saveProject = () => { setSaved(true); window.setTimeout(() => setSaved(false), 1800) }
+  const saveProject = async () => {
+    setSaveLabel('Saved locally')
+    if (cloudSession) {
+      try { await saveCloudProject(cloudSession, { id: projectId, name: config.name, config }); setSaveLabel('Saved to cloud') }
+      catch { setSaveLabel('Cloud save failed') }
+    }
+    window.setTimeout(() => setSaveLabel('Save project'), 2000)
+  }
 
   return (
     <div className="studio-shell">
       <header className="studio-header">
-        <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><span className="status-pill"><i /> Local project</span></div>
-        <div className="studio-actions"><button className="icon-button" onClick={reset} title="Reset project"><RotateCcw /></button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saved ? 'Saved locally' : 'Save project'}</button></div>
+        <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={cloudSession ? 'status-pill cloud-active' : 'status-pill'} onClick={() => setCloudOpen(true)}><i /> {cloudSession ? 'Cloud connected' : 'Local project'}</button></div>
+        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Cloud projects"><Cloud /></button><button className="icon-button" onClick={reset} title="Reset project"><RotateCcw /></button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
       </header>
       <main className="studio-main">
         <aside className="control-panel">
@@ -57,6 +68,7 @@ export function StudioPage() {
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
+      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} onSessionChange={setCloudSession} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan') }} />
     </div>
   )
 }
