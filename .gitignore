@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Builds and coverage
+dist/
+coverage/
+
+# Local environment variables
+.env
+.env.local
+.env.*.local
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# TypeScript
+*.tsbuildinfo

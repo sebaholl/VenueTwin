@@ -1,0 +1,6 @@
+import { ArrowRight, Compass, Eye, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
+
+export function AboutPage() {
+  return <div className="about-page"><section className="about-hero"><div className="section-kicker light">Why VenueTwin</div><h1>Spatial decisions should feel <em>clear.</em></h1><p>VenueTwin is an early-stage product concept exploring a better connection between venue planning and the visitor’s seat-selection experience.</p></section><section className="section about-grid"><article><Compass /><h2>Our direction</h2><p>Convert venue source material into an understandable, editable digital twin—without demanding specialist CAD knowledge.</p></article><article><Eye /><h2>Our promise</h2><p>Help operators understand layouts and help visitors know what a seat will feel like before they commit.</p></article><article><ShieldCheck /><h2>Our approach</h2><p>Start local and transparent. Add cloud services and AI only where they create measurable value.</p></article></section><section className="about-cta"><h2>Help shape the first useful version.</h2><p>Open the studio, build a venue and see where the workflow can improve.</p><Link className="button button-primary" to="/studio">Try the prototype <ArrowRight size={18} /></Link></section></div>
+}
