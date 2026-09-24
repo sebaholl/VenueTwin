@@ -10,6 +10,9 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Drag individual rows freely in X/Y and change seat counts, rotation and curvature
 - Add, duplicate, reset and delete individual rows
 - 50-step Undo/Redo history with keyboard shortcuts
+- Draw a polygonal venue boundary and preview an automatically generated seating layout
+- Configure seat spacing, row spacing, edge clearance, aisle width and stage direction
+- Reposition and rotate the stage consistently in 2D and 3D
 - Two-point real-world scale calibration
 - Straight, fan and block geometry presets
 - Adjustable rows, seats, sections, rake and stage width
