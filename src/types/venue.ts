@@ -3,6 +3,8 @@ export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type RowOverride = {
   seats?: number
   offsetX?: number
+  offsetY?: number
+  rotation?: number
   curve?: number
 }
 
