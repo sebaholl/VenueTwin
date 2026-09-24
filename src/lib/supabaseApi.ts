@@ -14,6 +14,7 @@ export type CloudUser = {
 export type CloudSession = {
   access_token: string
   refresh_token: string
+  expires_in?: number
   expires_at?: number
   user: CloudUser
 }
@@ -45,6 +46,21 @@ export function getStoredSession(): CloudSession | null {
 export function storeSession(session: CloudSession | null) {
   if (session) localStorage.setItem(sessionKey, JSON.stringify(session))
   else localStorage.removeItem(sessionKey)
+}
+
+export async function refreshSession(session: CloudSession) {
+  if (!isCloudConfigured) throw new Error('Supabase is not configured')
+  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+    method: 'POST', headers: baseHeaders(), body: JSON.stringify({ refresh_token: session.refresh_token }),
+  })
+  const refreshed = await parseResponse<AuthResponse>(response)
+  storeSession(refreshed)
+  return refreshed
+}
+
+export async function ensureFreshSession(session: CloudSession) {
+  const expiresSoon = session.expires_at ? session.expires_at <= Math.floor(Date.now() / 1000) + 90 : false
+  return expiresSoon ? refreshSession(session) : session
 }
 
 export async function signIn(email: string, password: string) {
@@ -82,4 +98,22 @@ export async function listCloudProjects(session: CloudSession) {
   const query = new URLSearchParams({ select: 'id,name,venue_data,updated_at', order: 'updated_at.desc' })
   const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, { headers: authenticatedHeaders(session) })
   return parseResponse<CloudProject[]>(response)
+}
+
+export async function renameCloudProject(session: CloudSession, id: string, name: string) {
+  const query = new URLSearchParams({ id: `eq.${id}` })
+  const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, {
+    method: 'PATCH',
+    headers: authenticatedHeaders(session, 'return=representation'),
+    body: JSON.stringify({ name, updated_at: new Date().toISOString() }),
+  })
+  return parseResponse<CloudProject[]>(response)
+}
+
+export async function deleteCloudProject(session: CloudSession, id: string) {
+  const query = new URLSearchParams({ id: `eq.${id}` })
+  const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, {
+    method: 'DELETE', headers: authenticatedHeaders(session, 'return=minimal'),
+  })
+  if (!response.ok) await parseResponse(response)
 }
