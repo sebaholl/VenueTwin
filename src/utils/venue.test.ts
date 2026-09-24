@@ -19,6 +19,13 @@ describe('venue model', () => {
     expect(generateSeatLayout(config)).toHaveLength(140)
   })
 
+  it('applies individual row depth and rotation in 3D', () => {
+    const config = { ...defaultVenue, geometry: 'straight' as const, rowOverrides: { 0: { offsetY: 2, rotation: 90 } } }
+    const firstRow = generateSeatLayout(config).filter((seat) => seat.row === 0)
+    expect(firstRow[0].position[2]).toBeGreaterThan(5)
+    expect(firstRow[0].rotation).toBeCloseTo(Math.PI / 2)
+  })
+
   it('rates a central front seat above an edge rear seat', () => {
     const front = { row: 1, seat: 7, label: 'B8' }
     const rearEdge = { row: 9, seat: 0, label: 'J1' }
