@@ -14,6 +14,11 @@ create index if not exists projects_owner_updated_idx
 
 alter table public.projects enable row level security;
 
+-- Required when "Automatically expose new tables" is disabled in Supabase.
+-- RLS policies below still limit every user to their own rows.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on table public.projects to authenticated;
+
 create policy "Users can read their own projects"
   on public.projects for select
   using (auth.uid() = owner_id);

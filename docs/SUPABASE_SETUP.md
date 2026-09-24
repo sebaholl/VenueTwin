@@ -3,7 +3,7 @@
 VenueTwin works without Supabase. Complete these steps only when you want email accounts and cloud project persistence.
 
 1. Create a free project at [supabase.com/dashboard](https://supabase.com/dashboard).
-2. Open the SQL Editor and run `supabase/migrations/202609230001_initial_schema.sql`.
+2. Open the SQL Editor and run `supabase/migrations/202609230001_initial_schema.sql`. The migration grants Data API access only to authenticated users; Row Level Security still limits every user to their own projects.
 3. Open **Project Settings → API** and copy the project URL and anon/publishable key.
 4. Create `.env.local` in the VenueTwin project:
 

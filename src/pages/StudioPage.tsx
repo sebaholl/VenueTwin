@@ -1,4 +1,4 @@
-import { ArrowLeft, Box, Cloud, Download, FileImage, Map, RotateCcw, Save, Settings2, Upload } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, Map, RotateCcw, Save, Settings2, Upload, X } from 'lucide-react'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
@@ -19,6 +19,7 @@ export function StudioPage() {
   const { projectId, config, selectedSeat, floorplanName, setConfig, loadProject, selectSeat, setFloorplanName, reset } = useVenueStore()
   const fileInput = useRef<HTMLInputElement>(null)
   const [saveLabel, setSaveLabel] = useState('Save project')
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [view, setView] = useState<'plan' | 'model'>('plan')
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
@@ -41,10 +42,14 @@ export function StudioPage() {
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${config.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.venuetwin.json`; anchor.click(); URL.revokeObjectURL(url)
   }
   const saveProject = async () => {
+    setSaveError(null)
     setSaveLabel('Saved locally')
     if (cloudSession) {
       try { await saveCloudProject(cloudSession, { id: projectId, name: config.name, config }); setSaveLabel('Saved to cloud') }
-      catch { setSaveLabel('Cloud save failed') }
+      catch (error) {
+        setSaveLabel('Save failed')
+        setSaveError(error instanceof Error ? error.message : 'An unknown cloud error occurred.')
+      }
     }
     window.setTimeout(() => setSaveLabel('Save project'), 2000)
   }
@@ -55,6 +60,7 @@ export function StudioPage() {
         <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={cloudSession ? 'status-pill cloud-active' : 'status-pill'} onClick={() => setCloudOpen(true)}><i /> {cloudSession ? 'Cloud connected' : 'Local project'}</button></div>
         <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Cloud projects"><Cloud /></button><button className="icon-button" onClick={reset} title="Reset project"><RotateCcw /></button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
       </header>
+      {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
       <main className="studio-main">
         <aside className="control-panel">
           <div className="panel-heading"><div><span>PROJECT</span><input value={config.name} onChange={(e) => setConfig({ name: e.target.value })} aria-label="Project name" /></div><Settings2 /></div>
