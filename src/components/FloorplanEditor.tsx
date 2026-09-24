@@ -17,6 +17,18 @@ type FloorplanEditorProps = {
 const rowLabel = (row: number) => String.fromCharCode(65 + row)
 const round = (value: number) => Math.round(value * 10) / 10
 
+function BoundaryOverlay({ points, drawing }: { points: PlanPoint[]; drawing: boolean }) {
+  const safePoints = points.filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
+  if (!safePoints.length) return null
+
+  const serialized = safePoints.map((point) => `${point.x},${point.y}`).join(' ')
+
+  return <g className={`plan-boundary ${drawing ? 'drawing' : ''}`}>
+    {safePoints.length >= 3 ? <polygon points={serialized} /> : <polyline points={serialized} />}
+    {safePoints.map((point, index) => <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r="7" />)}
+  </g>
+}
+
 export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, onBeginEdit, onCommitEdit }: FloorplanEditorProps) {
   const [selectedRow, setSelectedRow] = useState(0)
   const [calibrating, setCalibrating] = useState(false)
@@ -55,13 +67,17 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
     for (let row = 0; row < config.rows; row += 1) { if (row === selectedRow) continue; const override = config.rowOverrides?.[row]; if (override) next[row < selectedRow ? row : row - 1] = override }
     onConfigChange({ rows: config.rows - 1, rowOverrides: next }); setSelectedRow(Math.min(selectedRow, config.rows - 2))
   }
-  const canvasPoint = (event: ReactPointerEvent<SVGSVGElement>): PlanPoint => {
+  const canvasPoint = (event: ReactPointerEvent<SVGSVGElement>): PlanPoint | null => {
     const rect = event.currentTarget.getBoundingClientRect()
-    return { x: ((event.clientX - rect.left) / rect.width) * 1000, y: ((event.clientY - rect.top) / rect.height) * 620 }
+    if (!rect.width || !rect.height) return null
+    const point = { x: ((event.clientX - rect.left) / rect.width) * 1000, y: ((event.clientY - rect.top) / rect.height) * 620 }
+    return Number.isFinite(point.x) && Number.isFinite(point.y) ? point : null
   }
   const handleCanvasPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
-    if (calibrating) setCalibrationPoints((current) => [...current, canvasPoint(event)].slice(-2))
-    else if (drawingBoundary) setBoundaryDraft((current) => [...current, canvasPoint(event)])
+    const point = canvasPoint(event)
+    if (!point) return
+    if (calibrating) setCalibrationPoints((current) => [...current, point].slice(-2))
+    else if (drawingBoundary) setBoundaryDraft((current) => [...current, point])
   }
   const applyCalibration = () => {
     if (calibrationPoints.length !== 2) return
@@ -112,7 +128,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
     <div className="plan-canvas">
       {imageUrl && <img src={imageUrl} alt="Uploaded venue floor plan" />}{!imageUrl && <div className="plan-grid" />}
       <svg viewBox="0 0 1000 620" onPointerDown={handleCanvasPointerDown}>
-        {visibleBoundary.length > 0 && <g className={`plan-boundary ${drawingBoundary ? 'drawing' : ''}`}><polygon points={visibleBoundary.map((point) => `${point.x},${point.y}`).join(' ')} />{visibleBoundary.map((point, index) => <circle key={index} cx={point.x} cy={point.y} r="7" />)}</g>}
+        <BoundaryOverlay points={visibleBoundary} drawing={drawingBoundary} />
         <g className="plan-stage draggable" transform={`translate(${500 + stage.offsetX * 24}, ${76 + stage.offsetY * 24}) rotate(${stage.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(150 + config.stageWidth * 10)} y="-34" width={300 + config.stageWidth * 20} height="68" rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
         {rows.map(({ row, seats }) => {
           const override = displayConfig.rowOverrides?.[row]; const spacing = (displayConfig.seatSpacing ?? .72) * 24; const aisle = (displayConfig.aisleWidth ?? .9) * 24; const sections = Math.max(1, displayConfig.sectors)
