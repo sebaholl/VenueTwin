@@ -13,6 +13,14 @@ export type PlanCalibration = {
   pixels: number
 }
 
+export type PlanPoint = { x: number; y: number }
+
+export type StagePosition = {
+  offsetX: number
+  offsetY: number
+  rotation: number
+}
+
 export type VenueConfig = {
   name: string
   rows: number
@@ -24,6 +32,12 @@ export type VenueConfig = {
   geometry: GeometryType
   rowOverrides: Record<number, RowOverride>
   calibration: PlanCalibration | null
+  planBoundary?: PlanPoint[]
+  stagePosition?: StagePosition
+  seatSpacing?: number
+  rowSpacing?: number
+  edgeClearance?: number
+  aisleWidth?: number
 }
 
 export type SeatRef = {
@@ -43,4 +57,10 @@ export const defaultVenue: VenueConfig = {
   geometry: 'fan',
   rowOverrides: {},
   calibration: null,
+  planBoundary: [],
+  stagePosition: { offsetX: 0, offsetY: 0, rotation: 0 },
+  seatSpacing: 0.72,
+  rowSpacing: 0.92,
+  edgeClearance: 0.6,
+  aisleWidth: 0.9,
 }

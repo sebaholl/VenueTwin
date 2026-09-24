@@ -12,17 +12,21 @@ type SceneProps = {
 
 function VenueModel({ config, selectedSeat, onSeatSelect }: SceneProps) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
+  const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
+  const stageRotation = stage.rotation * Math.PI / 180
 
   return (
     <group position={[0, -1.4, -2.8]}>
-      <RoundedBox args={[config.stageWidth, 0.45, 2.2]} radius={0.12} position={[0, 0, -2.2]}>
-        <meshStandardMaterial color="#17243a" roughness={0.5} />
-      </RoundedBox>
-      <mesh position={[0, 2.7, -3.25]}>
-        <planeGeometry args={[config.stageWidth * 0.84, 4.6]} />
-        <meshStandardMaterial color="#e8f0f3" emissive="#19304b" emissiveIntensity={0.16} />
-      </mesh>
-      <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>
+      <group position={[stage.offsetX, 0, stage.offsetY]} rotation={[0, stageRotation, 0]}>
+        <RoundedBox args={[config.stageWidth, 0.45, 2.2]} radius={0.12} position={[0, 0, -2.2]}>
+          <meshStandardMaterial color="#17243a" roughness={0.5} />
+        </RoundedBox>
+        <mesh position={[0, 2.7, -3.25]}>
+          <planeGeometry args={[config.stageWidth * 0.84, 4.6]} />
+          <meshStandardMaterial color="#e8f0f3" emissive="#19304b" emissiveIntensity={0.16} />
+        </mesh>
+        <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>
+      </group>
       {seats.map((seat) => {
         const active = selectedSeat?.label === seat.label
         return (
