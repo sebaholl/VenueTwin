@@ -14,10 +14,10 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Clickable seats with a simple view-quality estimate
 - Local floor-plan selection (files are not uploaded)
 - Browser persistence through local storage
-- Optional email authentication and cloud project persistence through Supabase
-- Project export as `.venuetwin.json`
+- Optional email authentication, refreshed sessions and cloud autosave through Supabase
+- Create, rename, duplicate, open and safely delete cloud projects
+- Project import and export as `.venuetwin.json`
 - About and fallback pages
-- Prepared environment variables for a later Supabase integration
 
 ## Technology
 
