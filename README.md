@@ -23,6 +23,7 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Visual project dashboard with capacity, venue type and last-updated metadata
 - Guided project creation for cinemas, theatres, conference spaces and custom venues
 - Optional floor-plan upload during onboarding and editable layout presets
+- Revocable public read-only links with dedicated 2D and 3D previews
 - Create, rename, duplicate, open and safely delete cloud projects
 - Project import and export as `.venuetwin.json`
 - About and fallback pages

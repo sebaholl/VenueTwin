@@ -7,6 +7,7 @@ import { AboutPage } from './pages/AboutPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 const StudioPage = lazy(() => import('./pages/StudioPage').then((module) => ({ default: module.StudioPage })))
+const SharedProjectPage = lazy(() => import('./pages/SharedProjectPage').then((module) => ({ default: module.SharedProjectPage })))
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="about" element={<AboutPage />} />
       </Route>
       <Route path="studio" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><StudioPage /></Suspense></AppErrorBoundary>} />
+      <Route path="share/:token" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><SharedProjectPage /></Suspense></AppErrorBoundary>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
