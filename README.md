@@ -65,6 +65,10 @@ npm run preview   # preview the production build
 
 The application works without environment variables. To enable optional cloud persistence, follow [the Supabase setup guide](docs/SUPABASE_SETUP.md), create `.env.local` from `.env.example` and add the public project values. Never commit `.env` or `.env.local`.
 
+## Deploy to Simply.com
+
+VenueTwin includes a production `.htaccess` for React Router fallback, Let's Encrypt validation, security headers and static-asset caching. Follow the [Simply.com deployment guide](docs/SIMPLY_DEPLOY.md) to build the app, configure Supabase authentication URLs, upload `dist` to `public_html`, and enable HTTPS.
+
 ## Branch strategy
 
 - `main` — stable releases
