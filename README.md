@@ -26,6 +26,8 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Revocable public read-only links with dedicated 2D and 3D previews
 - Create, rename, duplicate, open and safely delete cloud projects
 - Project import and export as `.venuetwin.json`
+- High-resolution PNG floor-plan export
+- Print-ready A4 project report with browser PDF saving
 - About and fallback pages
 
 ## Technology
