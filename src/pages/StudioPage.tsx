@@ -3,6 +3,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from '
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
+import { CreateProjectWizard } from '../components/CreateProjectWizard'
 import { FloorplanEditor } from '../components/FloorplanEditor'
 import { VenueScene } from '../components/VenueScene'
 import { ensureFreshSession, getStoredSession, saveCloudProject, storeSession, type CloudSession } from '../lib/supabaseApi'
@@ -24,7 +25,7 @@ function isVenueConfig(value: unknown): value is VenueConfig {
 type SyncStatus = 'local' | 'saving' | 'saved' | 'offline' | 'error'
 
 export function StudioPage() {
-  const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName, reset } = useVenueStore()
+  const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName } = useVenueStore()
   const fileInput = useRef<HTMLInputElement>(null)
   const importInput = useRef<HTMLInputElement>(null)
   const lastSavedSnapshot = useRef('')
@@ -35,18 +36,19 @@ export function StudioPage() {
   const [view, setView] = useState<'plan' | 'model'>('plan')
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => getStoredSession())
   const capacity = useMemo(() => estimateCapacity(config), [config])
   const seatScore = selectedSeat ? estimateSeatScore(selectedSeat, config) : null
 
-  const handleFloorplan = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const attachFloorplan = (file: File | null) => {
     if (file) {
       setFloorplanName(file.name)
       setView('plan')
       setFloorplanUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null)
     }
   }
+  const handleFloorplan = (event: ChangeEvent<HTMLInputElement>) => attachFloorplan(event.target.files?.[0] ?? null)
   const importProject = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -131,9 +133,11 @@ export function StudioPage() {
     return () => window.clearInterval(timer)
   }, [cloudSession])
 
-  const startNewProject = () => {
-    reset(); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setSaveError(null)
+  const startNewProject = (nextConfig: VenueConfig, floorplan: File | null) => {
+    loadProject(crypto.randomUUID(), nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setSaveError(null)
+    attachFloorplan(floorplan)
     lastSavedSnapshot.current = ''
+    setCreateOpen(false)
   }
 
   const syncText = !cloudSession ? 'Local only' : ({ saving: 'Saving…', saved: 'Saved', offline: 'Offline', error: 'Sync error', local: 'Cloud connected' } as const)[syncStatus]
@@ -142,7 +146,7 @@ export function StudioPage() {
     <div className="studio-shell">
       <header className="studio-header">
         <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={`status-pill ${cloudSession ? `cloud-active sync-${syncStatus}` : ''}`} onClick={() => setCloudOpen(true)}><i /> {syncText}</button></div>
-        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Cloud projects"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={startNewProject} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
+        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
       </header>
       {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
       <main className="studio-main">
@@ -158,7 +162,8 @@ export function StudioPage() {
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
-      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={startNewProject} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
+      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
+      <CreateProjectWizard open={createOpen} onClose={() => setCreateOpen(false)} onCreate={startNewProject} />
     </div>
   )
 }
