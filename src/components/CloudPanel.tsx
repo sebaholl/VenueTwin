@@ -13,6 +13,8 @@ import {
   type CloudProject,
   type CloudSession,
 } from '../lib/supabaseApi'
+import { venueTypeLabel } from '../utils/projectPresets'
+import { estimateCapacity } from '../utils/venue'
 
 type CloudPanelProps = {
   open: boolean
@@ -104,17 +106,17 @@ export function CloudPanel({ open, onClose, session, currentProjectId, onSession
 
   const logout = () => { storeSession(null); onSessionChange(null); setProjects([]) }
 
-  return <div className="cloud-overlay" onMouseDown={onClose}><aside className="cloud-panel" onMouseDown={(event) => event.stopPropagation()}>
-    <header><div><Cloud size={18} /><span>VenueTwin Cloud</span></div><button onClick={onClose} aria-label="Close cloud projects"><X /></button></header>
+  return <div className="cloud-overlay" onMouseDown={onClose}><aside className={`cloud-panel ${session ? 'project-dashboard' : ''}`} onMouseDown={(event) => event.stopPropagation()}>
+    <header><div><Cloud size={18} /><span>{session ? 'Project dashboard' : 'VenueTwin Cloud'}</span></div><button onClick={onClose} aria-label="Close cloud projects"><X /></button></header>
     {!isCloudConfigured ? <div className="cloud-empty"><CloudOff /><h2>Cloud mode is not connected</h2><p>The app is still saving safely in this browser. To enable accounts and cloud projects, add your free Supabase project values to <code>.env.local</code>.</p><a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer">Open Supabase dashboard</a><small>No payment details are required by VenueTwin.</small></div>
       : session ? <div className="cloud-account">
         <div className="account-line"><div><small>SIGNED IN AS</small><strong>{session.user.email}</strong></div><button onClick={logout}><LogOut size={14} /> Sign out</button></div>
-        <button className="new-cloud-project" onClick={() => { onNewProject(); onClose() }}><Plus size={15} /> New project</button>
-        <div className="cloud-project-heading"><h2>Your cloud projects</h2><span>{projects.length}</span></div>
+        <div className="dashboard-intro"><div><span>VENUE WORKSPACE</span><h2>Your projects</h2><p>Create a venue, continue editing, or duplicate an existing layout.</p></div><button className="new-cloud-project" onClick={() => { onNewProject(); onClose() }}><Plus size={15} /> New project</button></div>
+        <div className="cloud-project-heading"><h2>All projects</h2><span>{projects.length}</span></div>
         {message && <div className="auth-message cloud-message">{message}</div>}
         {busy && !projects.length ? <LoaderCircle className="spin-icon" /> : projects.length ? <div className="cloud-project-list">{projects.map((project) => <article key={project.id} className={project.id === currentProjectId ? 'current' : ''}>
           <button className="cloud-project-open" onClick={() => { onLoadProject(project); onClose() }}>
-            <div>{editingId === project.id ? <input value={editingName} autoFocus maxLength={120} onClick={(event) => event.stopPropagation()} onChange={(event) => setEditingName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void saveName(project) } if (event.key === 'Escape') setEditingId(null) }} /> : <strong>{project.name}</strong>}<span>Updated {new Date(project.updated_at).toLocaleDateString()}</span></div><b>{project.id === currentProjectId ? 'Current' : 'Open'}</b>
+            <div>{editingId === project.id ? <input value={editingName} autoFocus maxLength={120} onClick={(event) => event.stopPropagation()} onChange={(event) => setEditingName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void saveName(project) } if (event.key === 'Escape') setEditingId(null) }} /> : <strong>{project.name}</strong>}<span>Updated {new Date(project.updated_at).toLocaleDateString()}</span><div className="project-card-meta"><i>{venueTypeLabel(project.venue_data.venueType)}</i><i>{estimateCapacity(project.venue_data)} seats</i><i>{project.venue_data.rows} rows</i></div></div><b>{project.id === currentProjectId ? 'Current' : 'Open'}</b>
           </button>
           <div className="cloud-project-actions">
             {editingId === project.id ? <button onClick={() => void saveName(project)} title="Save name"><Check /></button> : <button onClick={() => { setEditingId(project.id); setEditingName(project.name); setConfirmingDeleteId(null) }} title="Rename project"><Pencil /></button>}
