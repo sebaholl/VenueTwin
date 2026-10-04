@@ -1,12 +1,13 @@
-import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Settings2, Undo2, Upload, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Settings2, Share2, Undo2, Upload, X } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
 import { CreateProjectWizard } from '../components/CreateProjectWizard'
 import { FloorplanEditor } from '../components/FloorplanEditor'
+import { ShareProjectDialog } from '../components/ShareProjectDialog'
 import { VenueScene } from '../components/VenueScene'
-import { ensureFreshSession, getStoredSession, saveCloudProject, storeSession, type CloudSession } from '../lib/supabaseApi'
+import { disableProjectShare, enableProjectShare, ensureFreshSession, getStoredSession, saveCloudProject, storeSession, type CloudSession } from '../lib/supabaseApi'
 import { useVenueStore } from '../store/venueStore'
 import type { GeometryType, VenueConfig } from '../types/venue'
 import { estimateCapacity, estimateSeatScore } from '../utils/venue'
@@ -37,6 +38,10 @@ export function StudioPage() {
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareToken, setShareToken] = useState<string | null>(null)
+  const [shareBusy, setShareBusy] = useState(false)
+  const [shareError, setShareError] = useState<string | null>(null)
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => getStoredSession())
   const capacity = useMemo(() => estimateCapacity(config), [config])
   const seatScore = selectedSeat ? estimateSeatScore(selectedSeat, config) : null
@@ -137,7 +142,31 @@ export function StudioPage() {
     loadProject(crypto.randomUUID(), nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setSaveError(null)
     attachFloorplan(floorplan)
     lastSavedSnapshot.current = ''
+    setShareToken(null); setShareError(null)
     setCreateOpen(false)
+  }
+
+  const enableSharing = async () => {
+    if (!cloudSession) return
+    setShareBusy(true); setShareError(null)
+    try {
+      const activeSession = await ensureFreshSession(cloudSession)
+      if (activeSession.access_token !== cloudSession.access_token) setCloudSession(activeSession)
+      await saveCloudProject(activeSession, { id: projectId, name: config.name, config })
+      const project = await enableProjectShare(activeSession, projectId)
+      setShareToken(project.share_token ?? null)
+      lastSavedSnapshot.current = JSON.stringify({ projectId, config })
+      setSyncStatus('saved')
+    } catch (error) { setShareError(error instanceof Error ? error.message : 'The public preview could not be enabled.') }
+    finally { setShareBusy(false) }
+  }
+
+  const disableSharing = async () => {
+    if (!cloudSession) return
+    setShareBusy(true); setShareError(null)
+    try { await disableProjectShare(await ensureFreshSession(cloudSession), projectId); setShareToken(null) }
+    catch (error) { setShareError(error instanceof Error ? error.message : 'The public preview could not be disabled.') }
+    finally { setShareBusy(false) }
   }
 
   const syncText = !cloudSession ? 'Local only' : ({ saving: 'Saving…', saved: 'Saved', offline: 'Offline', error: 'Sync error', local: 'Cloud connected' } as const)[syncStatus]
@@ -146,7 +175,7 @@ export function StudioPage() {
     <div className="studio-shell">
       <header className="studio-header">
         <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={`status-pill ${cloudSession ? `cloud-active sync-${syncStatus}` : ''}`} onClick={() => setCloudOpen(true)}><i /> {syncText}</button></div>
-        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
+        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-ghost button-small" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Share</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
       </header>
       {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
       <main className="studio-main">
@@ -162,8 +191,9 @@ export function StudioPage() {
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
-      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
+      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); setShareToken(project.share_enabled ? project.share_token ?? null : null); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
       <CreateProjectWizard open={createOpen} onClose={() => setCreateOpen(false)} onCreate={startNewProject} />
+      <ShareProjectDialog open={shareOpen} projectName={config.name} sessionAvailable={Boolean(cloudSession)} token={shareToken} busy={shareBusy} error={shareError} onClose={() => setShareOpen(false)} onEnable={() => void enableSharing()} onDisable={() => void disableSharing()} onOpenCloud={() => { setShareOpen(false); setCloudOpen(true) }} />
     </div>
   )
 }
