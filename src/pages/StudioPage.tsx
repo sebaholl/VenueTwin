@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
 import { CreateProjectWizard } from '../components/CreateProjectWizard'
+import { ExportProjectDialog } from '../components/ExportProjectDialog'
 import { FloorplanEditor } from '../components/FloorplanEditor'
 import { ShareProjectDialog } from '../components/ShareProjectDialog'
 import { VenueScene } from '../components/VenueScene'
@@ -38,6 +39,7 @@ export function StudioPage() {
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
   const [shareToken, setShareToken] = useState<string | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
@@ -82,10 +84,11 @@ export function StudioPage() {
     window.addEventListener('keydown', handleHistoryShortcut)
     return () => window.removeEventListener('keydown', handleHistoryShortcut)
   }, [redo, undo])
-  const exportProject = () => {
+  const exportProjectFile = () => {
     const blob = new Blob([JSON.stringify({ version: 2, config }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${config.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.venuetwin.json`; anchor.click(); URL.revokeObjectURL(url)
+    setExportOpen(false)
   }
   const syncProject = useCallback(async (showFeedback = false) => {
     setSaveError(null)
@@ -175,7 +178,7 @@ export function StudioPage() {
     <div className="studio-shell">
       <header className="studio-header">
         <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={`status-pill ${cloudSession ? `cloud-active sync-${syncStatus}` : ''}`} onClick={() => setCloudOpen(true)}><i /> {syncText}</button></div>
-        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={exportProject}><Download size={16} /> Export</button><button className="button button-ghost button-small" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Share</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
+        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={() => setExportOpen(true)}><Download size={16} /> Export</button><button className="button button-ghost button-small" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Share</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
       </header>
       {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
       <main className="studio-main">
@@ -193,6 +196,7 @@ export function StudioPage() {
       </main>
       <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); setShareToken(project.share_enabled ? project.share_token ?? null : null); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
       <CreateProjectWizard open={createOpen} onClose={() => setCreateOpen(false)} onCreate={startNewProject} />
+      <ExportProjectDialog open={exportOpen} config={config} onClose={() => setExportOpen(false)} onProjectFile={exportProjectFile} />
       <ShareProjectDialog open={shareOpen} projectName={config.name} sessionAvailable={Boolean(cloudSession)} token={shareToken} busy={shareBusy} error={shareError} onClose={() => setShareOpen(false)} onEnable={() => void enableSharing()} onDisable={() => void disableSharing()} onOpenCloud={() => { setShareOpen(false); setCloudOpen(true) }} />
     </div>
   )
