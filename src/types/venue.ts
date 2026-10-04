@@ -1,4 +1,5 @@
 export type GeometryType = 'straight' | 'fan' | 'blocks'
+export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
 export type RowOverride = {
   seats?: number
@@ -23,6 +24,7 @@ export type StagePosition = {
 
 export type VenueConfig = {
   name: string
+  venueType?: VenueType
   rows: number
   seatsPerRow: number
   sectors: number
@@ -48,6 +50,7 @@ export type SeatRef = {
 
 export const defaultVenue: VenueConfig = {
   name: 'New venue concept',
+  venueType: 'theatre',
   rows: 10,
   seatsPerRow: 14,
   sectors: 2,
