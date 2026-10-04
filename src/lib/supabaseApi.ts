@@ -24,7 +24,11 @@ export type CloudProject = {
   name: string
   venue_data: VenueConfig
   updated_at: string
+  share_enabled?: boolean
+  share_token?: string | null
 }
+
+export type SharedProject = Pick<CloudProject, 'id' | 'name' | 'venue_data' | 'updated_at'>
 
 type AuthResponse = CloudSession & { error_description?: string; msg?: string }
 
@@ -95,9 +99,42 @@ export async function saveCloudProject(session: CloudSession, project: { id: str
 }
 
 export async function listCloudProjects(session: CloudSession) {
-  const query = new URLSearchParams({ select: 'id,name,venue_data,updated_at', order: 'updated_at.desc' })
+  const query = new URLSearchParams({ select: 'id,name,venue_data,updated_at,share_enabled,share_token', order: 'updated_at.desc' })
   const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, { headers: authenticatedHeaders(session) })
   return parseResponse<CloudProject[]>(response)
+}
+
+export async function enableProjectShare(session: CloudSession, id: string) {
+  const token = crypto.randomUUID()
+  const query = new URLSearchParams({ id: `eq.${id}` })
+  const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, {
+    method: 'PATCH',
+    headers: authenticatedHeaders(session, 'return=representation'),
+    body: JSON.stringify({ share_enabled: true, share_token: token, updated_at: new Date().toISOString() }),
+  })
+  const [project] = await parseResponse<CloudProject[]>(response)
+  if (!project?.share_token) throw new Error('The public preview could not be created.')
+  return project
+}
+
+export async function disableProjectShare(session: CloudSession, id: string) {
+  const query = new URLSearchParams({ id: `eq.${id}` })
+  const response = await fetch(`${supabaseUrl}/rest/v1/projects?${query}`, {
+    method: 'PATCH',
+    headers: authenticatedHeaders(session, 'return=minimal'),
+    body: JSON.stringify({ share_enabled: false, updated_at: new Date().toISOString() }),
+  })
+  if (!response.ok) await parseResponse(response)
+}
+
+export async function getSharedProject(token: string) {
+  if (!isCloudConfigured) throw new Error('VenueTwin Cloud is not configured.')
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_shared_project`, {
+    method: 'POST', headers: baseHeaders(), body: JSON.stringify({ p_share_token: token }),
+  })
+  const [project] = await parseResponse<SharedProject[]>(response)
+  if (!project) throw new Error('This preview is unavailable or sharing has been disabled.')
+  return project
 }
 
 export async function renameCloudProject(session: CloudSession, id: string, name: string) {
