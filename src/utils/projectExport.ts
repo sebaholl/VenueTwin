@@ -21,6 +21,7 @@ export function renderVenuePlanSvg(config: VenueConfig) {
   <rect width="1200" height="860" rx="22" fill="#07111f"/>
   <text x="65" y="58" fill="#5be2c3" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="2">VENUE TWIN · ${escapeMarkup(venueTypeLabel(config.venueType).toUpperCase())}</text>
   <text x="65" y="88" fill="#f2f7f6" font-family="Arial,sans-serif" font-size="25" font-weight="700">${title}</text>
+  ${config.seatingLevels?.length ? '<text x="65" y="104" fill="#f5bc66" font-family="Arial,sans-serif" font-size="10">ALL LEVELS OVERLAID · ESTIMATED STUDY GEOMETRY</text>' : ''}
   <text x="1135" y="61" text-anchor="end" fill="#5be2c3" font-family="Arial,sans-serif" font-size="24" font-weight="700">${estimateCapacity(config)}</text>
   <text x="1135" y="82" text-anchor="end" fill="#78909a" font-family="Arial,sans-serif" font-size="9" letter-spacing="1">TOTAL SEATS</text>
   <g transform="translate(${planX} ${planY})"><rect width="1000" height="620" rx="14" fill="#0a1725" stroke="#1d3447"/><rect width="1000" height="620" rx="14" fill="url(#grid)"/>
@@ -72,6 +73,7 @@ export async function openVenuePdfReport(config: VenueConfig) {
       ...summary.counts.map((c) => [c.name, `${c.count} seats · ${c.price === undefined ? 'No price' : c.price + ' ' + (config.currency ?? 'EUR')}`]),
       ['Accessible seats', String(summary.accessible)],
       ['Structures', String(getObstacles(config).length)],
+      ...(config.studyNotice ? [['Study limitations', config.studyNotice]] : []),
       ['Sell-out estimate', `${summary.revenue.toFixed(2)} ${config.currency ?? 'EUR'} · ${summary.unpriced} unpriced seats excluded`],
       ['Seat spacing', `${config.seatSpacing ?? 0.72} m`], ['Row spacing', `${config.rowSpacing ?? 0.92} m`],
     ]
