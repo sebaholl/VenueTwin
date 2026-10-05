@@ -4,7 +4,8 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { PlanPoint, RowOverride, VenueConfig } from '../types/venue'
 import { generateAutoLayout, type AutoLayoutResult } from '../utils/autoLayout'
 import { seatCategory } from '../utils/seatCategories'
-import { getRowSeats } from '../utils/venue'
+import { generateSeatLayout, getRowSeats } from '../utils/venue'
+import { ObstaclePlan } from './ObstaclePlan'
 
 type FloorplanEditorProps = {
   config: VenueConfig
@@ -43,8 +44,10 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   const stageDrag = useRef<{ startX: number; startY: number; offsetX: number; offsetY: number; width: number; height: number } | null>(null)
 
   const displayConfig = useMemo(() => preview ? { ...config, rows: preview.rows, geometry: 'straight' as const, rowOverrides: preview.rowOverrides } : config, [config, preview])
-  const rowGap = Math.min(34, 350 / Math.max(displayConfig.rows - 1, 1))
-  const rows = useMemo(() => Array.from({ length: displayConfig.rows }, (_, row) => ({ row, seats: getRowSeats(displayConfig, row) })), [displayConfig])
+  const rows = useMemo(() => {
+    const seats = generateSeatLayout(displayConfig)
+    return Array.from({ length: displayConfig.rows }, (_, row) => ({ row, seats: seats.filter((seat) => seat.row === row) }))
+  }, [displayConfig])
   const selectedOverride = config.rowOverrides?.[selectedRow] ?? {}
   const selectedSeats = getRowSeats(config, selectedRow)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
@@ -132,12 +135,14 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
         <BoundaryOverlay points={visibleBoundary} drawing={drawingBoundary} />
         <g className="plan-stage draggable" transform={`translate(${500 + stage.offsetX * 24}, ${76 + stage.offsetY * 24}) rotate(${stage.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(150 + config.stageWidth * 10)} y="-34" width={300 + config.stageWidth * 20} height="68" rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
         {rows.map(({ row, seats }) => {
-          const override = displayConfig.rowOverrides?.[row]; const spacing = (displayConfig.seatSpacing ?? .72) * 24; const aisle = (displayConfig.aisleWidth ?? .9) * 24; const sections = Math.max(1, displayConfig.sectors)
-          const seatPositions = Array.from({ length: seats }, (_, seat) => { const section = Math.min(sections - 1, Math.floor((seat * sections) / seats)); return (seat - (seats - 1) / 2) * spacing + (section - (sections - 1) / 2) * aisle })
-          const minX = Math.min(...seatPositions, 0); const maxX = Math.max(...seatPositions, 0); const offsetX = (override?.offsetX ?? 0) * 24; const offsetY = (override?.offsetY ?? 0) * 24; const rotation = override?.rotation ?? 0; const curve = displayConfig.geometry === 'fan' ? (override?.curve ?? displayConfig.curve) : 0; const y = 170 + row * rowGap + offsetY; const active = !preview && selectedRow === row
-          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} transform={`translate(${500 + offsetX}, ${y}) rotate(${rotation})`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={`M ${minX} 0 Q 0 ${curve * 55} ${maxX} 0`} />{seatPositions.map((x, seat) => { const normalized = seats === 1 ? 0 : seat / (seats - 1) - .5; return <circle key={seat} style={{ fill: seatCategory(displayConfig, row, seat).color }} cx={x} cy={Math.abs(normalized * 2) ** 2 * curve * 28} r={active ? 6.5 : 5.2} /> })}<text x={minX - 28} y="5">{rowLabel(row)}</text>{active && <rect className="row-hitbox" x={minX - 15} y="-20" width={maxX - minX + 30} height="55" rx="10" />}</g>
+          if (!seats.length) return null
+          const points = seats.map((seat) => ({ seat: seat.seat, x: 500 + seat.position[0] * 24, y: 150 + seat.position[2] * 24 }))
+          const active = !preview && selectedRow === row
+          const path = points.map((p, index) => `${index ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ')
+          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={path} /><path d={path} style={{ stroke: 'transparent', strokeWidth: 18, pointerEvents: 'stroke' }} />{points.map((p) => <circle key={p.seat} style={{ fill: seatCategory(displayConfig, row, p.seat).color }} cx={p.x} cy={p.y} r={active ? 6.5 : 5.2} />)}<text x={points[0].x - 28} y={points[0].y + 5}>{rowLabel(row)}</text></g>
         })}
         {calibrationPoints.length > 0 && <g className="calibration-line"><circle cx={calibrationPoints[0].x} cy={calibrationPoints[0].y} r="8" />{calibrationPoints[1] && <><line x1={calibrationPoints[0].x} y1={calibrationPoints[0].y} x2={calibrationPoints[1].x} y2={calibrationPoints[1].y} /><circle cx={calibrationPoints[1].x} cy={calibrationPoints[1].y} r="8" /></>}</g>}
+        <ObstaclePlan config={config} />
       </svg>
       {calibrating && <div className="calibration-card"><Crosshair size={18} /><div><b>{calibrationPoints.length < 2 ? `Select point ${calibrationPoints.length + 1} of 2` : 'Enter the real distance'}</b><span>Mark two known points on the plan.</span></div>{calibrationPoints.length === 2 && <><label><input type="number" min="0.1" step="0.1" value={knownDistance} onChange={(event) => setKnownDistance(Number(event.target.value))} /> metres</label><button onClick={applyCalibration}>Apply scale</button></>}</div>}
       {autoOpen && <div className="auto-layout-panel"><header><div><Sparkles /><span><b>Auto Layout</b><small>Generate rows inside a boundary</small></span></div><button onClick={() => { setAutoOpen(false); setDrawingBoundary(false); setPreview(null) }}><X /></button></header><div className="auto-fields"><label>Seat spacing<input type="number" min="0.45" max="1.2" step="0.05" value={config.seatSpacing ?? .72} onChange={(event) => onConfigChange({ seatSpacing: Number(event.target.value) })} /><span>m</span></label><label>Row spacing<input type="number" min="0.5" max="2" step="0.05" value={config.rowSpacing ?? .92} onChange={(event) => onConfigChange({ rowSpacing: Number(event.target.value) })} /><span>m</span></label><label>Edge clearance<input type="number" min="0" max="3" step="0.1" value={config.edgeClearance ?? .6} onChange={(event) => onConfigChange({ edgeClearance: Number(event.target.value) })} /><span>m</span></label><label>Aisle width<input type="number" min="0" max="3" step="0.1" value={config.aisleWidth ?? .9} onChange={(event) => onConfigChange({ aisleWidth: Number(event.target.value) })} /><span>m</span></label></div><div className="stage-settings"><span>Stage angle</span><button onClick={() => onConfigChange({ stagePosition: { ...stage, rotation: Math.max(-90, stage.rotation - 5) } })}><RotateCcw /></button><b>{stage.rotation}°</b><button onClick={() => onConfigChange({ stagePosition: { ...stage, rotation: Math.min(90, stage.rotation + 5) } })}><RotateCw /></button></div><div className="boundary-actions">{drawingBoundary ? <><span>{boundaryDraft.length} points selected</span><button onClick={() => setBoundaryDraft((points) => points.slice(0, -1))}>Undo point</button><button className="primary" disabled={boundaryDraft.length < 3} onClick={finishBoundary}>Finish boundary</button></> : <><button onClick={() => { setBoundaryDraft([]); setDrawingBoundary(true); setPreview(null) }}>{visibleBoundary.length ? 'Redraw boundary' : 'Draw boundary'}</button>{visibleBoundary.length >= 3 && <button onClick={() => { onConfigChange({ planBoundary: [] }); setBoundaryDraft([]); setPreview(null) }}>Clear</button>}</>}</div><button className="generate-layout" disabled={visibleBoundary.length < 3 || drawingBoundary} onClick={createPreview}><Sparkles /> Generate preview</button><small className="auto-note">Drag the stage directly on the plan. Rows follow its angle.</small></div>}

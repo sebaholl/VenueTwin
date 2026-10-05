@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { VenueConfig } from '../types/venue'
 import { seatCategory } from '../utils/seatCategories'
 import { generateSeatLayout } from '../utils/venue'
+import { ObstaclePlan } from './ObstaclePlan'
 
 export function SharedPlan({ config }: { config: VenueConfig }) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
@@ -14,5 +15,6 @@ export function SharedPlan({ config }: { config: VenueConfig }) {
     {boundary.length >= 3 && <polygon className="shared-boundary" points={boundary.map((point) => `${point.x},${point.y}`).join(' ')} />}
     <g className="shared-stage" transform={`translate(${500 + stage.offsetX * 24}, ${76 + stage.offsetY * 24}) rotate(${stage.rotation})`}><rect x={-(150 + config.stageWidth * 10)} y="-34" width={300 + config.stageWidth * 20} height="68" rx="7" /><text x="0" y="6">STAGE</text></g>
     {seats.map((seat) => <circle key={seat.label} className="shared-seat" style={{ fill: seatCategory(config, seat.row, seat.seat).color }} cx={500 + seat.position[0] * 24} cy={150 + seat.position[2] * 24} r="5.2"><title>{seat.label}</title></circle>)}
+    <ObstaclePlan config={config} />
   </svg></div>
 }

@@ -44,3 +44,6 @@
 .seat-view-toolbar select { color: #eff7fa; background: #102435; border: 0; }
 .seat-view-toolbar span { flex-basis: 100%; color: #d1e0e9; font-size: 11px; text-shadow: 0 1px 3px #000; }
 .seat-view-disclaimer { position: absolute; bottom: 145px; left: 12px; right: 12px; margin: 0; padding: 8px; background: #07111fe6; border-radius: 7px; color: #b5c9d3; font-size: 11px; pointer-events: none; }
+.obstacle-add { display: flex; flex-wrap: wrap; gap: 6px; }
+.obstacle-details { margin: 12px 0; padding: 10px; border: 1px solid #3d5668; border-radius: 8px; }
+.obstacle-details summary { cursor: pointer; font-size: 13px; overflow-wrap: anywhere; }

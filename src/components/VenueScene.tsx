@@ -6,6 +6,7 @@ import { getSeatView, lookDirection, modelOffset } from '../utils/seatView'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { seatCategory } from '../utils/seatCategories'
 import { generateSeatLayout } from '../utils/venue'
+import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
   config: VenueConfig
@@ -20,6 +21,9 @@ function VenueModel({ config, selectedSeat, onSeatSelect }: SceneProps) {
 
   return (
     <group position={modelOffset}>
+      {getObstacles(config).map((o) => <group key={o.id} position={[o.x, o.elevation, o.z]} rotation={[0, o.rotation * Math.PI / 180, 0]}>
+        {obstacleBoxes(o).map((box, index) => <mesh key={index} position={[box.x, box.y, 0]} onClick={(event) => event.stopPropagation()}><boxGeometry args={[box.width, box.height, box.depth]} /><meshStandardMaterial color={o.kind === 'railing' ? '#b4bec9' : '#8d8478'} roughness={.7} /></mesh>)}
+      </group>)}
       <group position={[stage.offsetX, 0, stage.offsetY]} rotation={[0, stageRotation, 0]}>
         <RoundedBox args={[config.stageWidth, 0.45, 2.2]} radius={0.12} position={[0, 0, -2.2]}>
           <meshStandardMaterial color="#17243a" roughness={0.5} />

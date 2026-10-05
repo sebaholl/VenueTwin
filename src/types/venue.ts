@@ -26,6 +26,7 @@ export type StagePosition = {
 }
 
 export type VenueConfig = {
+  obstacles?: VenueObstacle[]
   categories?: SeatCategory[]
   currency?: 'CZK' | 'EUR' | 'DKK' | 'USD' | 'GBP'
   name: string
@@ -48,6 +49,19 @@ export type VenueConfig = {
 }
 
 export type SeatCategory = { id: string; name: string; color: string; price?: number }
+
+export type VenueObstacle = {
+  id: string
+  name: string
+  kind: 'column' | 'wall' | 'railing'
+  x: number
+  z: number
+  elevation: number
+  width: number
+  depth: number
+  height: number
+  rotation: number
+}
 
 export type SeatRef = {
   row: number
