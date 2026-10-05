@@ -2,6 +2,9 @@ export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
 export type RowOverride = {
+  categoryId?: string
+  seatCategories?: Record<number, string>
+  accessibleSeats?: Record<number, boolean>
   seats?: number
   offsetX?: number
   offsetY?: number
@@ -23,6 +26,8 @@ export type StagePosition = {
 }
 
 export type VenueConfig = {
+  categories?: SeatCategory[]
+  currency?: 'CZK' | 'EUR' | 'DKK' | 'USD' | 'GBP'
   name: string
   venueType?: VenueType
   rows: number
@@ -41,6 +46,8 @@ export type VenueConfig = {
   edgeClearance?: number
   aisleWidth?: number
 }
+
+export type SeatCategory = { id: string; name: string; color: string; price?: number }
 
 export type SeatRef = {
   row: number
