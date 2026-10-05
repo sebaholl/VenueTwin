@@ -10,6 +10,7 @@ export function SharedPlan({ config }: { config: VenueConfig }) {
   const boundary = (config.planBoundary ?? []).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y))
 
   return <div className="shared-plan"><svg viewBox="0 0 1000 620" role="img" aria-label={`Read-only seating plan for ${config.name}`}>
+    {config.seatingLevels?.length ? <text x="20" y="25" fill="#f5bc66" fontSize="12">All levels overlaid · estimated geometry</text> : null}
     <defs><pattern id="shared-grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(126,158,169,.12)" /></pattern></defs>
     <rect width="1000" height="620" fill="url(#shared-grid)" />
     {boundary.length >= 3 && <polygon className="shared-boundary" points={boundary.map((point) => `${point.x},${point.y}`).join(' ')} />}
