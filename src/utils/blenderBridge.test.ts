@@ -3,6 +3,7 @@ import { defaultVenue } from '../types/venue'
 import { blenderBlueprint } from './blenderBridge'
 import { generateSeatLayout } from './venue'
 import { validateGlb } from './localGlb'
+import { createNationalTheatreStudy } from './nationalTheatreStudy'
 
 function glb(json: object) {
   const text = JSON.stringify(json); const bytes = new TextEncoder().encode(text + ' '.repeat((4 - text.length % 4) % 4))
@@ -12,6 +13,16 @@ function glb(json: object) {
   return data
 }
 describe('Blender bridge', () => {
+  it('includes detail metadata only when explicitly requested for a study', () => {
+    expect(blenderBlueprint(defaultVenue, true).detail).toBeUndefined()
+    const config = createNationalTheatreStudy()
+    expect(blenderBlueprint(config).detail).toBeUndefined()
+    const data = blenderBlueprint(config, true)
+    expect(data.detail?.profile).toBe('nd-photo-study-v1')
+    expect(data.detail?.rows[10].floor).toBeCloseTo(3.7)
+    expect(data.detail?.rows[10].arcRadius).toBe(10.6)
+    expect(data.seats).toEqual(blenderBlueprint(config).seats)
+  })
   it('exports the exact interactive seat coordinates, without world display offset', () => {
     const data = blenderBlueprint(defaultVenue)
     expect(data.format).toBe('venuetwin-blender'); expect(data.units).toBe('metres')
