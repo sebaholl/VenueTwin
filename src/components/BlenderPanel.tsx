@@ -24,6 +24,7 @@ export function BlenderPanel({ config, onLoaded }: { config: VenueConfig; onLoad
   }
   return <section className="control-section category-panel"><h2>Blender bridge · local preview</h2><p>1. Export scene data. 2. Run scripts/blender/build_venue.py in Blender. 3. Load the generated GLB below and switch to 3D.</p>
     <button onClick={() => downloadBlenderBlueprint(config)}>Export Blender scene JSON</button>
+    {config.studyNotice && !!config.seatingLevels?.length && <><button onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button><p>For the detailed photo study, run scripts/blender/build_national_theatre.py. Creates an editable .blend and a GLB with boxes, mouldings, ceiling and chandelier. Dimensions and decorative motifs remain approximate.</p></>}
     <label>Load local GLB (up to 25 MB)<input type="file" accept=".glb" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void attach(file) }} /></label>
     {busy && <p role="status">Loading model…</p>}{error && <p role="alert">{error}</p>}
     {name && <><p>{name}</p><button onClick={() => { request.current++; onLoaded(null); if (model.current) disposeLocalModel(model.current); model.current = null; setName(''); setBusy(false) }}>Remove model</button></>}

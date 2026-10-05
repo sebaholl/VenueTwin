@@ -4,7 +4,7 @@ import { projectSlug } from './projectExport'
 import { levelArchitecture } from './levelGeometry'
 
 type Box = { name: string; position: number[]; size: number[]; rotation: number; color: string }
-export function blenderBlueprint(config: VenueConfig) {
+export function blenderBlueprint(config: VenueConfig, detailed = false) {
   const seats = generateSeatLayout(config)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const angle = stage.rotation * Math.PI / 180
@@ -24,11 +24,18 @@ export function blenderBlueprint(config: VenueConfig) {
   const xs = [...seats.map((s) => s.position[0]), -config.stageWidth / 2 + stage.offsetX, config.stageWidth / 2 + stage.offsetX]
   const zs = [...seats.map((s) => s.position[2]), stage.offsetY - 5]
   boxes.push({ name: 'Base floor', position: [(Math.min(...xs) + Math.max(...xs)) / 2, -.22, (Math.min(...zs) + Math.max(...zs)) / 2], size: [Math.max(...xs) - Math.min(...xs) + 4, .2, Math.max(...zs) - Math.min(...zs) + 4], rotation: 0, color: '#111e2b' })
-  return { format: 'venuetwin-blender', version: 1, name: config.name, studyNotice: config.studyNotice, units: 'metres', axes: 'three-y-up', boxes, seats: seats.map((s) => ({ label: s.label, position: s.position, rotation: s.rotation })) }
+  const detail = detailed && config.studyNotice && config.seatingLevels?.length ? {
+    profile: 'nd-photo-study-v1', stageWidth: config.stageWidth, stage,
+    rows: Array.from({ length: config.rows }, (_, row) => {
+      const points = seats.filter((seat) => seat.row === row)
+      return { ...config.rowOverrides[row], floor: points[0]?.position[1] - .25, row }
+    }),
+  } : undefined
+  return { format: 'venuetwin-blender', version: 1, name: config.name, studyNotice: config.studyNotice, units: 'metres', axes: 'three-y-up', detail, boxes, seats: seats.map((s) => ({ label: s.label, position: s.position, rotation: s.rotation })) }
 }
 
-export function downloadBlenderBlueprint(config: VenueConfig) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(blenderBlueprint(config), null, 2)], { type: 'application/json' }))
+export function downloadBlenderBlueprint(config: VenueConfig, detailed = false) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(blenderBlueprint(config, detailed), null, 2)], { type: 'application/json' }))
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${projectSlug(config.name)}.venuetwin-blender.json`; anchor.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

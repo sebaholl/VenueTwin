@@ -5,23 +5,29 @@ import { PerspectiveCamera, type Group } from 'three'
 import { getSeatView, lookDirection, modelOffset, overviewPose } from '../utils/seatView'
 import { levelArchitecture } from '../utils/levelGeometry'
 import { LevelArchitecture } from './LevelArchitecture'
+import { DetailedSeats } from './DetailedSeats'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { seatCategory } from '../utils/seatCategories'
 import { generateSeatLayout } from '../utils/venue'
 import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
+  interior?: boolean
   importedModel?: Group | null
   config: VenueConfig
   selectedSeat: SeatRef | null
   onSeatSelect: (seat: SeatRef) => void
 }
 
-function VenueModel({ config, selectedSeat, onSeatSelect, importedModel }: SceneProps) {
+function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interior }: SceneProps) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
   const architecture = useMemo(() => levelArchitecture(config), [config])
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const stageRotation = stage.rotation * Math.PI / 180
+  const detailed = !!importedModel?.getObjectByName('VT_ND_DETAIL_ROOT')
+  useEffect(() => {
+    importedModel?.traverse((object) => { if (object.userData.venueTwinShell === true) object.visible = !!interior })
+  }, [importedModel, interior])
 
   return (
     <group position={modelOffset}>
@@ -40,7 +46,7 @@ function VenueModel({ config, selectedSeat, onSeatSelect, importedModel }: Scene
         </mesh>
         {!config.studyNotice && <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>}
       </group>}
-      {seats.map((seat) => {
+      {detailed ? <DetailedSeats seats={seats} selectedSeat={selectedSeat} onSeatSelect={onSeatSelect} /> : seats.map((seat) => {
         const active = selectedSeat?.label === seat.label
         return (
           <group
@@ -74,12 +80,13 @@ export function VenueScene(props: SceneProps) {
   const seatView = useMemo(() => getSeatView(props.config, props.selectedSeat, eyeHeight), [props.config, props.selectedSeat, eyeHeight])
   const active = requested && !!seatView
   const overview = useMemo(() => overviewPose(props.config), [props.config])
+  const detailNotice = props.importedModel?.getObjectByName('VT_ND_DETAIL_ROOT') ? 'Photo-informed theatre study. Unmeasured geometry and interpreted ornament; paintings and official seat mapping are not reproduced.' : null
   return (
     <div className={`venue-scene ${active ? 'seat-view-active' : ''}`}>
     <div className="seat-view-toolbar">
       <button type="button" disabled={!seatView} aria-pressed={active} onClick={() => { setRequested(!active); setLook({ yaw: 0, pitch: 0 }) }}>{active ? 'Back to overview' : 'View from seat'}</button>
       {active && <><button type="button" onClick={() => setLook({ yaw: 0, pitch: 0 })}>Face stage</button><label>Eye height <select value={eyeHeight} onChange={(e) => setEyeHeight(Number(e.target.value))}><option value={.95}>0.95 m</option><option value={1.15}>1.15 m</option><option value={1.35}>1.35 m</option></select></label></>}
-      <span>{active ? `Seat ${props.selectedSeat?.label} · Drag or use arrow keys to look around · Esc to exit` : 'Select a seat to preview its view'}</span>
+      <span>{active ? `Seat ${props.selectedSeat?.label} · Drag or use arrow keys to look around · Esc to exit` : seatView ? `Seat ${props.selectedSeat?.label} selected · View from seat to enter` : 'Select a seat to preview its view'}</span>
     </div>
     <div className="venue-scene-canvas" tabIndex={active ? 0 : -1} role="group" aria-label={active ? 'Seat view. Drag or use arrow keys to look around. Escape returns to overview.' : 'Venue overview'}
       onKeyDown={(e) => { if (!active) return; if (e.key === 'Escape') { setRequested(false); return } const keys: Record<string, [number, number]> = { ArrowLeft: [-.08, 0], ArrowRight: [.08, 0], ArrowUp: [0, .08], ArrowDown: [0, -.08] }; const delta = keys[e.key]; if (delta) { e.preventDefault(); setLook((v) => ({ yaw: v.yaw + delta[0], pitch: Math.max(-1.2, Math.min(1.2, v.pitch + delta[1])) })) } }}
@@ -92,7 +99,7 @@ export function VenueScene(props: SceneProps) {
       <ambientLight intensity={0.65} />
       <directionalLight position={[4, 12, 8]} intensity={2.4} color="#e6fff8" />
       <Suspense fallback={null}>
-        <VenueModel {...props} onSeatSelect={active ? () => {} : (seat) => { setLook({ yaw: 0, pitch: 0 }); props.onSeatSelect(seat) }} />
+        <VenueModel {...props} interior={active} onSeatSelect={active ? () => {} : (seat) => { setLook({ yaw: 0, pitch: 0 }); props.onSeatSelect(seat) }} />
         <Environment preset="city" />
         <ContactShadows position={[0, -1.35, 2]} opacity={0.42} scale={30} blur={2.5} />
       </Suspense>
@@ -100,7 +107,7 @@ export function VenueScene(props: SceneProps) {
       {!active && <OrbitControls makeDefault target={overview.target} minDistance={8} maxDistance={100} maxPolarAngle={Math.PI / 2.04} />}
     </Canvas>
     </div>
-    {(active || props.config.studyNotice) && <p className="seat-view-disclaimer">{props.config.studyNotice ?? 'Approximate view of the current model. Missing structures, spectators and event equipment are not represented.'}</p>}
+    {(active || props.config.studyNotice || detailNotice) && <p className="seat-view-disclaimer">{detailNotice ?? props.config.studyNotice ?? 'Approximate view of the current model. Missing structures, spectators and event equipment are not represented.'}</p>}
     </div>
   )
 }

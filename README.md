@@ -1,5 +1,7 @@
 # VenueTwin
 
+Detailed National Theatre Blender workflow: [photo study and model generation](docs/NATIONAL_THEATRE_DETAIL.md).
+
 VenueTwin is an early-stage spatial planning product that turns venue layouts into interactive 3D models and seat-level previews. The repository currently contains a polished public landing page and a functional local-first VenueTwin Studio.
 
 ## Current capabilities
