@@ -1,4 +1,5 @@
 import type { VenueConfig } from '../types/venue'
+import { categorySummary, getCategories, seatCategory } from './seatCategories'
 import { venueTypeLabel } from './projectPresets'
 import { estimateCapacity, generateSeatLayout } from './venue'
 
@@ -14,9 +15,9 @@ export function renderVenuePlanSvg(config: VenueConfig) {
   const planY = 110
   const title = escapeMarkup(config.name)
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1140" viewBox="0 0 1200 760">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1290" viewBox="0 0 1200 860">
   <defs><pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#183044" stroke-width="1"/></pattern></defs>
-  <rect width="1200" height="760" rx="22" fill="#07111f"/>
+  <rect width="1200" height="860" rx="22" fill="#07111f"/>
   <text x="65" y="58" fill="#5be2c3" font-family="Arial,sans-serif" font-size="11" font-weight="700" letter-spacing="2">VENUE TWIN · ${escapeMarkup(venueTypeLabel(config.venueType).toUpperCase())}</text>
   <text x="65" y="88" fill="#f2f7f6" font-family="Arial,sans-serif" font-size="25" font-weight="700">${title}</text>
   <text x="1135" y="61" text-anchor="end" fill="#5be2c3" font-family="Arial,sans-serif" font-size="24" font-weight="700">${estimateCapacity(config)}</text>
@@ -24,9 +25,11 @@ export function renderVenuePlanSvg(config: VenueConfig) {
   <g transform="translate(${planX} ${planY})"><rect width="1000" height="620" rx="14" fill="#0a1725" stroke="#1d3447"/><rect width="1000" height="620" rx="14" fill="url(#grid)"/>
   ${boundary.length >= 3 ? `<polygon points="${boundary.map((point) => `${point.x},${point.y}`).join(' ')}" fill="#5be2c30d" stroke="#5be2c399" stroke-width="2" stroke-dasharray="9 6"/>` : ''}
   <g transform="translate(${500 + stage.offsetX * 24} ${76 + stage.offsetY * 24}) rotate(${stage.rotation})"><rect x="${-(150 + config.stageWidth * 10)}" y="-34" width="${300 + config.stageWidth * 20}" height="68" rx="7" fill="#162d3f" stroke="#577181"/><text y="6" text-anchor="middle" fill="#a4b9b6" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="3">STAGE · ${config.stageWidth} M</text></g>
-  ${seats.map((seat) => `<circle cx="${500 + seat.position[0] * 24}" cy="${150 + seat.position[2] * 24}" r="5.3" fill="#5be2c3" stroke="#07111f" stroke-width="2"/>`).join('')}
+  ${seats.map((seat) => `<circle cx="${500 + seat.position[0] * 24}" cy="${150 + seat.position[2] * 24}" r="5.3" fill="${seatCategory(config, seat.row, seat.seat).color}" stroke="#07111f" stroke-width="2"/>`).join('')}
   ${rows.map((rowSeats, row) => rowSeats.length ? `<text x="${Math.min(...rowSeats.map((seat) => 500 + seat.position[0] * 24)) - 24}" y="${150 + rowSeats[0].position[2] * 24 + 4}" text-anchor="middle" fill="#718a93" font-family="Arial,sans-serif" font-size="11" font-weight="700">${String.fromCharCode(65 + row)}</text>` : '').join('')}
-  </g></svg>`
+  </g>
+  ${getCategories(config).map((c, i) => `<g transform="translate(${65 + i % 4 * 285} ${770 + Math.floor(i / 4) * 28})"><circle r="5" fill="${c.color}"/><text x="13" y="4" fill="#f2f7f6" font-family="Arial,sans-serif" font-size="11">${escapeMarkup(c.name.slice(0, 30))}</text></g>`).join('')}
+  </svg>`
 }
 
 function svgToPngDataUrl(config: VenueConfig) {
@@ -35,7 +38,7 @@ function svgToPngDataUrl(config: VenueConfig) {
     const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }))
     const image = new Image()
     image.onload = () => {
-      const canvas = document.createElement('canvas'); canvas.width = 1800; canvas.height = 1140
+      const canvas = document.createElement('canvas'); canvas.width = 1800; canvas.height = 1290
       const context = canvas.getContext('2d')
       if (!context) { URL.revokeObjectURL(url); reject(new Error('PNG rendering is not supported in this browser.')); return }
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
@@ -59,13 +62,17 @@ export async function openVenuePdfReport(config: VenueConfig) {
   try {
     const plan = await svgToPngDataUrl(config)
     const generated = new Intl.DateTimeFormat(undefined, { dateStyle: 'long' }).format(new Date())
+    const summary = categorySummary(config)
     const metrics = [
       ['Capacity', `${estimateCapacity(config)} seats`], ['Venue type', venueTypeLabel(config.venueType)], ['Geometry', config.geometry],
       ['Rows', String(config.rows)], ['Sections', String(config.sectors)], ['Stage width', `${config.stageWidth} m`],
+      ...summary.counts.map((c) => [c.name, `${c.count} seats · ${c.price === undefined ? 'No price' : c.price + ' ' + (config.currency ?? 'EUR')}`]),
+      ['Accessible seats', String(summary.accessible)],
+      ['Sell-out estimate', `${summary.revenue.toFixed(2)} ${config.currency ?? 'EUR'} · ${summary.unpriced} unpriced seats excluded`],
       ['Seat spacing', `${config.seatSpacing ?? 0.72} m`], ['Row spacing', `${config.rowSpacing ?? 0.92} m`],
     ]
     report.document.open()
-    report.document.write(`<!doctype html><html><head><title>${escapeMarkup(config.name)} · VenueTwin report</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#07111f;font-family:Arial,sans-serif}header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #07111f;padding-bottom:14px}header small{color:#278675;font-weight:700;letter-spacing:2px}h1{font-size:28px;margin:8px 0 0}.date{text-align:right;color:#6b797d;font-size:10px}.plan{width:100%;margin:20px 0 16px;border-radius:10px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #dce3df;border-radius:10px;overflow:hidden}.metric{padding:12px;border-right:1px solid #dce3df;border-bottom:1px solid #dce3df}.metric:nth-child(4n){border-right:0}.metric:nth-last-child(-n+4){border-bottom:0}.metric span{display:block;color:#788588;font-size:8px;text-transform:uppercase;letter-spacing:.7px}.metric b{display:block;margin-top:5px;font-size:13px;text-transform:capitalize}footer{display:flex;justify-content:space-between;margin-top:18px;color:#7a878a;font-size:8px}.warning{max-width:65%}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><div><small>VENUE TWIN · PROJECT REPORT</small><h1>${escapeMarkup(config.name)}</h1></div><div class="date">Generated<br><b>${escapeMarkup(generated)}</b></div></header><img class="plan" src="${plan}" alt="Venue seating plan"><section class="metrics">${metrics.map(([label, value]) => `<div class="metric"><span>${label}</span><b>${escapeMarkup(value)}</b></div>`).join('')}</section><footer><span class="warning">Visual planning estimate only. This report is not an architectural drawing or safety certification.</span><span>venuetwin.online</span></footer><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`)
+    report.document.write(`<!doctype html><html><head><title>${escapeMarkup(config.name)} · VenueTwin report</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{margin:0;color:#07111f;font-family:Arial,sans-serif}header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #07111f;padding-bottom:14px}header small{color:#278675;font-weight:700;letter-spacing:2px}h1{font-size:28px;margin:8px 0 0}.date{text-align:right;color:#6b797d;font-size:10px}.plan{width:100%;margin:20px 0 16px;border-radius:10px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #dce3df;border-radius:10px;overflow:hidden}.metric{padding:12px;border-right:1px solid #dce3df;border-bottom:1px solid #dce3df}.metric:nth-child(4n){border-right:0}.metric:nth-last-child(-n+4){border-bottom:0}.metric span{display:block;color:#788588;font-size:8px;text-transform:uppercase;letter-spacing:.7px}.metric b{display:block;margin-top:5px;font-size:13px;text-transform:capitalize}footer{display:flex;justify-content:space-between;margin-top:18px;color:#7a878a;font-size:8px}.warning{max-width:65%}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><div><small>VENUE TWIN · PROJECT REPORT</small><h1>${escapeMarkup(config.name)}</h1></div><div class="date">Generated<br><b>${escapeMarkup(generated)}</b></div></header><img class="plan" src="${plan}" alt="Venue seating plan"><section class="metrics">${metrics.map(([label, value]) => `<div class="metric"><span>${escapeMarkup(label)}</span><b>${escapeMarkup(value)}</b></div>`).join('')}</section><footer><span class="warning">Visual planning estimate only. This report is not an architectural drawing or safety certification.</span><span>venuetwin.online</span></footer><script>window.onload=()=>setTimeout(()=>window.print(),250)</script></body></html>`)
     report.document.close()
   } catch (error) { report.close(); throw error }
 }
