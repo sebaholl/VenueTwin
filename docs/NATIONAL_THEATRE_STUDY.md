@@ -1,5 +1,9 @@
 # National Theatre Prague: estimated spatial study
 
+For the optional detailed Blender model, see [the detail workflow](NATIONAL_THEATRE_DETAIL.md).
+This page describes the original basic study; the detailed GLB adds interpreted
+side boxes and ornament without changing the estimated seating coordinates.
+
 This is a configurable prototype inspired by the supplied auditorium photographs,
 not an official digital twin, measured reconstruction or ticketing seating chart.
 No uploaded photographs, PDFs or DWG originals are published in this repository.
