@@ -47,3 +47,5 @@
 .obstacle-add { display: flex; flex-wrap: wrap; gap: 6px; }
 .obstacle-details { margin: 12px 0; padding: 10px; border: 1px solid #3d5668; border-radius: 8px; }
 .obstacle-details summary { cursor: pointer; font-size: 13px; overflow-wrap: anywhere; }
+.level-filter { display: flex; align-items: center; gap: 12px; margin: 6px 0; color: #bfd1d9; font-size: 12px; }
+.level-filter select { background: #102435; color: #eef5fa; border: 1px solid #3d5668; padding: 7px; border-radius: 7px; }

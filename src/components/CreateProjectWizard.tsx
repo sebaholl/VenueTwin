@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import type { GeometryType, VenueConfig, VenueType } from '../types/venue'
 import { createProjectConfig, venueTypeLabel } from '../utils/projectPresets'
 import { estimateCapacity } from '../utils/venue'
+import { createNationalTheatreStudy } from '../utils/nationalTheatreStudy'
 
 type Props = {
   open: boolean
@@ -51,6 +52,7 @@ export function CreateProjectWizard({ open, onClose, onCreate }: Props) {
       <div className="wizard-progress"><i className="active" /><i className={step === 2 ? 'active' : ''} /></div>
 
       {step === 1 ? <div className="wizard-step">
+        <button className="button button-ghost" type="button" onClick={() => { onCreate(createNationalTheatreStudy(), null); setStep(1) }}>Open National Theatre study · estimated geometry</button>
         <label className="wizard-name">Project name<input autoFocus maxLength={120} value={name} placeholder="e.g. Esbjerg Cinema · Screen 1" onChange={(event) => setName(event.target.value)} /></label>
         <div className="venue-type-grid">{venueTypes.map(({ type, icon: Icon, description }) => <button key={type} className={venueType === type ? 'active' : ''} onClick={() => selectType(type)}><Icon /><span><b>{venueTypeLabel(type)}</b><small>{description}</small></span>{venueType === type && <Check className="venue-type-check" />}</button>)}</div>
         <label className="floorplan-picker"><input hidden type="file" accept="image/png,image/jpeg,image/webp,.pdf,application/pdf" onChange={(event) => setFloorplan(event.target.files?.[0] ?? null)} />{floorplan ? <><FileImage /><span><b>{floorplan.name}</b><small>Ready to use as the source plan</small></span><button type="button" onClick={(event) => { event.preventDefault(); setFloorplan(null) }}>Remove</button></> : <><Upload /><span><b>Add a floor plan</b><small>Optional · PNG, JPG, WebP or PDF</small></span></>}</label>

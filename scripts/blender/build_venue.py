@@ -20,7 +20,7 @@ def validate(data):
     if data.get('units') != 'metres' or data.get('axes') != 'three-y-up':
         raise ValueError('Unsupported coordinate system.')
     boxes, seats = data.get('boxes'), data.get('seats')
-    if not isinstance(boxes, list) or not 1 <= len(boxes) <= 200 or not isinstance(seats, list) or len(seats) > 2000:
+    if not isinstance(boxes, list) or not 1 <= len(boxes) <= 2000 or not isinstance(seats, list) or len(seats) > 2000:
         raise ValueError('Invalid or oversized scene.')
     for obj in boxes + seats:
         if not isinstance(obj, dict):

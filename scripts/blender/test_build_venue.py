@@ -24,6 +24,14 @@ class BlueprintTests(unittest.TestCase):
     def test_normal_project_rejected(self):
         with self.assertRaises(ValueError): validate({'config': {}})
 
+    def test_segmented_balconies_allowed(self):
+        data = self.blueprint(); data['boxes'] = data['boxes'] * 1000
+        self.assertEqual(len(validate(data)['boxes']), 1000)
+
+    def test_oversized_architecture_rejected(self):
+        data = self.blueprint(); data['boxes'] = data['boxes'] * 2001
+        with self.assertRaises(ValueError): validate(data)
+
 
 if __name__ == '__main__':
     unittest.main()
