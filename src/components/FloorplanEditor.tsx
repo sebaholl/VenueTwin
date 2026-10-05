@@ -37,6 +37,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   const [calibrationPoints, setCalibrationPoints] = useState<PlanPoint[]>([])
   const [knownDistance, setKnownDistance] = useState(10)
   const [autoOpen, setAutoOpen] = useState(false)
+  const [visibleLevel, setVisibleLevel] = useState('all')
   const [drawingBoundary, setDrawingBoundary] = useState(false)
   const [boundaryDraft, setBoundaryDraft] = useState<PlanPoint[]>([])
   const [preview, setPreview] = useState<AutoLayoutResult | null>(null)
@@ -56,7 +57,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   useEffect(() => { if (selectedRow >= config.rows) setSelectedRow(Math.max(0, config.rows - 1)) }, [config.rows, selectedRow])
 
   const updateRow = (row: number, patch: Partial<RowOverride>) => onConfigChange({ rowOverrides: { ...(config.rowOverrides ?? {}), [row]: { ...(config.rowOverrides?.[row] ?? {}), ...patch } } })
-  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; next[selectedRow] = { categoryId: selectedOverride.categoryId, seatCategories: selectedOverride.seatCategories, accessibleSeats: selectedOverride.accessibleSeats }; onConfigChange({ rowOverrides: next }) }
+  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; next[selectedRow] = { levelId: selectedOverride.levelId, elevation: selectedOverride.elevation, arcRadius: selectedOverride.arcRadius, arcDegrees: selectedOverride.arcDegrees, categoryId: selectedOverride.categoryId, seatCategories: selectedOverride.seatCategories, accessibleSeats: selectedOverride.accessibleSeats }; onConfigChange({ rowOverrides: next }) }
   const addRow = (duplicate = false) => {
     if (config.rows >= 24) return
     const insertAt = selectedRow + 1
@@ -128,13 +129,14 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   const endStageDrag = () => { if (stageDrag.current) onCommitEdit(); stageDrag.current = null }
 
   return <div className="plan-editor">
-    <div className="plan-toolbar"><div><strong>Floor plan editor</strong><span>{fileName ?? 'Draw a boundary or edit rows manually'}</span></div><div>{config.calibration && <span className="scale-chip">1 px = {(config.calibration.meters / config.calibration.pixels).toFixed(3)} m</span>}<button className={autoOpen ? 'active' : ''} onClick={() => { setAutoOpen((value) => !value); setCalibrating(false) }}><Sparkles size={15} /> Auto layout</button><button className={calibrating ? 'active' : ''} onClick={() => { setCalibrating((value) => !value); setCalibrationPoints([]); setDrawingBoundary(false) }}><Ruler size={15} /> Calibrate</button></div></div>
+    <div className="plan-toolbar"><div><strong>Floor plan editor</strong><span>{fileName ?? 'Draw a boundary or edit rows manually'}</span></div><div>{config.calibration && <span className="scale-chip">1 px = {(config.calibration.meters / config.calibration.pixels).toFixed(3)} m</span>}<button disabled={!!config.seatingLevels?.length} title={config.seatingLevels?.length ? 'Auto layout is available for single-level projects only' : undefined} className={autoOpen ? 'active' : ''} onClick={() => { setAutoOpen((value) => !value); setCalibrating(false) }}><Sparkles size={15} /> Auto layout</button><button className={calibrating ? 'active' : ''} onClick={() => { setCalibrating((value) => !value); setCalibrationPoints([]); setDrawingBoundary(false) }}><Ruler size={15} /> Calibrate</button></div></div>
+    {config.seatingLevels?.length ? <label className="level-filter">Visible level <select value={visibleLevel} onChange={(event) => setVisibleLevel(event.target.value)}><option value="all">All levels (overlay)</option>{config.seatingLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label> : null}
     <div className="plan-canvas">
       {imageUrl && <img src={imageUrl} alt="Uploaded venue floor plan" />}{!imageUrl && <div className="plan-grid" />}
       <svg viewBox="0 0 1000 620" onPointerDown={handleCanvasPointerDown}>
         <BoundaryOverlay points={visibleBoundary} drawing={drawingBoundary} />
         <g className="plan-stage draggable" transform={`translate(${500 + stage.offsetX * 24}, ${76 + stage.offsetY * 24}) rotate(${stage.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(150 + config.stageWidth * 10)} y="-34" width={300 + config.stageWidth * 20} height="68" rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
-        {rows.map(({ row, seats }) => {
+        {rows.filter(({ row }) => visibleLevel === 'all' || config.rowOverrides[row]?.levelId === visibleLevel).map(({ row, seats }) => {
           if (!seats.length) return null
           const points = seats.map((seat) => ({ seat: seat.seat, x: 500 + seat.position[0] * 24, y: 150 + seat.position[2] * 24 }))
           const active = !preview && selectedRow === row
