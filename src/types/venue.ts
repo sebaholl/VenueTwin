@@ -2,6 +2,10 @@ export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
 export type RowOverride = {
+  levelId?: string
+  elevation?: number
+  arcRadius?: number
+  arcDegrees?: number
   categoryId?: string
   seatCategories?: Record<number, string>
   accessibleSeats?: Record<number, boolean>
@@ -26,6 +30,8 @@ export type StagePosition = {
 }
 
 export type VenueConfig = {
+  seatingLevels?: { id: string; name: string; elevation: number }[]
+  studyNotice?: string
   obstacles?: VenueObstacle[]
   categories?: SeatCategory[]
   currency?: 'CZK' | 'EUR' | 'DKK' | 'USD' | 'GBP'
