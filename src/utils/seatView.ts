@@ -2,6 +2,13 @@ import type { SeatRef, VenueConfig } from '../types/venue'
 import { generateSeatLayout } from './venue'
 
 export const modelOffset: [number, number, number] = [0, -1.4, -2.8]
+export function overviewPose(config: VenueConfig) {
+  if (!config.seatingLevels?.length) return { position: [11, 11, 18] as [number, number, number], target: [0, 1.7, 2] as [number, number, number] }
+  const seats = generateSeatLayout(config)
+  const height = Math.max(6, ...seats.map((seat) => seat.position[1]))
+  const width = Math.max(12, ...seats.map((seat) => Math.abs(seat.position[0])))
+  return { position: [width * 1.7, height + 10, width * 2.8] as [number, number, number], target: [0, height / 2 - 1.4, 3] as [number, number, number] }
+}
 export function getSeatView(config: VenueConfig, selected: SeatRef | null, eyeHeight = 1.15) {
   if (!selected) return null
   const seat = generateSeatLayout(config).find((s) => s.row === selected.row && s.seat === selected.seat)
