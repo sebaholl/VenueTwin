@@ -38,7 +38,14 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Category capacity and gross sell-out estimates (unpriced seats excluded); matching colors in 2D, 3D and exports
 - About and fallback pages
 
-## Technology
+## Blender prototype
+
+Export a scene blueprint, build an architectural scaffold in Blender and load
+the GLB locally in Studio while keeping interactive seats. Follow the
+[Blender bridge guide](docs/BLENDER_BRIDGE.md). Local GLBs are session-only and
+are not part of cloud saves, public previews or 2D exports.
+
+## Technology stack
 
 - React 19 + TypeScript
 - Vite

@@ -1,7 +1,7 @@
 import { ContactShadows, Environment, OrbitControls, RoundedBox, Text } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { PerspectiveCamera } from 'three'
+import { PerspectiveCamera, type Group } from 'three'
 import { getSeatView, lookDirection, modelOffset } from '../utils/seatView'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { seatCategory } from '../utils/seatCategories'
@@ -9,22 +9,24 @@ import { generateSeatLayout } from '../utils/venue'
 import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
+  importedModel?: Group | null
   config: VenueConfig
   selectedSeat: SeatRef | null
   onSeatSelect: (seat: SeatRef) => void
 }
 
-function VenueModel({ config, selectedSeat, onSeatSelect }: SceneProps) {
+function VenueModel({ config, selectedSeat, onSeatSelect, importedModel }: SceneProps) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const stageRotation = stage.rotation * Math.PI / 180
 
   return (
     <group position={modelOffset}>
+      {importedModel && <primitive object={importedModel} dispose={null} onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()} />}
       {getObstacles(config).map((o) => <group key={o.id} position={[o.x, o.elevation, o.z]} rotation={[0, o.rotation * Math.PI / 180, 0]}>
         {obstacleBoxes(o).map((box, index) => <mesh key={index} position={[box.x, box.y, 0]} onClick={(event) => event.stopPropagation()}><boxGeometry args={[box.width, box.height, box.depth]} /><meshStandardMaterial color={o.kind === 'railing' ? '#b4bec9' : '#8d8478'} roughness={.7} /></mesh>)}
       </group>)}
-      <group position={[stage.offsetX, 0, stage.offsetY]} rotation={[0, stageRotation, 0]}>
+      {!importedModel && <group position={[stage.offsetX, 0, stage.offsetY]} rotation={[0, stageRotation, 0]}>
         <RoundedBox args={[config.stageWidth, 0.45, 2.2]} radius={0.12} position={[0, 0, -2.2]}>
           <meshStandardMaterial color="#17243a" roughness={0.5} />
         </RoundedBox>
@@ -33,7 +35,7 @@ function VenueModel({ config, selectedSeat, onSeatSelect }: SceneProps) {
           <meshStandardMaterial color="#e8f0f3" emissive="#19304b" emissiveIntensity={0.16} />
         </mesh>
         <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>
-      </group>
+      </group>}
       {seats.map((seat) => {
         const active = selectedSeat?.label === seat.label
         return (
@@ -52,10 +54,10 @@ function VenueModel({ config, selectedSeat, onSeatSelect }: SceneProps) {
           </group>
         )
       })}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, config.rows * 0.5]}>
+      {!importedModel && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, config.rows * 0.5]}>
         <planeGeometry args={[26, 28]} />
         <meshStandardMaterial color="#0c1725" roughness={0.9} />
-      </mesh>
+      </mesh>}
     </group>
   )
 }

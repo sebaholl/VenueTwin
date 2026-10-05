@@ -3,6 +3,8 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from '
 import { Link } from 'react-router-dom'
 import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
 import { ObstaclePanel } from '../components/ObstaclePanel'
+import { BlenderPanel } from '../components/BlenderPanel'
+import type { Group } from 'three'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
 import { CreateProjectWizard } from '../components/CreateProjectWizard'
@@ -32,6 +34,7 @@ export function StudioPage() {
   const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName } = useVenueStore()
   const fileInput = useRef<HTMLInputElement>(null)
   const importInput = useRef<HTMLInputElement>(null)
+  const [importedModel, setImportedModel] = useState<Group | null>(null)
   const lastSavedSnapshot = useRef('')
   const [saveLabel, setSaveLabel] = useState('Save project')
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -190,11 +193,12 @@ export function StudioPage() {
           <section className="control-section"><h2><span>2</span> Venue geometry</h2><div className="segmented">{(['straight', 'fan', 'blocks'] as GeometryType[]).map((value) => <button key={value} className={config.geometry === value ? 'active' : ''} onClick={() => setConfig({ geometry: value })}>{value}</button>)}</div><RangeField label="Rows" value={config.rows} min={3} max={24} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rows) => setConfig({ rows })} /><RangeField label="Seats per row" value={config.seatsPerRow} min={5} max={30} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(seatsPerRow) => setConfig({ seatsPerRow })} /><RangeField label="Sections" value={config.sectors} min={1} max={3} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(sectors) => setConfig({ sectors })} /><RangeField label="Rake" value={config.rake} min={0.08} max={0.5} step={0.01} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rake) => setConfig({ rake })} /><RangeField label="Stage width" value={config.stageWidth} min={6} max={20} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(stageWidth) => setConfig({ stageWidth })} /></section>
           <SeatCategoriesPanel config={config} selectedSeat={selectedSeat} onSelect={selectSeat} onChange={setConfig} />
           <ObstaclePanel config={config} onChange={setConfig} />
+          <BlenderPanel key={projectId} config={config} onLoaded={setImportedModel} />
           <div className="project-stats"><div><span>Capacity</span><strong>{capacity}</strong></div><div><span>Sections</span><strong>{config.sectors}</strong></div><div><span>Selected</span><strong>{selectedSeat?.label ?? '—'}</strong></div></div>
         </aside>
         <section className="viewport">
           <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>
-          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {String.fromCharCode(65 + selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
+          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={importedModel} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {String.fromCharCode(65 + selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
