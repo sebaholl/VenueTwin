@@ -40,6 +40,10 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 
 ## Blender prototype
 
+An [estimated National Theatre spatial study](docs/NATIONAL_THEATRE_STUDY.md)
+is available from New project. It adds five configurable seating levels and
+open-centre arc balconies; dimensions and seat labels are not verified venue data.
+
 Export a scene blueprint, build an architectural scaffold in Blender and load
 the GLB locally in Studio while keeping interactive seats. Follow the
 [Blender bridge guide](docs/BLENDER_BRIDGE.md). Local GLBs are session-only and
