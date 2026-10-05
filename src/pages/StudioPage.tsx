@@ -12,7 +12,7 @@ import { VenueScene } from '../components/VenueScene'
 import { disableProjectShare, enableProjectShare, ensureFreshSession, getStoredSession, saveCloudProject, storeSession, type CloudSession } from '../lib/supabaseApi'
 import { useVenueStore } from '../store/venueStore'
 import type { GeometryType, VenueConfig } from '../types/venue'
-import { estimateCapacity, estimateSeatScore } from '../utils/venue'
+import { estimateCapacity } from '../utils/venue'
 
 type RangeFieldProps = { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void; onBeginEdit: () => void; onCommitEdit: () => void }
 function RangeField({ label, value, min, max, step = 1, unit = '', onChange, onBeginEdit, onCommitEdit }: RangeFieldProps) {
@@ -47,7 +47,7 @@ export function StudioPage() {
   const [shareError, setShareError] = useState<string | null>(null)
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => getStoredSession())
   const capacity = useMemo(() => estimateCapacity(config), [config])
-  const seatScore = selectedSeat ? estimateSeatScore(selectedSeat, config) : null
+
 
   const attachFloorplan = (file: File | null) => {
     if (file) {
@@ -192,7 +192,7 @@ export function StudioPage() {
         </aside>
         <section className="viewport">
           <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>
-          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>VIEW QUALITY</small><strong className="score">{seatScore}%</strong></div><div><small>POSITION</small><span>Row {String.fromCharCode(65 + selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
+          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {String.fromCharCode(65 + selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
