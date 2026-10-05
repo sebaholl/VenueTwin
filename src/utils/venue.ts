@@ -37,23 +37,27 @@ export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
     const rowAngle = ((rowOverride?.rotation ?? 0) * Math.PI) / 180
     const rowOffsetX = rowOverride?.offsetX ?? 0
     const rowOffsetZ = rowOverride?.offsetY ?? 0
+    const level = config.seatingLevels?.find((item) => item.id === rowOverride?.levelId)
+    const elevation = (level?.elevation ?? 0) + (rowOverride?.elevation ?? row * config.rake)
     for (let seat = 0; seat < rowWidth; seat += 1) {
       const normalized = rowWidth === 1 ? 0 : seat / (rowWidth - 1) - 0.5
       const fanAmount = config.geometry === 'fan' ? rowCurve * normalized : 0
       const sectionIndex = Math.min(sections - 1, Math.floor((seat * sections) / rowWidth))
       const aisleOffset = (sectionIndex - (sections - 1) / 2) * aisleWidth
-      const localX = (seat - (rowWidth - 1) / 2) * spacing + aisleOffset
-      const localZ = Math.abs(normalized) * fanAmount * 2
+      const radius = rowOverride?.arcRadius
+      const arc = normalized * (rowOverride?.arcDegrees ?? 140) * Math.PI / 180
+      const localX = radius ? Math.sin(arc) * radius : (seat - (rowWidth - 1) / 2) * spacing + aisleOffset
+      const localZ = radius ? Math.cos(arc) * radius : Math.abs(normalized) * fanAmount * 2
       output.push({
         row,
         seat,
         label: `${String.fromCharCode(65 + row)}${seat + 1}`,
         position: [
           localX * Math.cos(rowAngle) + localZ * Math.sin(rowAngle) + rowOffsetX,
-          0.25 + row * config.rake,
-          -localX * Math.sin(rowAngle) + localZ * Math.cos(rowAngle) + row * rowSpacing + rowOffsetZ,
+          0.25 + elevation,
+          -localX * Math.sin(rowAngle) + localZ * Math.cos(rowAngle) + (radius ? 0 : row * rowSpacing) + rowOffsetZ,
         ],
-        rotation: rowAngle + (config.geometry === 'fan' ? -normalized * rowCurve : 0),
+        rotation: rowAngle + (radius ? arc : config.geometry === 'fan' ? -normalized * rowCurve : 0),
       })
     }
   }
