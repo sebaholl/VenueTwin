@@ -2,6 +2,7 @@ import type { VenueConfig } from '../types/venue'
 import { categorySummary, getCategories, seatCategory } from './seatCategories'
 import { venueTypeLabel } from './projectPresets'
 import { estimateCapacity, generateSeatLayout } from './venue'
+import { getObstacles, obstaclePlanTransform } from './obstacles'
 
 const escapeMarkup = (value: string) => value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character)
 export const projectSlug = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'venue-project'
@@ -27,8 +28,10 @@ export function renderVenuePlanSvg(config: VenueConfig) {
   <g transform="translate(${500 + stage.offsetX * 24} ${76 + stage.offsetY * 24}) rotate(${stage.rotation})"><rect x="${-(150 + config.stageWidth * 10)}" y="-34" width="${300 + config.stageWidth * 20}" height="68" rx="7" fill="#162d3f" stroke="#577181"/><text y="6" text-anchor="middle" fill="#a4b9b6" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="3">STAGE · ${config.stageWidth} M</text></g>
   ${seats.map((seat) => `<circle cx="${500 + seat.position[0] * 24}" cy="${150 + seat.position[2] * 24}" r="5.3" fill="${seatCategory(config, seat.row, seat.seat).color}" stroke="#07111f" stroke-width="2"/>`).join('')}
   ${rows.map((rowSeats, row) => rowSeats.length ? `<text x="${Math.min(...rowSeats.map((seat) => 500 + seat.position[0] * 24)) - 24}" y="${150 + rowSeats[0].position[2] * 24 + 4}" text-anchor="middle" fill="#718a93" font-family="Arial,sans-serif" font-size="11" font-weight="700">${String.fromCharCode(65 + row)}</text>` : '').join('')}
+  ${getObstacles(config).map((o) => `<g transform="${obstaclePlanTransform(o)}"><title>${escapeMarkup(o.name)} · ${o.height} m high</title><rect x="${-o.width * 12}" y="${-o.depth * 12}" width="${o.width * 24}" height="${o.depth * 24}" fill="#f5bc66" fill-opacity="0.65" stroke="#f5bc66"/></g>`).join('')}
   </g>
   ${getCategories(config).map((c, i) => `<g transform="translate(${65 + i % 4 * 285} ${770 + Math.floor(i / 4) * 28})"><circle r="5" fill="${c.color}"/><text x="13" y="4" fill="#f2f7f6" font-family="Arial,sans-serif" font-size="11">${escapeMarkup(c.name.slice(0, 30))}</text></g>`).join('')}
+  ${getObstacles(config).length ? '<rect x="60" y="826" width="10" height="10" fill="#f5bc66"/><text x="78" y="835" fill="#f2f7f6" font-family="Arial,sans-serif" font-size="11">Structure footprints (all elevations)</text>' : ''}
   </svg>`
 }
 
@@ -68,6 +71,7 @@ export async function openVenuePdfReport(config: VenueConfig) {
       ['Rows', String(config.rows)], ['Sections', String(config.sectors)], ['Stage width', `${config.stageWidth} m`],
       ...summary.counts.map((c) => [c.name, `${c.count} seats · ${c.price === undefined ? 'No price' : c.price + ' ' + (config.currency ?? 'EUR')}`]),
       ['Accessible seats', String(summary.accessible)],
+      ['Structures', String(getObstacles(config).length)],
       ['Sell-out estimate', `${summary.revenue.toFixed(2)} ${config.currency ?? 'EUR'} · ${summary.unpriced} unpriced seats excluded`],
       ['Seat spacing', `${config.seatSpacing ?? 0.72} m`], ['Row spacing', `${config.rowSpacing ?? 0.92} m`],
     ]
