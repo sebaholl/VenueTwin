@@ -1,6 +1,7 @@
 import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Settings2, Share2, Undo2, Upload, X } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
 import { CreateProjectWizard } from '../components/CreateProjectWizard'
@@ -186,6 +187,7 @@ export function StudioPage() {
           <div className="panel-heading"><div><span>PROJECT</span><input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} aria-label="Project name" /></div><Settings2 /></div>
           <section className="control-section"><h2><span>1</span> Source plan</h2><input ref={fileInput} hidden type="file" accept="image/*,.pdf" onChange={handleFloorplan} /><button className="upload-zone" onClick={() => fileInput.current?.click()}><FileImage /><b>{floorplanName ?? 'Upload floor plan'}</b><small>JPG and PNG overlay · PDF stored as source</small><span><Upload size={14} /> Choose file</span></button></section>
           <section className="control-section"><h2><span>2</span> Venue geometry</h2><div className="segmented">{(['straight', 'fan', 'blocks'] as GeometryType[]).map((value) => <button key={value} className={config.geometry === value ? 'active' : ''} onClick={() => setConfig({ geometry: value })}>{value}</button>)}</div><RangeField label="Rows" value={config.rows} min={3} max={24} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rows) => setConfig({ rows })} /><RangeField label="Seats per row" value={config.seatsPerRow} min={5} max={30} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(seatsPerRow) => setConfig({ seatsPerRow })} /><RangeField label="Sections" value={config.sectors} min={1} max={3} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(sectors) => setConfig({ sectors })} /><RangeField label="Rake" value={config.rake} min={0.08} max={0.5} step={0.01} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rake) => setConfig({ rake })} /><RangeField label="Stage width" value={config.stageWidth} min={6} max={20} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(stageWidth) => setConfig({ stageWidth })} /></section>
+          <SeatCategoriesPanel config={config} selectedSeat={selectedSeat} onSelect={selectSeat} onChange={setConfig} />
           <div className="project-stats"><div><span>Capacity</span><strong>{capacity}</strong></div><div><span>Sections</span><strong>{config.sectors}</strong></div><div><span>Selected</span><strong>{selectedSeat?.label ?? '—'}</strong></div></div>
         </aside>
         <section className="viewport">

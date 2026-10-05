@@ -28,6 +28,9 @@ VenueTwin is an early-stage spatial planning product that turns venue layouts in
 - Project import and export as `.venuetwin.json`
 - High-resolution PNG floor-plan export
 - Print-ready A4 project report with browser PDF saving
+- Custom seat categories with colors, optional prices and a project currency
+- Whole-row assignments and individual seat overrides, with independent accessibility labels
+- Category capacity and gross sell-out estimates (unpriced seats excluded); matching colors in 2D, 3D and exports
 - About and fallback pages
 
 ## Technology

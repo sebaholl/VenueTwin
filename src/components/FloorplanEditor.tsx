@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { PlanPoint, RowOverride, VenueConfig } from '../types/venue'
 import { generateAutoLayout, type AutoLayoutResult } from '../utils/autoLayout'
+import { seatCategory } from '../utils/seatCategories'
 import { getRowSeats } from '../utils/venue'
 
 type FloorplanEditorProps = {
@@ -52,7 +53,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   useEffect(() => { if (selectedRow >= config.rows) setSelectedRow(Math.max(0, config.rows - 1)) }, [config.rows, selectedRow])
 
   const updateRow = (row: number, patch: Partial<RowOverride>) => onConfigChange({ rowOverrides: { ...(config.rowOverrides ?? {}), [row]: { ...(config.rowOverrides?.[row] ?? {}), ...patch } } })
-  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; delete next[selectedRow]; onConfigChange({ rowOverrides: next }) }
+  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; next[selectedRow] = { categoryId: selectedOverride.categoryId, seatCategories: selectedOverride.seatCategories, accessibleSeats: selectedOverride.accessibleSeats }; onConfigChange({ rowOverrides: next }) }
   const addRow = (duplicate = false) => {
     if (config.rows >= 24) return
     const insertAt = selectedRow + 1
@@ -134,7 +135,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
           const override = displayConfig.rowOverrides?.[row]; const spacing = (displayConfig.seatSpacing ?? .72) * 24; const aisle = (displayConfig.aisleWidth ?? .9) * 24; const sections = Math.max(1, displayConfig.sectors)
           const seatPositions = Array.from({ length: seats }, (_, seat) => { const section = Math.min(sections - 1, Math.floor((seat * sections) / seats)); return (seat - (seats - 1) / 2) * spacing + (section - (sections - 1) / 2) * aisle })
           const minX = Math.min(...seatPositions, 0); const maxX = Math.max(...seatPositions, 0); const offsetX = (override?.offsetX ?? 0) * 24; const offsetY = (override?.offsetY ?? 0) * 24; const rotation = override?.rotation ?? 0; const curve = displayConfig.geometry === 'fan' ? (override?.curve ?? displayConfig.curve) : 0; const y = 170 + row * rowGap + offsetY; const active = !preview && selectedRow === row
-          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} transform={`translate(${500 + offsetX}, ${y}) rotate(${rotation})`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={`M ${minX} 0 Q 0 ${curve * 55} ${maxX} 0`} />{seatPositions.map((x, seat) => { const normalized = seats === 1 ? 0 : seat / (seats - 1) - .5; return <circle key={seat} cx={x} cy={Math.abs(normalized * 2) ** 2 * curve * 28} r={active ? 6.5 : 5.2} /> })}<text x={minX - 28} y="5">{rowLabel(row)}</text>{active && <rect className="row-hitbox" x={minX - 15} y="-20" width={maxX - minX + 30} height="55" rx="10" />}</g>
+          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} transform={`translate(${500 + offsetX}, ${y}) rotate(${rotation})`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={`M ${minX} 0 Q 0 ${curve * 55} ${maxX} 0`} />{seatPositions.map((x, seat) => { const normalized = seats === 1 ? 0 : seat / (seats - 1) - .5; return <circle key={seat} style={{ fill: seatCategory(displayConfig, row, seat).color }} cx={x} cy={Math.abs(normalized * 2) ** 2 * curve * 28} r={active ? 6.5 : 5.2} /> })}<text x={minX - 28} y="5">{rowLabel(row)}</text>{active && <rect className="row-hitbox" x={minX - 15} y="-20" width={maxX - minX + 30} height="55" rx="10" />}</g>
         })}
         {calibrationPoints.length > 0 && <g className="calibration-line"><circle cx={calibrationPoints[0].x} cy={calibrationPoints[0].y} r="8" />{calibrationPoints[1] && <><line x1={calibrationPoints[0].x} y1={calibrationPoints[0].y} x2={calibrationPoints[1].x} y2={calibrationPoints[1].y} /><circle cx={calibrationPoints[1].x} cy={calibrationPoints[1].y} r="8" /></>}</g>}
       </svg>
