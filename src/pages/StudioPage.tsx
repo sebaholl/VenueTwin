@@ -5,6 +5,7 @@ import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
 import { ObstaclePanel } from '../components/ObstaclePanel'
 import { BlenderPanel } from '../components/BlenderPanel'
 import { SeatingLevelsPanel } from '../components/SeatingLevelsPanel'
+import { CustomerPreviewButton } from '../components/CustomerPreviewButton'
 import type { Group } from 'three'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
@@ -36,6 +37,7 @@ export function StudioPage() {
   const fileInput = useRef<HTMLInputElement>(null)
   const importInput = useRef<HTMLInputElement>(null)
   const [importedModel, setImportedModel] = useState<Group | null>(null)
+  const [modelSource, setModelSource] = useState<{ file: File; signature: string } | null>(null)
   const lastSavedSnapshot = useRef('')
   const [saveLabel, setSaveLabel] = useState('Save project')
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -195,7 +197,8 @@ export function StudioPage() {
           <SeatCategoriesPanel config={config} selectedSeat={selectedSeat} onSelect={selectSeat} onChange={setConfig} />
           <SeatingLevelsPanel config={config} selectedSeat={selectedSeat} onChange={setConfig} />
           <ObstaclePanel config={config} onChange={setConfig} />
-          <BlenderPanel key={projectId} config={config} onLoaded={setImportedModel} />
+          <CustomerPreviewButton config={config} source={modelSource} />
+          <BlenderPanel key={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
           <div className="project-stats"><div><span>Capacity</span><strong>{capacity}</strong></div><div><span>Sections</span><strong>{config.sectors}</strong></div><div><span>Selected</span><strong>{selectedSeat?.label ?? '—'}</strong></div></div>
         </aside>
         <section className="viewport">
