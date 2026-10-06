@@ -8,6 +8,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 
 const StudioPage = lazy(() => import('./pages/StudioPage').then((module) => ({ default: module.StudioPage })))
 const SharedProjectPage = lazy(() => import('./pages/SharedProjectPage').then((module) => ({ default: module.SharedProjectPage })))
+const CustomerViewerPage = lazy(() => import('./pages/CustomerViewerPage').then((module) => ({ default: module.CustomerViewerPage })))
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
       </Route>
       <Route path="studio" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><StudioPage /></Suspense></AppErrorBoundary>} />
       <Route path="share/:token" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><SharedProjectPage /></Suspense></AppErrorBoundary>} />
+      <Route path="viewer" element={<AppErrorBoundary title="This venue preview could not be rendered." actionLabel="Reload preview"><Suspense fallback={<div className="route-loader"><span /></div>}><CustomerViewerPage /></Suspense></AppErrorBoundary>} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   )
