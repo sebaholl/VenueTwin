@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 
-type Props = { children: ReactNode }
+type Props = { children: ReactNode; title?: string; actionLabel?: string }
 type State = { error: Error | null }
 
 export class AppErrorBoundary extends Component<Props, State> {
@@ -19,9 +19,9 @@ export class AppErrorBoundary extends Component<Props, State> {
 
     return <main className="app-error-fallback">
       <span>VENUE TWIN</span>
-      <h1>The editor hit an unexpected error.</h1>
+      <h1>{this.props.title ?? 'The editor hit an unexpected error.'}</h1>
       <p>{this.state.error.message}</p>
-      <button onClick={() => window.location.reload()}>Reload editor</button>
+      <button onClick={() => window.location.reload()}>{this.props.actionLabel ?? 'Reload editor'}</button>
     </main>
   }
 }
