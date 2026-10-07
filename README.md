@@ -52,7 +52,7 @@ open-centre arc balconies; dimensions and seat labels are not verified venue dat
 
 Export a scene blueprint, build an architectural scaffold in Blender and load
 the GLB locally in Studio while keeping interactive seats. Follow the
-[Blender bridge guide](docs/BLENDER_BRIDGE.md). Local GLBs are session-only and
+[Blender bridge guide](docs/BLENDER_BRIDGE.md). Local GLBs are saved per project in this browser and
 are not part of cloud saves, public previews or 2D exports.
 
 ## Technology stack
@@ -128,7 +128,7 @@ Studio is organised into four freely accessible steps:
 3. **Model** — export Blender JSON, load a local GLB, then open the full-width seat-view review. Close the review with its own controls before changing steps; draft changes require Apply.
 4. **Preview & share** — try the local customer experience, export a backup, or manage public cloud sharing.
 
-The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Source images and GLB files are session-only and must be reattached after refreshing; cloud sharing does not include the GLB. On narrow screens, step controls appear above the canvas.
+The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Source images must be reattached after refreshing. GLBs restore per project in this browser; cloud sharing does not include them. On narrow screens, step controls appear above the canvas.
 
 ### Customer viewer interaction checks
 
@@ -179,3 +179,11 @@ When ready to publish, `npm run build` includes the prepared venue folders in `d
 Apache header expression reference: https://httpd.apache.org/docs/2.4/mod/mod_headers.html and https://httpd.apache.org/docs/current/expr.html. The original request line is used so the SPA rewrite does not hide the viewer path.
 
 Release checks: open the independent host, choose all three sample views, copy/open a seat link in a fresh browser, reload, test an unavailable seat, test phone portrait/landscape, and test the deployed iframe from the actual customer domain. Local HTTP checks do not validate Simply.com's Apache configuration or physical phone behaviour.
+
+### Saved Blender models
+
+Studio stores each successfully imported GLB in IndexedDB under its project ID, alongside the geometry signature captured at import. Refreshing or reopening the same cloud project on the same browser origin restores it automatically. New projects have separate model records. Importing a project JSON creates a new project ID and requires attaching its GLB. Models are not uploaded to Supabase or bundled in project JSON exports.
+
+The Model panel reports restoring, saving, saved or preview-only status. A storage failure leaves the imported model usable for the current session and offers Retry saving; the previous saved record remains unchanged. Remove saved model deletes the record before clearing the preview. Stale models remain stored but are hidden from the Studio scene until the original geometry is restored or a matching GLB is imported. Customer preview also rejects a stale model.
+
+Keep the original GLB: clearing browser site data, storage eviction or changing browser/origin loses access to the local copy. Test import → saved status → refresh → Model/3D, project switching, removal → refresh, and layout change → stale warning. Cloud model storage and portable project bundles are future work.
