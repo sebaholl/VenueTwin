@@ -24,3 +24,6 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Generated, reproducible demo package (prepared before dev/build)
+public/venues/demo-theatre/v1/
