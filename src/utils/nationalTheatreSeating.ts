@@ -24,7 +24,7 @@ export function createNationalTheatreSeatingStudy(): VenueConfig {
   config.geometry = 'fan'
   config.rowSpacing = .62
   config.name = 'National Theatre Prague · sourced stalls study'
-  config.studyNotice = 'Stalls rows 1–13 and numbered sale seats transcribed from the official plan (checked 7 October 2026). Upper tiers use placeholder numbering; boxes, standing places and service seats are not mapped. All 3D positions, dimensions and decoration are estimated; seat views are not verified.'
+  config.studyNotice = 'Stalls rows 1–13 and numbered sale seats transcribed from the official plan (checked 7 October 2026). Upper tiers use placeholder numbering; boxes and standing places are not mapped. Two row-7 service places are shown as non-ticket geometry. All 3D positions, dimensions and decoration are estimated; seat views are not verified.'
   return config
 }
 
