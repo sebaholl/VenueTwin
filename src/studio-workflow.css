@@ -75,3 +75,17 @@
 .blender-help { margin: 14px 0; font-size: 12px; color: #a8bfce; }
 .blender-help summary { cursor: pointer; color: #d0e3ed; padding: 8px 0; }
 .blender-help code { overflow-wrap: anywhere; font-size: 11px; }
+
+.project-references fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.project-references details { border-top: 1px solid #2c4355; padding: 14px 0; }
+.project-references summary { cursor: pointer; font-size: 13px; color: #daebe8; }
+.project-references label { display: grid; gap: 7px; margin: 12px 0; font-size: 12px; color: #aac0ce; }
+.project-references :is(input, textarea, select) { width: 100%; min-width: 0; background: #11283a; color: #e3ecee; border: 1px solid #365064; border-radius: 7px; padding: 9px; font: inherit; }
+.project-references textarea { min-height: 80px; resize: vertical; }
+.project-references article { padding: 12px; margin-top: 12px; background: #102235; border-radius: 8px; overflow-wrap: anywhere; font-size: 12px; }
+.project-references article img { display: block; width: 100%; max-height: 150px; object-fit: contain; margin: 12px 0; background: #06111a; }
+.project-references article a { color: #80e3cb; display: block; margin: 10px 0; }
+.project-references button { padding: 9px 12px; border: 1px solid #35586a; border-radius: 7px; background: #173645; color: #dceeea; cursor: pointer; margin: 4px 4px 4px 0; }
+.project-references button:disabled { opacity: .5; cursor: default; }
+.project-references > p, .project-references small { font-size: 11px; line-height: 1.6; color: #a7bdca; }
+.project-references [role=alert] { color: #ffc09b; }
