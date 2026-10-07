@@ -118,3 +118,14 @@ It adds the official National Theatre stalls numbering as a separate study, with
 source status in Studio and the customer viewer. Upper tiers and all 3D positions
 remain estimates. Rebuild the Blender model for the new layout.
 See [source, scope and instructions](docs/NATIONAL_THEATRE_SEATING.md).
+
+### Studio workflow
+
+Studio is organised into four freely accessible steps:
+
+1. **Project** — name the venue and optionally attach a floor-plan image. Use the Project menu for new templates, cloud projects and file imports.
+2. **Layout** — switch between Seating, Levels, Categories and Obstacles. Only the selected tool group is shown. Select rows in the plan for individual adjustments.
+3. **Model** — export Blender JSON, load a local GLB, then open the full-width seat-view review. Close the review with its own controls before changing steps; draft changes require Apply.
+4. **Preview & share** — try the local customer experience, export a backup, or manage public cloud sharing.
+
+The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Source images and GLB files are session-only and must be reattached after refreshing; cloud sharing does not include the GLB. On narrow screens, step controls appear above the canvas.
