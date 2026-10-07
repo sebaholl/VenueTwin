@@ -109,3 +109,10 @@ The frontend is intentionally deployable as a static Vite build, including on Si
 ## Product status
 
 This is a validation prototype, not an architectural or safety-certification tool. Sightline scores and venue dimensions are currently estimates.
+## Sourced seating study
+
+Studio's New project dialog now includes **Open sourced stalls study · rows 1–13**.
+It adds the official National Theatre stalls numbering as a separate study, with
+source status in Studio and the customer viewer. Upper tiers and all 3D positions
+remain estimates. Rebuild the Blender model for the new layout.
+See [source, scope and instructions](docs/NATIONAL_THEATRE_SEATING.md).
