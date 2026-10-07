@@ -1,3 +1,4 @@
+import type { ReviewCamera } from '../utils/viewReview'
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox, Text } from '@react-three/drei'
 import { Canvas, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,6 +13,7 @@ import { generatePhysicalSeatLayout, generateSeatLayout } from '../utils/venue'
 import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
+  reviewCamera?: ReviewCamera
   customer?: boolean
   viewMode?: 'overview' | 'seat'
   onViewModeChange?: (mode: 'overview' | 'seat') => void
@@ -87,7 +89,7 @@ export function VenueScene(props: SceneProps) {
   const [eyeHeight, setEyeHeight] = useState(1.15)
   const drag = useRef<{ x: number; y: number } | null>(null)
   const canvasRegion = useRef<HTMLDivElement>(null)
-  const seatView = useMemo(() => getSeatView(props.config, props.selectedSeat, eyeHeight), [props.config, props.selectedSeat, eyeHeight])
+  const seatView = useMemo(() => getSeatView(props.config, props.selectedSeat, props.reviewCamera?.eyeHeight ?? eyeHeight), [props.config, props.selectedSeat, eyeHeight, props.reviewCamera?.eyeHeight])
   const active = requested && !!seatView
   useEffect(() => { if (active) canvasRegion.current?.focus({ preventScroll: true }) }, [active])
   const overview = useMemo(() => overviewPose(props.config), [props.config])
@@ -95,15 +97,15 @@ export function VenueScene(props: SceneProps) {
   useEffect(() => { setLook({ yaw: 0, pitch: 0 }); drag.current = null }, [props.selectedSeat?.row, props.selectedSeat?.seat])
   return (
     <div className={`venue-scene ${active ? 'seat-view-active' : ''}`}>
-    <div className="seat-view-toolbar">
+    {!props.reviewCamera && <div className="seat-view-toolbar">
       {(!props.customer || active) && <button type="button" disabled={!seatView} aria-pressed={active} onClick={() => { setRequested(!active); setLook({ yaw: 0, pitch: 0 }) }}>{active ? 'Back to overview' : 'View from seat'}</button>}
       {active && <><button type="button" onClick={() => setLook({ yaw: 0, pitch: 0 })}>Face stage</button><label>Eye height <select value={eyeHeight} onChange={(e) => setEyeHeight(Number(e.target.value))}><option value={.95}>0.95 m</option><option value={1.15}>1.15 m</option><option value={1.35}>1.35 m</option></select></label></>}
       {!props.customer && <span>{active ? `Seat ${props.selectedSeat?.label} · Drag or use arrow keys to look around · Esc to exit` : seatView ? `Seat ${props.selectedSeat?.label} selected · View from seat to enter` : 'Select a seat to preview its view'}</span>}
-    </div>
+    </div>}
     <div ref={canvasRegion} className="venue-scene-canvas" tabIndex={active ? 0 : -1} role="group" aria-label={active ? 'Seat view. Drag or use arrow keys to look around. Escape returns to overview.' : 'Venue overview'}
-      onKeyDown={(e) => { if (!active) return; if (e.key === 'Escape') { setRequested(false); return } const keys: Record<string, [number, number]> = { ArrowLeft: [-.08, 0], ArrowRight: [.08, 0], ArrowUp: [0, .08], ArrowDown: [0, -.08] }; const delta = keys[e.key]; if (delta) { e.preventDefault(); setLook((v) => ({ yaw: v.yaw + delta[0], pitch: Math.max(-1.2, Math.min(1.2, v.pitch + delta[1])) })) } }}
-      onPointerDown={(e) => { if (!active || !e.isPrimary || e.button !== 0) return; e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY } }}
-      onPointerMove={(e) => { if (!active || !drag.current || !e.isPrimary) return; const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y; drag.current = { x: e.clientX, y: e.clientY }; setLook((v) => ({ yaw: v.yaw - dx * .004, pitch: Math.max(-1.2, Math.min(1.2, v.pitch + dy * .004)) })) }}
+      onKeyDown={(e) => { if (!active || props.reviewCamera) return; if (e.key === 'Escape') { setRequested(false); return } const keys: Record<string, [number, number]> = { ArrowLeft: [-.08, 0], ArrowRight: [.08, 0], ArrowUp: [0, .08], ArrowDown: [0, -.08] }; const delta = keys[e.key]; if (delta) { e.preventDefault(); setLook((v) => ({ yaw: v.yaw + delta[0], pitch: Math.max(-1.2, Math.min(1.2, v.pitch + delta[1])) })) } }}
+      onPointerDown={(e) => { if (props.reviewCamera || !active || !e.isPrimary || e.button !== 0) return; e.currentTarget.focus(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY } }}
+      onPointerMove={(e) => { if (props.reviewCamera || !active || !drag.current || !e.isPrimary) return; const dx = e.clientX - drag.current.x, dy = e.clientY - drag.current.y; drag.current = { x: e.clientX, y: e.clientY }; setLook((v) => ({ yaw: v.yaw - dx * .004, pitch: Math.max(-1.2, Math.min(1.2, v.pitch + dy * .004)) })) }}
       onPointerUp={() => { drag.current = null }} onPointerCancel={() => { drag.current = null }} onLostPointerCapture={() => { drag.current = null }}>
     <Canvas camera={{ position: overview.position, fov: 44, near: .05 }} dpr={[1, 1.5]} frameloop="demand">
       <color attach="background" args={['#07111f']} />
@@ -116,7 +118,7 @@ export function VenueScene(props: SceneProps) {
         <Environment key={detailNotice ? 'warm' : 'neutral'} resolution={128} frames={1}><Lightformer position={[0, 14, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[16, 16, 1]} intensity={2} color={detailNotice ? '#ffe1bc' : '#e6fff8'} /><Lightformer position={[0, 3, -12]} scale={[10, 8, 1]} intensity={1.5} color="#d7dfe4" /></Environment>
         <ContactShadows key={JSON.stringify([props.config, props.importedModel?.uuid])} position={[0, -1.35, 2]} opacity={0.42} scale={30} blur={2.5} frames={1} />
       </Suspense>
-      <SeatCamera view={active ? seatView : null} yaw={look.yaw} pitch={look.pitch} overview={overview} />
+      <SeatCamera view={active ? seatView : null} yaw={props.reviewCamera?.yaw ?? look.yaw} pitch={props.reviewCamera?.pitch ?? look.pitch} fov={props.reviewCamera?.fov ?? 65} overview={overview} />
       {!active && <OrbitControls makeDefault target={overview.target} minDistance={8} maxDistance={100} maxPolarAngle={Math.PI / 2.04} />}
     </Canvas>
     </div>
@@ -125,7 +127,7 @@ export function VenueScene(props: SceneProps) {
   )
 }
 
-function SeatCamera({ view, yaw, pitch, overview }: { view: ReturnType<typeof getSeatView>; yaw: number; pitch: number; overview: ReturnType<typeof overviewPose> }) {
+function SeatCamera({ view, yaw, pitch, fov, overview }: { fov: number; view: ReturnType<typeof getSeatView>; yaw: number; pitch: number; overview: ReturnType<typeof overviewPose> }) {
   const { camera, invalidate } = useThree()
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
@@ -133,10 +135,10 @@ function SeatCamera({ view, yaw, pitch, overview }: { view: ReturnType<typeof ge
       camera.position.set(...view.position)
       const direction = lookDirection(view.yaw + yaw, view.pitch + pitch)
       camera.lookAt(view.position[0] + direction[0], view.position[1] + direction[1], view.position[2] + direction[2])
-      camera.fov = 65
+      camera.fov = fov
     } else { camera.position.set(...overview.position); camera.lookAt(...overview.target); camera.fov = 44 }
     camera.updateProjectionMatrix()
     invalidate()
-  }, [camera, invalidate, view, yaw, pitch, overview])
+  }, [camera, invalidate, view, yaw, pitch, fov, overview])
   return null
 }
