@@ -1,5 +1,5 @@
 import type { VenueConfig } from '../types/venue'
-import { generateSeatLayout, getSeatLabel } from './venue'
+import { generateSeatLayout, generatePhysicalSeatLayout, getSeatLabel } from './venue'
 
 export type ViewerSnapshot = { config: VenueConfig; model: Blob | null; createdAt: string }
 export type ViewerManifest = { format: 'venuetwin-viewer'; version: 1; config: VenueConfig; model?: { file: string; sha256: string } }
@@ -41,7 +41,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
 }
 
 export function geometrySignature(config: VenueConfig) {
-  return JSON.stringify({ seats: generateSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
+  return JSON.stringify({ seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
 }
 
 export function viewerLevels(config: VenueConfig) {
