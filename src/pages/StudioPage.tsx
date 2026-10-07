@@ -1,3 +1,5 @@
+import { geometrySignature } from '../utils/customerViewer'
+import { ViewReview } from '../components/ViewReview'
 import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Settings2, Share2, Undo2, Upload, X } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -43,7 +45,7 @@ export function StudioPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('local')
   const [onlineRetry, setOnlineRetry] = useState(0)
-  const [view, setView] = useState<'plan' | 'model'>('plan')
+  const [view, setView] = useState<'plan' | 'model' | 'review'>('plan')
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -190,7 +192,7 @@ export function StudioPage() {
       </header>
       {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
       <main className="studio-main">
-        <aside className="control-panel">
+        <aside className="control-panel" inert={view === 'review'}>
           <div className="panel-heading"><div><span>PROJECT</span><input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} aria-label="Project name" /></div><Settings2 /></div>
           <section className="control-section"><h2><span>1</span> Source plan</h2><input ref={fileInput} hidden type="file" accept="image/*,.pdf" onChange={handleFloorplan} /><button className="upload-zone" onClick={() => fileInput.current?.click()}><FileImage /><b>{floorplanName ?? 'Upload floor plan'}</b><small>JPG and PNG overlay · PDF stored as source</small><span><Upload size={14} /> Choose file</span></button></section>
           <section className="control-section"><h2><span>2</span> Venue geometry</h2><div className="segmented">{(['straight', 'fan', 'blocks'] as GeometryType[]).map((value) => <button key={value} className={config.geometry === value ? 'active' : ''} onClick={() => setConfig({ geometry: value })}>{value}</button>)}</div><RangeField label="Rows" value={config.rows} min={3} max={50} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rows) => setConfig({ rows })} /><RangeField label="Seats per row" value={config.seatsPerRow} min={5} max={30} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(seatsPerRow) => setConfig({ seatsPerRow })} /><RangeField label="Sections" value={config.sectors} min={1} max={3} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(sectors) => setConfig({ sectors })} /><RangeField label="Rake" value={config.rake} min={0.08} max={0.5} step={0.01} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rake) => setConfig({ rake })} /><RangeField label="Stage width" value={config.stageWidth} min={6} max={20} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(stageWidth) => setConfig({ stageWidth })} /></section>
@@ -202,8 +204,8 @@ export function StudioPage() {
           <div className="project-stats"><div><span>Capacity</span><strong>{capacity}</strong></div><div><span>Sections</span><strong>{config.sectors}</strong></div><div><span>Selected</span><strong>{selectedSeat?.label ?? '—'}</strong></div></div>
         </aside>
         <section className="viewport">
-          <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>
-          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={importedModel} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {getRowLabel(config, selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
+          <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button><button className={view === 'review' ? 'active' : ''} onClick={() => setView('review')}>Review views</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>
+          {view === 'review' ? <ViewReview key={projectId} config={config} model={modelSource?.signature === geometrySignature(config) ? importedModel : null} onApply={setConfig} onClose={() => setView('model')} /> : view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={importedModel} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {getRowLabel(config, selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
           <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
         </section>
       </main>
