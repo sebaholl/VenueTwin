@@ -62,7 +62,7 @@ export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
       const radius = rowOverride?.arcRadius
       const arc = normalized * (rowOverride?.arcDegrees ?? 140) * Math.PI / 180
       const localX = radius ? Math.sin(arc) * radius : (seat - (rowWidth - 1) / 2) * spacing + aisleOffset
-      const localZ = radius ? Math.cos(arc) * radius : Math.abs(normalized) * fanAmount * 2
+      const localZ = radius ? Math.cos(arc) * radius : normalized * fanAmount * 2
       output.push({
         row,
         seat,
