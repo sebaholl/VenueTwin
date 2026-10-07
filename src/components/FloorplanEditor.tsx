@@ -36,7 +36,9 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
   const [calibrationPoints, setCalibrationPoints] = useState<PlanPoint[]>([])
   const [knownDistance, setKnownDistance] = useState(10)
   const [autoOpen, setAutoOpen] = useState(false)
-  const [visibleLevel, setVisibleLevel] = useState('all')
+  const [levelChoice, setVisibleLevel] = useState<string | null>(null)
+  const visibleLevel = levelChoice === 'all' || config.seatingLevels?.some((level) => level.id === levelChoice)
+    ? levelChoice ?? 'all' : config.seatingLevels?.[0]?.id ?? 'all'
   const [drawingBoundary, setDrawingBoundary] = useState(false)
   const [boundaryDraft, setBoundaryDraft] = useState<PlanPoint[]>([])
   const [preview, setPreview] = useState<AutoLayoutResult | null>(null)
