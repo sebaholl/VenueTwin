@@ -46,6 +46,8 @@ def validate(data):
         if not isinstance(r, dict) or not finite(r.get('floor'), 0, 30) or not isinstance(r.get('row'), int) or not 0 <= r['row'] < 50:
             raise ValueError('Invalid row height.')
     for r in arcs:
+        if not finite(r.get('parapetHeight', .8), .2, 2):
+            raise ValueError('Invalid balcony parapet height.')
         if not finite(r['arcRadius'], 5, 30) or not finite(r.get('arcDegrees'), 60, 180):
             raise ValueError('Use arc radii 5–30 m and spans 60–180 degrees.')
         if not finite(r.get('rotation', 0), -.001, .001) or not finite(r.get('offsetX', 0), -.001, .001):
@@ -207,6 +209,7 @@ def make_geometry(data):
             g.box('Shell','velvet',radial(outer-.27,a,y+1.7,cz),(1.04,2.04,.05),a)
             for h in [y+.6,y+2.8]:
                 g.box('Shell','gold',radial(outer-.31,a,h,cz),(1.3,.08,.08),a)
+        parapet_starts = {key: len(value[0]) for key, value in g.parts.items()}
         g.arc('Balcony fronts','plaster',r,.2,y+.37,.86,cz,-span,span)
         for dy, width, height, mat in [(-.08,.27,.1,'gold'),(.05,.24,.06,'gilt_light'),(.73,.28,.09,'gold'),(.84,.34,.1,'velvet')]:
             g.arc('Balcony mouldings',mat,r-.035,width,y+dy,height,cz,-span,span)
@@ -235,6 +238,13 @@ def make_geometry(data):
                 p=radial(r-.27,a,y-.18,cz)
                 g.ellipsoid('Balcony lamps','gold',p,(.18,.05,.18))
                 g.ellipsoid('Balcony lamps','lamp',(p[0],p[1]-.05,p[2]),(.095,.085,.095))
+        # Scale only this level's front and ornament, retaining the floor datum.
+        factor = first.get('parapetHeight', .8) / .8
+        for key, (vertices, faces) in g.parts.items():
+            if key[0] in ('Balcony fronts', 'Balcony mouldings', 'Balcony ornament'):
+                for index in range(parapet_starts.get(key, 0), len(vertices)):
+                    x, height, z = vertices[index]
+                    vertices[index] = (x, y + (height-y)*factor, z)
         # Side boxes beyond the ends of the interactive rows. No invented ticket IDs.
         box_top = min(y+2.55,top-.5)
         for side in [-1,1]:
