@@ -37,7 +37,8 @@ export function levelArchitecture(config: VenueConfig): ArchitectureBox[] {
       boxes.push({ name: `Balcony deck ${row + 1}/${i}`, position: [(override.offsetX ?? 0) + Math.sin(angle) * radius, floor - .14, (override.offsetY ?? 0) + Math.cos(angle) * radius], size: [radius * span / segments + .03, .28, .87], rotation: angle, color: '#572c35' })
       if (first) {
         const front = radius - .48
-        boxes.push({ name: `Balcony parapet ${row + 1}/${i}`, position: [(override.offsetX ?? 0) + Math.sin(angle) * front, floor + .4, (override.offsetY ?? 0) + Math.cos(angle) * front], size: [front * span / segments + .03, .8, .12], rotation: angle, color: '#bca16b' })
+        const height = config.seatingLevels?.find((l) => l.id === override.levelId)?.parapetHeight ?? .8
+        boxes.push({ name: `Balcony parapet ${row + 1}/${i}`, position: [(override.offsetX ?? 0) + Math.sin(angle) * front, floor + height / 2, (override.offsetY ?? 0) + Math.cos(angle) * front], size: [front * span / segments + .03, height, .12], rotation: angle, color: '#bca16b' })
       }
     }
   }
