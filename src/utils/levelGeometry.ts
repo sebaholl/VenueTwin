@@ -1,5 +1,5 @@
 import type { VenueConfig } from '../types/venue'
-import { generateSeatLayout } from './venue'
+import { generatePhysicalSeatLayout } from './venue'
 
 export type ArchitectureBox = { name: string; position: number[]; size: number[]; rotation: number; color: string }
 
@@ -7,7 +7,7 @@ export type ArchitectureBox = { name: string; position: number[]; size: number[]
 // Shared by the live viewer and Blender to avoid divergent geometry.
 export function levelArchitecture(config: VenueConfig): ArchitectureBox[] {
   if (!config.seatingLevels?.length) return []
-  const seats = generateSeatLayout(config), boxes: ArchitectureBox[] = []
+  const seats = generatePhysicalSeatLayout(config), boxes: ArchitectureBox[] = []
   if (config.studyNotice) {
     const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
     const angle = stage.rotation * Math.PI / 180
