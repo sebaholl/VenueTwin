@@ -1,5 +1,5 @@
 import type { VenueConfig } from '../types/venue'
-import { generateSeatLayout } from './venue'
+import { generateSeatLayout, getSeatLabel } from './venue'
 
 export type ViewerSnapshot = { config: VenueConfig; model: Blob | null; createdAt: string }
 export type ViewerManifest = { format: 'venuetwin-viewer'; version: 1; config: VenueConfig; model?: { file: string; sha256: string } }
@@ -17,6 +17,8 @@ export function parseViewerConfig(value: unknown): VenueConfig {
   for (let row = 0; row < value.rows; row++) {
     const r = value.rowOverrides[row] ?? {}
     if (!record(r)) throw new Error('Invalid row.')
+    if (r.ticketRow !== undefined && (typeof r.ticketRow !== 'string' || !r.ticketRow.trim() || r.ticketRow.length > 30)) throw new Error('Invalid ticket row label.')
+    if (r.numberingSource !== undefined && r.numberingSource !== 'nd-stalls-2025') throw new Error('Unknown numbering source.')
     if (r.seats !== undefined && (!finite(r.seats, 1, 200) || !Number.isInteger(r.seats))) throw new Error('Invalid row seat count.')
     for (const field of ['elevation', 'offsetX', 'offsetY', 'rotation', 'curve']) if (r[field] !== undefined && !finite(r[field], -100, 100)) throw new Error('Invalid row position.')
     if (r.arcRadius !== undefined && !finite(r.arcRadius, .1, 100)) throw new Error('Invalid row radius.')
@@ -25,6 +27,12 @@ export function parseViewerConfig(value: unknown): VenueConfig {
     count += (r.seats as number | undefined) ?? value.seatsPerRow
   }
   if (count > 2000) throw new Error('The viewer supports up to 2,000 seats.')
+  const labels = new Set<string>()
+  for (let row = 0; row < value.rows; row++) {
+    const label = getSeatLabel(value as VenueConfig, row, 0)
+    if (labels.has(label)) throw new Error('Duplicate ticket row labels on the same level.')
+    labels.add(label)
+  }
   if (value.stagePosition !== undefined && (!record(value.stagePosition) || ['offsetX', 'offsetY', 'rotation'].some((f) => !finite((value.stagePosition as Record<string, unknown>)[f], -100, 100)))) throw new Error('Invalid stage position.')
   if (value.studyNotice !== undefined && typeof value.studyNotice !== 'string') throw new Error('Invalid study notice.')
   if (value.categories !== undefined && !Array.isArray(value.categories)) throw new Error('Invalid seat categories.')
