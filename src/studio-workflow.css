@@ -89,3 +89,8 @@
 .project-references button:disabled { opacity: .5; cursor: default; }
 .project-references > p, .project-references small { font-size: 11px; line-height: 1.6; color: #a7bdca; }
 .project-references [role=alert] { color: #ffc09b; }
+
+.studio-workflow .calibration-card { max-width: calc(100% - 24px); flex-wrap: wrap; }
+.studio-workflow .calibration-card select { max-width: 220px; min-height: 36px; border: 1px solid #c6d2ca; border-radius: 6px; background: white; color: #18352c; }
+.studio-workflow .calibration-card button:disabled { opacity: .4; cursor: not-allowed; }
+.studio-workflow .calibration-card > div { max-width: 240px; }
