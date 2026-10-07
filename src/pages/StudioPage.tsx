@@ -1,7 +1,8 @@
+import { ProjectReferencesPanel } from '../components/ProjectReferencesPanel'
 import '../studio-workflow.css'
 import { geometrySignature } from '../utils/customerViewer'
 import { ViewReview } from '../components/ViewReview'
-import { AlertCircle, ArrowLeft, ArrowRight, ChevronDown, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Share2, Undo2, Upload, X } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, ChevronDown, Box, Cloud, Download, FileUp, Map, Redo2, RotateCcw, Save, Share2, Undo2, X } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
@@ -49,7 +50,6 @@ export function StudioPage() {
   const projectMenu = useRef<HTMLDetailsElement>(null)
   const goToStep = (next: number) => { setStep(next); setView(next < 2 ? 'plan' : 'model') }
   const menuAction = (action: () => void) => { if (projectMenu.current) projectMenu.current.open = false; action() }
-  const fileInput = useRef<HTMLInputElement>(null)
   const importInput = useRef<HTMLInputElement>(null)
   const [importedModel, setImportedModel] = useState<Group | null>(null)
   const [modelSource, setModelSource] = useState<{ file: File; signature: string } | null>(null)
@@ -71,14 +71,12 @@ export function StudioPage() {
   const capacity = useMemo(() => estimateCapacity(config), [config])
 
 
-  const attachFloorplan = (file: File | null) => {
-    if (file) {
-      setFloorplanName(file.name)
-      setView('plan')
-      setFloorplanUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null)
-    }
-  }
-  const handleFloorplan = (event: ChangeEvent<HTMLInputElement>) => attachFloorplan(event.target.files?.[0] ?? null)
+  const [initialPlan, setInitialPlan] = useState<{ projectId: string; file: File } | null>(null)
+  const restorePlan = useCallback((file: File | null, changed: boolean) => {
+    setFloorplanName(file?.name ?? null)
+    setFloorplanUrl(file?.type.startsWith('image/') ? URL.createObjectURL(file) : null)
+    if (changed) { setConfig({ calibration: null, planBoundary: [] }); setView('plan') }
+  }, [setFloorplanName, setConfig])
   const importProject = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -166,8 +164,9 @@ export function StudioPage() {
   }, [cloudSession])
 
   const startNewProject = (nextConfig: VenueConfig, floorplan: File | null) => {
-    loadProject(crypto.randomUUID(), nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setStep(0); setSaveError(null)
-    attachFloorplan(floorplan)
+    const nextId = crypto.randomUUID()
+    setInitialPlan(floorplan ? { projectId: nextId, file: floorplan } : null)
+    loadProject(nextId, nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setStep(0); setSaveError(null)
     lastSavedSnapshot.current = ''
     setShareToken(null); setShareError(null)
     setCreateOpen(false)
@@ -223,9 +222,10 @@ export function StudioPage() {
           <div className="workflow-intro"><span>STEP {step + 1} OF 4</span><h1>{workflowSteps[step].title}</h1><p>{workflowSteps[step].description}</p></div>
           {step === 0 && <>
             <label className="project-name-field">Project name<input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} /></label>
-            <section className="control-section"><h2>Floor plan <small>Optional</small></h2><p className="workflow-hint">Use a plan as a guide, or start directly with the seating layout.</p><input ref={fileInput} hidden type="file" accept="image/*,.pdf" onChange={handleFloorplan} /><button className="upload-zone" onClick={() => fileInput.current?.click()}><FileImage /><b>{floorplanName ?? 'Add your floor plan'}</b><small>JPG / PNG for a plan overlay</small><span><Upload size={14} /> {floorplanName ? 'Replace file' : 'Choose file'}</span></button><p className="workflow-hint">PDF files record the source filename only. Use an image to see an overlay. Reattach source images after reopening a project.</p></section>
+
             <div className="workflow-note"><strong>Already have a project?</strong><p>Use the Project menu above to open a cloud project, import a file or choose a new starting template.</p></div>
           </>}
+          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
             {layoutTool === 'seating' && <>

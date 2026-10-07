@@ -123,12 +123,12 @@ See [source, scope and instructions](docs/NATIONAL_THEATRE_SEATING.md).
 
 Studio is organised into four freely accessible steps:
 
-1. **Project** — name the venue and optionally attach a floor-plan image. Use the Project menu for new templates, cloud projects and file imports.
+1. **Project** — name the venue and organise saved floor plans, reference photos and known measurements. Use the Project menu for new templates, cloud projects and file imports.
 2. **Layout** — switch between Seating, Levels, Categories and Obstacles. Only the selected tool group is shown. Select rows in the plan for individual adjustments.
 3. **Model** — export Blender JSON, load a local GLB, then open the full-width seat-view review. Close the review with its own controls before changing steps; draft changes require Apply.
 4. **Preview & share** — try the local customer experience, export a backup, or manage public cloud sharing.
 
-The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Source images must be reattached after refreshing. GLBs restore per project in this browser; cloud sharing does not include them. On narrow screens, step controls appear above the canvas.
+The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Saved source plans restore automatically in the same browser. GLBs restore per project in this browser; cloud sharing does not include them. On narrow screens, step controls appear above the canvas.
 
 ### Customer viewer interaction checks
 
@@ -187,3 +187,13 @@ Studio stores each successfully imported GLB in IndexedDB under its project ID, 
 The Model panel reports restoring, saving, saved or preview-only status. A storage failure leaves the imported model usable for the current session and offers Retry saving; the previous saved record remains unchanged. Remove saved model deletes the record before clearing the preview. Stale models remain stored but are hidden from the Studio scene until the original geometry is restored or a matching GLB is imported. Customer preview also rejects a stale model.
 
 Keep the original GLB: clearing browser site data, storage eviction or changing browser/origin loses access to the local copy. Test import → saved status → refresh → Model/3D, project switching, removal → refresh, and layout change → stale warning. Cloud model storage and portable project bundles are future work.
+
+### Project reference panel
+
+Studio → Project → Venue references groups floor plans, reference photos, measured/estimated dimensions and reconstruction notes. Each project stores its references locally in IndexedDB. New-project wizard plans are saved here too. Choose an active image plan to restore its overlay in the editor; PDFs are retained as downloadable sources and are not rendered as overlays. Changing/removing the active plan clears its previous calibration and boundary.
+
+File additions/removals and plan selection save immediately. Captions, measurements and notes use **Save references**; save before switching projects. Unsaved edits remain while switching workflow steps, and closing/reloading the page prompts when edits are unsaved. Measurements are evidence notes only: they do not change venue geometry or calibrate the plan. Photos can record their source and viewpoint in the caption.
+
+Limits: 20 files, 10 MB per file, 40 MB total, 30 measurements. Plans accept JPG/PNG/WebP/PDF; photos accept JPG/PNG/WebP. Files remain on this browser origin and are excluded from cloud data, project JSON and public viewers. Keep originals as backups. Importing project JSON creates a new project ID, so attach the references to that new project separately.
+
+Local verification: attach an image plan and photos, add a sourced measurement, save, refresh and confirm the active overlay and records return. Switch projects to check isolation; change the active plan and confirm old calibration clears. Test a PDF as a downloadable source and rejected oversized/unsupported files. Physical browser persistence and visual checks remain necessary.
