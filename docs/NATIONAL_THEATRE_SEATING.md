@@ -27,8 +27,8 @@ The PDF metadata records creation on 26 November 2025.
 | 12 | 1–18 |
 | 13 | 1–15 |
 
-263 numbered stalls seats. Row 7's two service places are excluded.
-Boxes, standing places and service seats are not mapped. Upper tiers retain
+263 numbered stalls seats. Row 7's two service places are shown as crossed squares in the plan and grey chairs in 3D, excluded from ticket selection and sale capacity. The full 21-place span determines its curve.
+Boxes, standing places and other service seats are not mapped. Upper tiers retain
 the old study's placeholders; total study capacity is not official capacity.
 
 ## Geometry and Blender
