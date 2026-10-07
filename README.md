@@ -197,3 +197,14 @@ File additions/removals and plan selection save immediately. Captions, measureme
 Limits: 20 files, 10 MB per file, 40 MB total, 30 measurements. Plans accept JPG/PNG/WebP/PDF; photos accept JPG/PNG/WebP. Files remain on this browser origin and are excluded from cloud data, project JSON and public viewers. Keep originals as backups. Importing project JSON creates a new project ID, so attach the references to that new project separately.
 
 Local verification: attach an image plan and photos, add a sourced measurement, save, refresh and confirm the active overlay and records return. Switch projects to check isolation; change the active plan and confirm old calibration clears. Test a PDF as a downloadable source and rejected oversized/unsupported files. Physical browser persistence and visual checks remain necessary.
+
+### Calibrate a saved plan with reference measurements
+
+1. In Project, choose an image floor plan and save any known measurements (including their source and measured/estimated status).
+2. In the 2D plan, choose **Calibrate**, then mark the two ends of that same known distance.
+3. Select a saved measurement or enter metres manually, then **Apply scale**. Coincident points and invalid values cannot be applied.
+4. For single-level venues, open Auto layout, draw a seating boundary, set seat/row spacing and inspect the preview before applying. Multi-level venues still require manual row/level placement.
+
+Calibration now sets SVG units per metre for seats, stage, obstacles, dragging and automatic layout. It changes how existing geometry is drawn over the plan, not its stored real-world dimensions. The background image and pointer coordinates share the same SVG coordinate system so resizing/letterboxing does not shift the calibration points. Auto-generated row offsets use the actual row-spacing formula rather than the former display-row gap.
+
+Saved measurements remain reference notes until explicitly selected and applied to two points; estimates do not become verified measurements. Stage placement can be dragged on the plan. Existing manually positioned geometry may need alignment after setting a new scale. Check plan calibration, dragging and boundary generation locally at desktop and narrow viewport sizes before relying on a new layout.

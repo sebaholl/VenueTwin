@@ -19,8 +19,8 @@ export function newObstacle(kind: VenueObstacle['kind']): VenueObstacle {
 }
 
 // SVG y increases along world z, reversing the sign of a Three.js Y rotation.
-export function obstaclePlanTransform(o: VenueObstacle) {
-  return `translate(${500 + o.x * 24} ${150 + o.z * 24}) rotate(${-o.rotation})`
+export function obstaclePlanTransform(o: VenueObstacle, scale = 24) {
+  return `translate(${500 + o.x * scale} ${150 + o.z * scale}) rotate(${-o.rotation})`
 }
 
 export function obstacleBoxes(o: VenueObstacle) {

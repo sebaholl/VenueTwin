@@ -1,3 +1,4 @@
+import type { ReferenceMeasurement } from '../lib/projectReferences'
 import { ProjectReferencesPanel } from '../components/ProjectReferencesPanel'
 import '../studio-workflow.css'
 import { geometrySignature } from '../utils/customerViewer'
@@ -45,6 +46,8 @@ type SyncStatus = 'local' | 'saving' | 'saved' | 'offline' | 'error'
 
 export function StudioPage() {
   const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName } = useVenueStore()
+  const [referenceMeasures, setReferenceMeasures] = useState<{ projectId: string; items: ReferenceMeasurement[] } | null>(null)
+  const receiveMeasurements = useCallback((id: string, items: ReferenceMeasurement[]) => setReferenceMeasures({ projectId: id, items }), [])
   const [step, setStep] = useState(0)
   const [layoutTool, setLayoutTool] = useState('seating')
   const projectMenu = useRef<HTMLDetailsElement>(null)
@@ -225,7 +228,7 @@ export function StudioPage() {
 
             <div className="workflow-note"><strong>Already have a project?</strong><p>Use the Project menu above to open a cloud project, import a file or choose a new starting template.</p></div>
           </>}
-          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} /></div>
+          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
             {layoutTool === 'seating' && <>
@@ -248,7 +251,7 @@ export function StudioPage() {
         </aside>
         <section className="viewport">
           {view !== 'review' && <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>}
-          {view === 'review' ? <ViewReview key={projectId} config={config} model={modelSource?.signature === geometrySignature(config) ? importedModel : null} onApply={setConfig} onClose={() => setView('model')} /> : view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={modelSource?.signature === geometrySignature(config) ? importedModel : null} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {getRowLabel(config, selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
+          {view === 'review' ? <ViewReview key={projectId} config={config} model={modelSource?.signature === geometrySignature(config) ? importedModel : null} onApply={setConfig} onClose={() => setView('model')} /> : view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={modelSource?.signature === geometrySignature(config) ? importedModel : null} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {getRowLabel(config, selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor key={projectId + (floorplanUrl ?? '')} measurements={referenceMeasures?.projectId === projectId ? referenceMeasures.items : []} config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
           {view !== 'review' && <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>{modelSource ? 'Rebuild Blender architecture after geometry changes' : 'Select a seat to explore its view'}</span></div>}
         </section>
       </main>
