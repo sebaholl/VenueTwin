@@ -5,6 +5,21 @@ export type PositionedSeat = SeatRef & {
   rotation: number
 }
 
+export function getRowLabel(config: VenueConfig, row: number): string {
+  const ticketRow = config.rowOverrides[row]?.ticketRow
+  if (ticketRow) return ticketRow
+  let label = '', index = row + 1
+  while (index > 0) { index--; label = String.fromCharCode(65 + index % 26) + label; index = Math.floor(index / 26) }
+  return label
+}
+
+export function getSeatLabel(config: VenueConfig, row: number, seat: number): string {
+  const override = config.rowOverrides[row]
+  if (!override?.ticketRow) return `${getRowLabel(config, row)}${seat + 1}`
+  const level = config.seatingLevels?.find((l) => l.id === override.levelId)
+  return `${level?.name ?? 'Main floor'} · ${override.ticketRow}/${seat + 1}`
+}
+
 export function getDefaultRowSeats(config: VenueConfig, row: number) {
   return config.geometry === 'fan'
     ? config.seatsPerRow - Math.floor((config.rows - row - 1) * 0.18)
@@ -51,7 +66,7 @@ export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
       output.push({
         row,
         seat,
-        label: `${String.fromCharCode(65 + row)}${seat + 1}`,
+        label: getSeatLabel(config, row, seat),
         position: [
           localX * Math.cos(rowAngle) + localZ * Math.sin(rowAngle) + rowOffsetX,
           0.25 + elevation,
