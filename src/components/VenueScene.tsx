@@ -1,8 +1,8 @@
 import type { ReviewCamera } from '../utils/viewReview'
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox, Text } from '@react-three/drei'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
-import { PerspectiveCamera, type Group } from 'three'
+import { PerspectiveCamera, Quaternion, Vector3, type Group } from 'three'
 import { getSeatView, lookDirection, modelOffset, overviewPose } from '../utils/seatView'
 import { levelArchitecture } from '../utils/levelGeometry'
 import { LevelArchitecture } from './LevelArchitecture'
@@ -13,6 +13,7 @@ import { generatePhysicalSeatLayout, generateSeatLayout } from '../utils/venue'
 import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
+  onReady?: () => void
   reviewCamera?: ReviewCamera
   customer?: boolean
   viewMode?: 'overview' | 'seat'
@@ -62,7 +63,7 @@ function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interio
             key={seat.label}
             position={seat.position}
             rotation={[0, seat.rotation, 0]}
-            onClick={(event) => { event.stopPropagation(); onSeatSelect(seat) }}
+            onClick={(event) => { event.stopPropagation(); if (event.delta <= 6) onSeatSelect(seat) }}
           >
             <RoundedBox args={[0.48, 0.48, 0.48]} radius={0.1} position={[0, 0.34, 0]}>
               <meshStandardMaterial color={active ? '#ff7a59' : seatCategory(config, seat.row, seat.seat).color} roughness={0.38} />
@@ -86,6 +87,7 @@ export function VenueScene(props: SceneProps) {
   const requested = props.viewMode ? props.viewMode === 'seat' : localRequested
   const setRequested = (value: boolean) => { setLocalRequested(value); props.onViewModeChange?.(value ? 'seat' : 'overview') }
   const [look, setLook] = useState({ yaw: 0, pitch: 0 })
+  const [reset, setReset] = useState(0)
   const [eyeHeight, setEyeHeight] = useState(1.15)
   const drag = useRef<{ x: number; y: number } | null>(null)
   const canvasRegion = useRef<HTMLDivElement>(null)
@@ -98,8 +100,9 @@ export function VenueScene(props: SceneProps) {
   return (
     <div className={`venue-scene ${active ? 'seat-view-active' : ''}`}>
     {!props.reviewCamera && <div className="seat-view-toolbar">
-      {(!props.customer || active) && <button type="button" disabled={!seatView} aria-pressed={active} onClick={() => { setRequested(!active); setLook({ yaw: 0, pitch: 0 }) }}>{active ? 'Back to overview' : 'View from seat'}</button>}
-      {active && <><button type="button" onClick={() => setLook({ yaw: 0, pitch: 0 })}>Face stage</button><label>Eye height <select value={eyeHeight} onChange={(e) => setEyeHeight(Number(e.target.value))}><option value={.95}>0.95 m</option><option value={1.15}>1.15 m</option><option value={1.35}>1.35 m</option></select></label></>}
+      {(!props.customer || active) && <button type="button" disabled={!seatView} aria-pressed={active} onClick={() => { setRequested(!active); setLook({ yaw: 0, pitch: 0 }) }}>{active ? props.customer ? 'Back to seats' : 'Back to overview' : 'View from seat'}</button>}
+      {active && <><button type="button" onClick={() => setLook({ yaw: 0, pitch: 0 })}>{props.customer ? 'Reset view' : 'Face stage'}</button>{!props.customer && <label>Eye height <select value={eyeHeight} onChange={(e) => setEyeHeight(Number(e.target.value))}><option value={.95}>0.95 m</option><option value={1.15}>1.15 m</option><option value={1.35}>1.35 m</option></select></label>}</>}
+      {props.customer && !active && <button type="button" onClick={() => setReset((value) => value + 1)}>Reset view</button>}
       {!props.customer && <span>{active ? `Seat ${props.selectedSeat?.label} · Drag or use arrow keys to look around · Esc to exit` : seatView ? `Seat ${props.selectedSeat?.label} selected · View from seat to enter` : 'Select a seat to preview its view'}</span>}
     </div>}
     <div ref={canvasRegion} className="venue-scene-canvas" tabIndex={active ? 0 : -1} role="group" aria-label={active ? 'Seat view. Drag or use arrow keys to look around. Escape returns to overview.' : 'Venue overview'}
@@ -114,12 +117,12 @@ export function VenueScene(props: SceneProps) {
       <directionalLight position={[4, 12, 8]} intensity={detailNotice ? 1.7 : 2.4} color={detailNotice ? '#ffdfb0' : '#e6fff8'} />
       {detailNotice && <pointLight position={[0, 10, 0]} intensity={100} distance={40} decay={2} color="#ffd9ad" />}
       <Suspense fallback={null}>
+        <SceneReady onReady={props.onReady} />
         <VenueModel {...props} interior={active} onSeatSelect={active ? () => {} : (seat) => { setLook({ yaw: 0, pitch: 0 }); props.onSeatSelect(seat) }} />
         <Environment key={detailNotice ? 'warm' : 'neutral'} resolution={128} frames={1}><Lightformer position={[0, 14, 0]} rotation={[Math.PI / 2, 0, 0]} scale={[16, 16, 1]} intensity={2} color={detailNotice ? '#ffe1bc' : '#e6fff8'} /><Lightformer position={[0, 3, -12]} scale={[10, 8, 1]} intensity={1.5} color="#d7dfe4" /></Environment>
         <ContactShadows key={JSON.stringify([props.config, props.importedModel?.uuid])} position={[0, -1.35, 2]} opacity={0.42} scale={30} blur={2.5} frames={1} />
       </Suspense>
-      <SeatCamera view={active ? seatView : null} yaw={props.reviewCamera?.yaw ?? look.yaw} pitch={props.reviewCamera?.pitch ?? look.pitch} fov={props.reviewCamera?.fov ?? 65} overview={overview} />
-      {!active && <OrbitControls makeDefault target={overview.target} minDistance={8} maxDistance={100} maxPolarAngle={Math.PI / 2.04} />}
+      <SeatCamera view={active ? seatView : null} yaw={props.reviewCamera?.yaw ?? look.yaw} pitch={props.reviewCamera?.pitch ?? look.pitch} fov={props.reviewCamera?.fov ?? 65} overview={overview} smooth={!!props.customer && !props.reviewCamera} reset={reset} />
     </Canvas>
     </div>
     {(active || props.config.studyNotice || detailNotice) && <p className="seat-view-disclaimer">{detailNotice ?? props.config.studyNotice ?? 'Approximate view of the current model. Missing structures, spectators and event equipment are not represented.'}</p>}
@@ -127,18 +130,64 @@ export function VenueScene(props: SceneProps) {
   )
 }
 
-function SeatCamera({ view, yaw, pitch, fov, overview }: { fov: number; view: ReturnType<typeof getSeatView>; yaw: number; pitch: number; overview: ReturnType<typeof overviewPose> }) {
+function SceneReady({ onReady }: { onReady?: () => void }) {
+  const { gl, invalidate } = useThree()
+  const frames = useRef(0)
+  useFrame(() => {
+    if (frames.current >= 2) return
+    frames.current++
+    if (frames.current === 2) onReady?.()
+    else invalidate()
+  })
+  useEffect(() => {
+    // A lost GPU context needs a fresh canvas; bubble into the viewer boundary.
+    const lost = (event: Event) => { event.preventDefault(); setLost(true) }
+    gl.domElement.addEventListener('webglcontextlost', lost)
+    return () => gl.domElement.removeEventListener('webglcontextlost', lost)
+  }, [gl])
+  const [lost, setLost] = useState(false)
+  if (lost) throw new Error('The 3D view was interrupted. Try opening it again.')
+  return null
+}
+
+function SeatCamera({ view, yaw, pitch, fov, overview, smooth, reset }: { smooth: boolean; reset: number; fov: number; view: ReturnType<typeof getSeatView>; yaw: number; pitch: number; overview: ReturnType<typeof overviewPose> }) {
   const { camera, invalidate } = useThree()
+  const [orbitReady, setOrbitReady] = useState(false)
+  const previousView = useRef(view)
+  const initialized = useRef(false)
+  const flight = useRef<{ elapsed: number; duration: number; from: Vector3; to: Vector3; rotation: Quaternion; targetRotation: Quaternion; fromFov: number; toFov: number } | null>(null)
   useEffect(() => {
     if (!(camera instanceof PerspectiveCamera)) return
+    const target = camera.clone()
     if (view) {
-      camera.position.set(...view.position)
+      target.position.set(...view.position)
       const direction = lookDirection(view.yaw + yaw, view.pitch + pitch)
-      camera.lookAt(view.position[0] + direction[0], view.position[1] + direction[1], view.position[2] + direction[2])
-      camera.fov = fov
-    } else { camera.position.set(...overview.position); camera.lookAt(...overview.target); camera.fov = 44 }
-    camera.updateProjectionMatrix()
+      target.lookAt(view.position[0] + direction[0], view.position[1] + direction[1], view.position[2] + direction[2])
+      target.fov = fov
+    } else { target.position.set(...overview.position); target.lookAt(...overview.target); target.fov = 44 }
+    const animate = smooth && initialized.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const movingSeat = previousView.current !== view
+    previousView.current = view; initialized.current = true
+    setOrbitReady(false)
+    if (animate) {
+      flight.current = { elapsed: 0, duration: movingSeat || !view ? .65 : .12, from: camera.position.clone(), to: target.position.clone(), rotation: camera.quaternion.clone(), targetRotation: target.quaternion.clone(), fromFov: camera.fov, toFov: target.fov }
+    } else {
+      flight.current = null; camera.position.copy(target.position); camera.quaternion.copy(target.quaternion); camera.fov = target.fov
+      camera.updateProjectionMatrix(); setOrbitReady(!view)
+    }
     invalidate()
-  }, [camera, invalidate, view, yaw, pitch, fov, overview])
-  return null
+  }, [camera, invalidate, view, yaw, pitch, fov, overview, smooth, reset])
+  useFrame((_, delta) => {
+    const next = flight.current
+    if (!next || !(camera instanceof PerspectiveCamera)) return
+    next.elapsed += Math.min(delta, .05)
+    const t = Math.min(1, next.elapsed / next.duration), ease = t * t * (3 - 2 * t)
+    camera.position.lerpVectors(next.from, next.to, ease)
+    camera.quaternion.slerpQuaternions(next.rotation, next.targetRotation, ease)
+    camera.fov = next.fromFov + (next.toFov - next.fromFov) * ease
+    camera.updateProjectionMatrix()
+    if (t === 1) { flight.current = null; setOrbitReady(!view) }
+    else invalidate()
+  })
+  return !view && orbitReady ? <OrbitControls makeDefault target={overview.target} enablePan={!smooth} enableDamping dampingFactor={smooth ? .12 : .05} rotateSpeed={smooth ? .65 : 1} zoomSpeed={smooth ? .7 : 1} minDistance={8} maxDistance={100} maxPolarAngle={Math.PI / 2.04} /> : null
 }
