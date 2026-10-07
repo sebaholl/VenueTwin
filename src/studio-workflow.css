@@ -94,3 +94,9 @@
 .studio-workflow .calibration-card select { max-width: 220px; min-height: 36px; border: 1px solid #c6d2ca; border-radius: 6px; background: white; color: #18352c; }
 .studio-workflow .calibration-card button:disabled { opacity: .4; cursor: not-allowed; }
 .studio-workflow .calibration-card > div { max-width: 240px; }
+
+.stage-setup label { display: grid; gap: 7px; margin: 15px 0; font-size: 12px; color: #b0c4ce; }
+.stage-setup input, .stage-setup select { width: 100%; padding: 10px; border: 1px solid #355366; border-radius: 7px; background: #102536; color: #e4f2ef; font: inherit; }
+.stage-setup summary { font-size: 12px; cursor: pointer; color: #80dcc6; }
+.stage-setup .button { width: 100%; margin: 6px 0; font-size: 12px; }
+.stage-setup [role=alert] { color: #ffc09a; font-size: 12px; line-height: 1.6; }
