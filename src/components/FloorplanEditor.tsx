@@ -4,7 +4,7 @@ import type { PointerEvent as ReactPointerEvent } from 'react'
 import type { PlanPoint, RowOverride, VenueConfig } from '../types/venue'
 import { generateAutoLayout, type AutoLayoutResult } from '../utils/autoLayout'
 import { seatCategory } from '../utils/seatCategories'
-import { generateSeatLayout, getRowSeats, getRowLabel } from '../utils/venue'
+import { generatePhysicalSeatLayout, getRowSeats, getRowLabel } from '../utils/venue'
 import { ObstaclePlan } from './ObstaclePlan'
 
 type FloorplanEditorProps = {
@@ -47,7 +47,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
 
   const displayConfig = useMemo(() => preview ? { ...config, rows: preview.rows, geometry: 'straight' as const, rowOverrides: preview.rowOverrides } : config, [config, preview])
   const rows = useMemo(() => {
-    const seats = generateSeatLayout(displayConfig)
+    const seats = generatePhysicalSeatLayout(displayConfig)
     return Array.from({ length: displayConfig.rows }, (_, row) => ({ row, seats: seats.filter((seat) => seat.row === row) }))
   }, [displayConfig])
   const selectedOverride = config.rowOverrides?.[selectedRow] ?? {}
@@ -131,7 +131,7 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
 
   return <div className="plan-editor">
     <div className="plan-toolbar"><div><strong>Floor plan editor</strong><span>{fileName ?? 'Draw a boundary or edit rows manually'}</span></div><div>{config.calibration && <span className="scale-chip">1 px = {(config.calibration.meters / config.calibration.pixels).toFixed(3)} m</span>}<button disabled={!!config.seatingLevels?.length} title={config.seatingLevels?.length ? 'Auto layout is available for single-level projects only' : undefined} className={autoOpen ? 'active' : ''} onClick={() => { setAutoOpen((value) => !value); setCalibrating(false) }}><Sparkles size={15} /> Auto layout</button><button className={calibrating ? 'active' : ''} onClick={() => { setCalibrating((value) => !value); setCalibrationPoints([]); setDrawingBoundary(false) }}><Ruler size={15} /> Calibrate</button></div></div>
-    {config.seatingLevels?.length ? <label className="level-filter">Visible level <select value={visibleLevel} onChange={(event) => setVisibleLevel(event.target.value)}><option value="all">All levels (overlay)</option>{config.seatingLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label> : null}
+    {config.seatingLevels?.length ? <label className="level-filter">Visible level · × = service place (not for sale) <select value={visibleLevel} onChange={(event) => setVisibleLevel(event.target.value)}><option value="all">All levels (overlay)</option>{config.seatingLevels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}</select></label> : null}
     <div className="plan-canvas">
       {imageUrl && <img src={imageUrl} alt="Uploaded venue floor plan" />}{!imageUrl && <div className="plan-grid" />}
       <svg viewBox="0 0 1000 620" onPointerDown={handleCanvasPointerDown}>
@@ -139,10 +139,10 @@ export function FloorplanEditor({ config, imageUrl, fileName, onConfigChange, on
         <g className="plan-stage draggable" transform={`translate(${500 + stage.offsetX * 24}, ${76 + stage.offsetY * 24}) rotate(${stage.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(150 + config.stageWidth * 10)} y="-34" width={300 + config.stageWidth * 20} height="68" rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
         {rows.filter(({ row }) => visibleLevel === 'all' || config.rowOverrides[row]?.levelId === visibleLevel).map(({ row, seats }) => {
           if (!seats.length) return null
-          const points = seats.map((seat) => ({ seat: seat.seat, x: 500 + seat.position[0] * 24, y: 150 + seat.position[2] * 24 }))
+          const points = seats.map((seat) => ({ seat: seat.seat, service: seat.service, x: 500 + seat.position[0] * 24, y: 150 + seat.position[2] * 24 }))
           const active = !preview && selectedRow === row
           const path = points.map((p, index) => `${index ? 'L' : 'M'} ${p.x} ${p.y}`).join(' ')
-          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={path} /><path d={path} style={{ stroke: 'transparent', strokeWidth: 18, pointerEvents: 'stroke' }} />{points.map((p) => <circle key={p.seat} style={{ fill: seatCategory(displayConfig, row, p.seat).color }} cx={p.x} cy={p.y} r={active ? 6.5 : 5.2} />)}<text x={points[0].x - 28} y={points[0].y + 5}>{getRowLabel(displayConfig, row)}</text></g>
+          return <g key={row} className={`${active ? 'plan-row active' : 'plan-row'} ${preview ? 'preview' : ''}`} onPointerDown={(event) => startRowDrag(event, row)} onPointerMove={moveRowDrag} onPointerUp={endRowDrag} onPointerCancel={endRowDrag}><path d={path} /><path d={path} style={{ stroke: 'transparent', strokeWidth: 18, pointerEvents: 'stroke' }} />{points.map((p) => p.service ? <g key={p.seat} pointerEvents="none"><title>Service place · not for sale</title><rect x={p.x - 5} y={p.y - 5} width={10} height={10} fill="none" stroke="#a4b5bd" /><path d={`M ${p.x - 3} ${p.y - 3} l 6 6 M ${p.x + 3} ${p.y - 3} l -6 6`} style={{ stroke: '#a4b5bd', fill: 'none' }} /></g> : <circle key={p.seat} style={{ fill: seatCategory(displayConfig, row, p.seat).color }} cx={p.x} cy={p.y} r={active ? 6.5 : 5.2} />)}<text x={points[0].x - 28} y={points[0].y + 5}>{getRowLabel(displayConfig, row)}</text></g>
         })}
         {calibrationPoints.length > 0 && <g className="calibration-line"><circle cx={calibrationPoints[0].x} cy={calibrationPoints[0].y} r="8" />{calibrationPoints[1] && <><line x1={calibrationPoints[0].x} y1={calibrationPoints[0].y} x2={calibrationPoints[1].x} y2={calibrationPoints[1].y} /><circle cx={calibrationPoints[1].x} cy={calibrationPoints[1].y} r="8" /></>}</g>}
         <ObstaclePlan config={config} />
