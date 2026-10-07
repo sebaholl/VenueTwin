@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "predev": "node scripts/prepare-demo.mjs",
+    "prebuild": "node scripts/prepare-demo.mjs",
+    "demo:prepare": "node scripts/prepare-demo.mjs",
+    "demo:host": "node scripts/serve-demo.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

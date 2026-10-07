@@ -115,3 +115,7 @@
   .customer-stage-heading h2 { overflow-wrap: anywhere; }
   .customer-canvas .seat-view-toolbar { top: 10px; left: 10px; right: 10px; }
 }
+
+.customer-share-seat { margin-top: 12px; min-height: 44px; width: 100%; border: 1px solid #799a8e; border-radius: 8px; background: transparent; color: #214b3d; }
+.customer-link-fallback { display: block; margin-top: 12px; font-size: 12px; }
+.customer-link-fallback input { width: 100%; padding: 12px; margin-top: 6px; }

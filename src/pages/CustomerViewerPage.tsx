@@ -1,3 +1,4 @@
+import { resolveSeatLink, seatLink } from '../utils/viewerLinks'
 import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Code2, Download, Eye, Maximize, MousePointer2 } from 'lucide-react'
@@ -41,22 +42,30 @@ export function CustomerViewerPage() {
   }, [venue, attempt])
   if (error) return <main className="customer-empty"><Brand /><h1>Unable to open this venue</h1><p role="alert">{error}</p>{!venue && <Link to="/studio">Return to Studio</Link>}<button onClick={() => setAttempt((value) => value + 1)}>Try again</button></main>
   if (!loaded) return <main className="customer-empty" aria-live="polite"><Brand /><div className="viewer-spinner" /><h1>Opening the auditorium</h1><p>{loadingStage}</p></main>
-  return <CustomerViewer key={search} {...loaded} local={!venue} />
+  return <CustomerViewer key={search} {...loaded} local={!venue} manifest={venue} initialSeatId={new URLSearchParams(search).get('seat')} />
 }
 
-function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean }) {
+function CustomerViewer({ snapshot, model, local, manifest, initialSeatId }: Loaded & { local: boolean; manifest: string | null; initialSeatId: string | null }) {
   const { config } = snapshot
   const levels = useMemo(() => viewerLevels(config), [config])
-  const [levelId, setLevelId] = useState(levels[0]?.id ?? '')
+  const initialSeat = useMemo(() => resolveSeatLink(config, initialSeatId), [config, initialSeatId])
+  const [levelId, setLevelId] = useState(() => levels.find((level) => level.seats.some((seat) => seat.row === initialSeat?.row && seat.seat === initialSeat?.seat))?.id ?? levels[0]?.id ?? '')
   const level = levels.find((item) => item.id === levelId) ?? levels[0]
   const rows = [...new Set(level?.seats.map((s) => s.row) ?? [])]
-  const [row, setRow] = useState(rows[0] ?? 0)
+  const [row, setRow] = useState(initialSeat?.row ?? rows[0] ?? 0)
   const currentRow = rows.includes(row) ? row : rows[0]
   const rowSeats = level?.seats.filter((s) => s.row === currentRow) ?? []
-  const [selected, setSelected] = useState<PositionedSeat | null>(null)
-  const [mode, setMode] = useState<'overview' | 'seat'>('overview')
+  const [selected, setSelected] = useState<PositionedSeat | null>(initialSeat)
+  const [mode, setMode] = useState<'overview' | 'seat'>(initialSeat ? 'seat' : 'overview')
   const [tab, setTab] = useState<'3d' | 'plan'>('3d')
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState(initialSeatId && !initialSeat ? 'That seat is not available in this venue version. Please choose another seat.' : '')
+  const [copyFallback, setCopyFallback] = useState('')
+  const copySeatLink = async () => {
+    if (!manifest || !selected) return
+    const url = seatLink(location.origin, manifest, selected)
+    try { await navigator.clipboard.writeText(url); setStatus('Seat link copied.'); setCopyFallback('') }
+    catch { setCopyFallback(url); setStatus('Select and copy the seat link below.') }
+  }
   const [sceneReady, setSceneReady] = useState(false)
   const [sceneAttempt, setSceneAttempt] = useState(0)
   const handleReady = useCallback(() => setSceneReady(true), [])
@@ -92,6 +101,8 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
         {config.studyNotice && <SeatNumberingNote config={config} row={currentRow} />}
         <div className="customer-selection" aria-live="polite">{selected ? <><span className="customer-eyebrow">YOUR SELECTED VIEW</span><div><strong>{selected.label}</strong><p>{level.name}<br />Row {getRowLabel(config, selected.row)} · Seat {selected.seat + 1}</p></div><small>{category?.name} · Preview only</small></> : <><MousePointer2 size={22} /><p>Select a numbered seat or choose one in the model.</p></>}</div>
         <button className="customer-enter" disabled={!selected} onClick={() => { changeTab('3d'); setMode(mode === 'seat' && tab === '3d' ? 'overview' : 'seat'); if (window.innerWidth <= 850) root.current?.querySelector('.customer-stage')?.scrollIntoView({ block: 'start' }) }}><Eye size={18} />{mode === 'seat' && tab === '3d' ? 'Back to auditorium' : 'View from this seat'}<ArrowRight size={18} /></button>
+        {!local && selected && <button className="customer-share-seat" onClick={() => void copySeatLink()}>Copy link to this seat</button>}
+        {copyFallback && <label className="customer-link-fallback">Seat link<input readOnly value={copyFallback} onFocus={(event) => event.target.select()} /></label>}
         {local && <WebsiteExport snapshot={snapshot} />}
       </aside>
       <section className="customer-stage" aria-label="Venue preview">

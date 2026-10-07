@@ -13,7 +13,10 @@ RewriteRule ^ index.html [L]
 
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
-  Header always set X-Frame-Options "SAMEORIGIN"
+  # THE_REQUEST remains the original path after the SPA rewrite.
+  Header always set X-Frame-Options "SAMEORIGIN" "expr=%{THE_REQUEST} !~ m#^[A-Z]+ /viewer/?[? ]#"
+  Header unset X-Frame-Options "expr=%{THE_REQUEST} =~ m#^[A-Z]+ /viewer/?[? ]#"
+  Header always unset X-Frame-Options "expr=%{THE_REQUEST} =~ m#^[A-Z]+ /viewer/?[? ]#"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
   Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 </IfModule>
