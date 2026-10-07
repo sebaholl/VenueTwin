@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Component, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, Check, Code2, Download, Eye, Maximize, MousePointer2 } from 'lucide-react'
 import type { Group } from 'three'
@@ -20,15 +20,17 @@ export function CustomerViewerPage() {
   const venue = new URLSearchParams(search).get('venue')
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+  const [loadingStage, setLoadingStage] = useState('Opening the saved venue…')
   useEffect(() => {
     const abort = new AbortController()
     let model: Group | null = null
-    setLoaded(null); setError('')
+    setLoaded(null); setError(''); setLoadingStage('Opening the saved venue…')
     void (async () => {
       try {
-        const snapshot = venue ? await loadPublishedViewer(venue, abort.signal) : await loadViewerSnapshot()
+        const snapshot = venue ? await loadPublishedViewer(venue, abort.signal, (stage) => { if (!abort.signal.aborted) setLoadingStage(stage) }) : await loadViewerSnapshot()
         if (abort.signal.aborted) return
-        if (snapshot.model) model = await loadLocalGlb(new File([snapshot.model], 'venue.glb'))
+        if (snapshot.model) { setLoadingStage('Preparing model geometry and textures…'); model = await loadLocalGlb(new File([snapshot.model], 'venue.glb')) }
         if (abort.signal.aborted) { if (model) disposeLocalModel(model); return }
         setLoaded({ snapshot, model })
       } catch (reason) {
@@ -36,9 +38,9 @@ export function CustomerViewerPage() {
       }
     })()
     return () => { abort.abort(); if (model) disposeLocalModel(model) }
-  }, [venue])
-  if (error) return <main className="customer-empty"><Brand /><h1>Unable to open this venue</h1><p role="alert">{error}</p>{!venue && <Link to="/studio">Return to Studio</Link>}<button onClick={() => location.reload()}>Try again</button></main>
-  if (!loaded) return <main className="customer-empty" aria-live="polite"><Brand /><div className="viewer-spinner" /><h1>Opening the auditorium</h1><p>Preparing the venue and its seat views…</p></main>
+  }, [venue, attempt])
+  if (error) return <main className="customer-empty"><Brand /><h1>Unable to open this venue</h1><p role="alert">{error}</p>{!venue && <Link to="/studio">Return to Studio</Link>}<button onClick={() => setAttempt((value) => value + 1)}>Try again</button></main>
+  if (!loaded) return <main className="customer-empty" aria-live="polite"><Brand /><div className="viewer-spinner" /><h1>Opening the auditorium</h1><p>{loadingStage}</p></main>
   return <CustomerViewer key={search} {...loaded} local={!venue} />
 }
 
@@ -55,6 +57,12 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
   const [mode, setMode] = useState<'overview' | 'seat'>('overview')
   const [tab, setTab] = useState<'3d' | 'plan'>('3d')
   const [status, setStatus] = useState('')
+  const [sceneReady, setSceneReady] = useState(false)
+  const [sceneAttempt, setSceneAttempt] = useState(0)
+  const handleReady = useCallback(() => setSceneReady(true), [])
+  const picker = useRef<HTMLElement>(null)
+  const showSeatMap = () => { setMode('overview'); setTab('plan') }
+  const changeTab = (next: '3d' | 'plan') => { if (next === '3d' && tab !== '3d') setSceneReady(false); setTab(next) }
   const root = useRef<HTMLDivElement>(null)
   const pickSeat = (seat: SeatRef) => {
     const nextLevel = levels.find((l) => l.seats.some((s) => s.row === seat.row && s.seat === seat.seat))
@@ -75,7 +83,7 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
     {local && <div className="customer-local-note"><span>LOCAL PREVIEW · This link works only in this browser.</span><Link to="/studio" target="_blank" rel="noreferrer">Open Studio ↗</Link></div>}
     <header className="customer-header"><div><Brand /><span className="customer-eyebrow">THE VIEW FROM YOUR SEAT</span></div><button className="viewer-icon-button" onClick={() => void fullscreen()} aria-label="Toggle full screen"><Maximize size={18} /></button></header>
     <main className="customer-layout">
-      <aside className="customer-picker" aria-label="Choose your seat">
+      <aside ref={picker} tabIndex={-1} className="customer-picker" aria-label="Choose your seat">
         <div className="customer-title"><span className="customer-eyebrow">EXPLORE THE AUDITORIUM</span><h1>{config.name.replace(/ · estimated study$/, '')}</h1><p>Find a seat. Take a look around.</p></div>
         <section><h2><span>01</span> Choose a level</h2><div className="customer-levels">{levels.map((l) => <button key={l.id} aria-pressed={levelId === l.id} onClick={() => { setLevelId(l.id); setRow(l.seats[0].row); setSelected(null); setMode('overview') }}><span>{l.name}<small>{l.seats.length} seats</small></span>{levelId === l.id && <Check size={17} />}</button>)}</div></section>
         <section><h2><span>02</span> Choose a seat</h2><label className="customer-row-label">Row<select aria-label="Choose row" value={currentRow} onChange={(e) => { setRow(Number(e.target.value)); setSelected(null); setMode('overview') }}>{rows.map((r) => <option key={r} value={r}>Row {getRowLabel(config, r)}</option>)}</select></label>
@@ -83,20 +91,30 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
         </section>
         {config.studyNotice && <SeatNumberingNote config={config} row={currentRow} />}
         <div className="customer-selection" aria-live="polite">{selected ? <><span className="customer-eyebrow">YOUR SELECTED VIEW</span><div><strong>{selected.label}</strong><p>{level.name}<br />Row {getRowLabel(config, selected.row)} · Seat {selected.seat + 1}</p></div><small>{category?.name} · Preview only</small></> : <><MousePointer2 size={22} /><p>Select a numbered seat or choose one in the model.</p></>}</div>
-        <button className="customer-enter" disabled={!selected} onClick={() => { setTab('3d'); setMode(mode === 'seat' && tab === '3d' ? 'overview' : 'seat'); if (window.innerWidth <= 850) root.current?.querySelector('.customer-stage')?.scrollIntoView({ block: 'start' }) }}><Eye size={18} />{mode === 'seat' && tab === '3d' ? 'Back to auditorium' : 'View from this seat'}<ArrowRight size={18} /></button>
+        <button className="customer-enter" disabled={!selected} onClick={() => { changeTab('3d'); setMode(mode === 'seat' && tab === '3d' ? 'overview' : 'seat'); if (window.innerWidth <= 850) root.current?.querySelector('.customer-stage')?.scrollIntoView({ block: 'start' }) }}><Eye size={18} />{mode === 'seat' && tab === '3d' ? 'Back to auditorium' : 'View from this seat'}<ArrowRight size={18} /></button>
         {local && <WebsiteExport snapshot={snapshot} />}
       </aside>
       <section className="customer-stage" aria-label="Venue preview">
-        <div className="customer-stage-heading"><div><span className="customer-eyebrow">{mode === 'seat' && tab === '3d' ? 'SEAT PERSPECTIVE' : 'AUDITORIUM'}</span><h2>{mode === 'seat' && selected && tab === '3d' ? `${level.name} · ${selected.label}` : level.name}</h2></div><div className="customer-tabs" aria-label="View type"><button aria-pressed={tab === '3d'} onClick={() => setTab('3d')}>3D view</button><button aria-pressed={tab === 'plan'} onClick={() => setTab('plan')}>Seat map</button></div></div>
+        <div className="customer-stage-heading"><div><span className="customer-eyebrow">{mode === 'seat' && tab === '3d' ? 'SEAT PERSPECTIVE' : 'AUDITORIUM'}</span><h2>{mode === 'seat' && selected && tab === '3d' ? `${level.name} · ${selected.label}` : level.name}</h2></div><div className="customer-tabs" aria-label="View type"><button aria-pressed={tab === '3d'} onClick={() => changeTab('3d')}>3D view</button><button aria-pressed={tab === 'plan'} onClick={() => changeTab('plan')}>Seat map</button></div></div>
         <div className="customer-canvas">
-          {tab === '3d' ? <VenueScene config={config} selectedSeat={selected} onSeatSelect={pickSeat} importedModel={model} viewMode={mode} onViewModeChange={setMode} customer /> : <CustomerSeatMap seats={level.seats} selected={selected} onSelect={pickSeat} config={config} />}
+          {tab === '3d' ? <ViewerSceneBoundary key={sceneAttempt} onMap={showSeatMap} onRetry={() => { setSceneReady(false); setSceneAttempt((value) => value + 1) }}><VenueScene config={config} selectedSeat={selected} onSeatSelect={pickSeat} importedModel={model} viewMode={mode} onViewModeChange={(next) => { setMode(next); if (next === 'overview') showSeatMap() }} onReady={handleReady} customer />{!sceneReady && <div className="viewer-scene-loading" role="status"><div className="viewer-spinner" /><strong>Preparing the 3D view…</strong><span>You can use the seat map while it loads.</span><button onClick={showSeatMap}>Open seat map</button></div>}</ViewerSceneBoundary> : <CustomerSeatMap seats={level.seats} selected={selected} onSelect={pickSeat} config={config} />}
         </div>
-        <div className="customer-view-footer"><span>{tab === 'plan' ? 'Showing seats on the selected level' : mode === 'seat' ? 'Drag to look around · Arrow keys also work' : 'Drag to rotate · Scroll or pinch to zoom'}</span>{selected && <div><button aria-label="Previous seat" disabled={selectedIndex <= 0} onClick={() => pickSeat(rowSeats[selectedIndex - 1])}><ArrowLeft size={16} /></button><b>{selected.label}</b><button aria-label="Next seat" disabled={selectedIndex < 0 || selectedIndex === rowSeats.length - 1} onClick={() => pickSeat(rowSeats[selectedIndex + 1])}><ArrowRight size={16} /></button></div>}</div>
+        <div className="customer-view-footer"><span>{tab === 'plan' ? 'Showing seats on the selected level' : mode === 'seat' ? 'Drag with one finger to look around · Arrow keys also work' : 'Drag to rotate · Pinch with two fingers to zoom'}</span>{selected && <div><button aria-label="Previous seat" disabled={selectedIndex <= 0} onClick={() => pickSeat(rowSeats[selectedIndex - 1])}><ArrowLeft size={16} /></button><b>{selected.label}</b><button aria-label="Next seat" disabled={selectedIndex < 0 || selectedIndex === rowSeats.length - 1} onClick={() => pickSeat(rowSeats[selectedIndex + 1])}><ArrowRight size={16} /></button></div>}</div>
+        <button className="customer-choose-seats" onClick={() => { picker.current?.scrollIntoView({ block: 'start' }); picker.current?.focus({ preventScroll: true }) }}>Choose level, row & seat <ArrowRight size={16} /></button>
         <p className="customer-disclaimer">{config.studyNotice ? config.studyNotice : 'Approximate view of the supplied model. People, event equipment and missing structures can affect your view.'} {!model && 'Showing generated geometry.'} No booking or live availability.</p>
         {status && <p role="status" className="customer-status">{status}</p>}
       </section>
     </main>
   </div>
+}
+
+class ViewerSceneBoundary extends Component<{ children: ReactNode; onRetry: () => void; onMap: () => void }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() {
+    if (this.state.failed) return <div className="viewer-scene-loading" role="alert"><strong>The 3D view could not open</strong><span>Try again, or continue choosing seats on the map.</span><button onClick={this.props.onRetry}>Retry 3D view</button><button onClick={this.props.onMap}>Open seat map</button></div>
+    return this.props.children
+  }
 }
 
 function CustomerSeatMap({ seats, selected, onSelect, config }: { seats: PositionedSeat[]; selected: SeatRef | null; onSelect: (s: SeatRef) => void; config: VenueConfig }) {
