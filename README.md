@@ -129,3 +129,18 @@ Studio is organised into four freely accessible steps:
 4. **Preview & share** — try the local customer experience, export a backup, or manage public cloud sharing.
 
 The 2D/3D switch remains in the canvas. Switching steps preserves a loaded Blender model. Source images and GLB files are session-only and must be reattached after refreshing; cloud sharing does not include the GLB. On narrow screens, step controls appear above the canvas.
+
+### Customer viewer interaction checks
+
+The customer viewer eases into a selected seat and between seats, with shorter smoothing when looking around. Reduced-motion preferences skip camera animation. One finger rotates the overview or looks around from a seat; two fingers zoom the overview. Reset view restores the overview or faces the stage. Back to seats opens the seat map. Mobile visitors can jump straight to the level/row/seat picker. Dragging the 3D model does not select a seat on release.
+
+Loading shows real phases (venue details, model download, integrity check, geometry preparation, then first 3D frames), without invented percentages. A failed 3D view offers a canvas retry and a usable seat map.
+
+Before publishing, verify on a real phone and desktop:
+- Enter a seat, switch rapidly with previous/next, reset direction and return to the seat map.
+- Drag with one finger; pinch the overview; scroll the page outside the canvas.
+- Turn on reduced motion and check that the camera moves immediately.
+- Test portrait/landscape, both generated geometry and an imported GLB.
+- Simulate a slow connection or invalid model and check the loading/retry messages.
+
+Automated build/lint and geometry tests do not replace these device checks. A local browser preview is stored per browser; opening the same localhost viewer URL on another device does not transfer its model.
