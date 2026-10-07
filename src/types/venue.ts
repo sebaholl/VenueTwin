@@ -32,7 +32,7 @@ export type StagePosition = {
 }
 
 export type VenueConfig = {
-  seatingLevels?: { id: string; name: string; elevation: number }[]
+  seatingLevels?: { id: string; name: string; elevation: number; parapetHeight?: number }[]
   studyNotice?: string
   obstacles?: VenueObstacle[]
   categories?: SeatCategory[]
