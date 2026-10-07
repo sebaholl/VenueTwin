@@ -1,6 +1,6 @@
 import type { PlanPoint, RowOverride, VenueConfig } from '../types/venue'
 
-const pixelsPerMeter = 24
+import { planScale } from './planScale'
 
 export type AutoLayoutResult = {
   rows: number
@@ -30,9 +30,10 @@ function horizontalIntersections(polygon: PlanPoint[], y: number) {
 export function generateAutoLayout(config: VenueConfig, boundary = config.planBoundary ?? []): AutoLayoutResult {
   if (boundary.length < 3) return { rows: 0, capacity: 0, rowOverrides: {} }
 
+  const pixelsPerMeter = planScale(config.calibration)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
-  const stageCenter = { x: 500 + stage.offsetX * pixelsPerMeter, y: 76 + stage.offsetY * pixelsPerMeter }
-  const rotation = stage.rotation
+  const stageCenter = { x: 500 + stage.offsetX * pixelsPerMeter, y: 150 + (stage.offsetY - 2.2) * pixelsPerMeter }
+  const rotation = -stage.rotation
   const aligned = boundary.map((point) => rotate(point, stageCenter, -rotation))
   const minY = Math.min(...aligned.map((point) => point.y))
   const maxY = Math.max(...aligned.map((point) => point.y))
@@ -43,7 +44,7 @@ export function generateAutoLayout(config: VenueConfig, boundary = config.planBo
   const sections = Math.max(1, Math.min(3, config.sectors))
   const candidates: Array<{ center: PlanPoint; seats: number }> = []
 
-  for (let y = minY + clearance; y <= maxY - clearance; y += rowSpacing) {
+  for (let y = minY + clearance; y <= maxY - clearance && candidates.length < 24; y += rowSpacing) {
     const intersections = horizontalIntersections(aligned, y)
     let best: [number, number] | null = null
     for (let index = 0; index + 1 < intersections.length; index += 2) {
@@ -58,15 +59,14 @@ export function generateAutoLayout(config: VenueConfig, boundary = config.planBo
   }
 
   const rows = Math.min(24, candidates.length)
-  const rowGap = Math.min(34, 350 / Math.max(rows - 1, 1))
   const rowOverrides: Record<number, RowOverride> = {}
   let capacity = 0
   candidates.slice(0, rows).forEach((candidate, row) => {
     rowOverrides[row] = {
       seats: Math.min(60, candidate.seats),
       offsetX: Math.round(((candidate.center.x - 500) / pixelsPerMeter) * 10) / 10,
-      offsetY: Math.round(((candidate.center.y - (170 + row * rowGap)) / pixelsPerMeter) * 10) / 10,
-      rotation,
+      offsetY: Math.round(((candidate.center.y - (150 + row * (config.rowSpacing ?? .92) * pixelsPerMeter)) / pixelsPerMeter) * 10) / 10,
+      rotation: -rotation,
       curve: 0,
     }
     capacity += rowOverrides[row].seats ?? 0
