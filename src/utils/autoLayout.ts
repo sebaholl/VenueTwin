@@ -1,3 +1,4 @@
+import { stagePlanPose } from './stagePlan'
 import type { PlanPoint, RowOverride, VenueConfig } from '../types/venue'
 
 import { planScale } from './planScale'
@@ -32,7 +33,7 @@ export function generateAutoLayout(config: VenueConfig, boundary = config.planBo
 
   const pixelsPerMeter = planScale(config.calibration)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
-  const stageCenter = { x: 500 + stage.offsetX * pixelsPerMeter, y: 150 + (stage.offsetY - 2.2) * pixelsPerMeter }
+  const stageCenter = stagePlanPose(config)
   const rotation = -stage.rotation
   const aligned = boundary.map((point) => rotate(point, stageCenter, -rotation))
   const minY = Math.min(...aligned.map((point) => point.y))
