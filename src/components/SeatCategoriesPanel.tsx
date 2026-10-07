@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { categorySummary, getCategories, removeCategory } from '../utils/seatCategories'
-import { getRowSeats } from '../utils/venue'
+import { getRowSeats, getRowLabel, getSeatLabel } from '../utils/venue'
 
 type Props = { config: VenueConfig; selectedSeat: SeatRef | null; onSelect: (seat: SeatRef) => void; onChange: (patch: Partial<VenueConfig>) => void }
 export function SeatCategoriesPanel({ config, selectedSeat, onSelect, onChange }: Props) {
@@ -24,8 +24,8 @@ export function SeatCategoriesPanel({ config, selectedSeat, onSelect, onChange }
       {category.id !== 'standard' && <button type="button" onClick={() => onChange(removeCategory(config, category.id))}>Remove · reassign to Standard</button>}
     </fieldset>)}
     <button type="button" disabled={categories.length >= 8} onClick={() => onChange({ categories: [...categories, { id: crypto.randomUUID(), name: 'New category', color: '#a78bfa' }] })}>+ Add category</button>
-    <div className="category-fields"><label>Row<select value={row} onChange={(e) => { const next = Number(e.target.value); setRowChoice(next); onSelect({ row: next, seat: 0, label: `${String.fromCharCode(65 + next)}1` }) }}>{Array.from({ length: config.rows }, (_, i) => <option key={i} value={i}>{String.fromCharCode(65 + i)}</option>)}</select></label>
-    <label>Seat<select value={seat} onChange={(e) => { const next = Number(e.target.value); onSelect({ row, seat: next, label: `${String.fromCharCode(65 + row)}${next + 1}` }) }}>{Array.from({ length: getRowSeats(config, row) }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}</select></label></div>
+    <div className="category-fields"><label>Row<select value={row} onChange={(e) => { const next = Number(e.target.value); setRowChoice(next); onSelect({ row: next, seat: 0, label: getSeatLabel(config, next, 0) }) }}>{Array.from({ length: config.rows }, (_, i) => <option key={i} value={i}>{getRowLabel(config, i)}</option>)}</select></label>
+    <label>Seat<select value={seat} onChange={(e) => { const next = Number(e.target.value); onSelect({ row, seat: next, label: getSeatLabel(config, row, next) }) }}>{Array.from({ length: getRowSeats(config, row) }, (_, i) => <option key={i} value={i}>{i + 1}</option>)}</select></label></div>
     <label>Whole row category<select value={override.categoryId ?? 'standard'} onChange={(e) => updateRow({ categoryId: e.target.value, seatCategories: {} })}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
     <label>Seat category<select value={override.seatCategories?.[seat] ?? ''} onChange={(e) => { const next = { ...override.seatCategories }; if (e.target.value) next[seat] = e.target.value; else delete next[seat]; updateRow({ seatCategories: next }) }}><option value="">Inherit row</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
     <label className="accessible-choice"><input type="checkbox" checked={!!override.accessibleSeats?.[seat]} onChange={(e) => updateRow({ accessibleSeats: { ...override.accessibleSeats, [seat]: e.target.checked } })} /> Accessible seat</label>
