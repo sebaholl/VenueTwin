@@ -1,6 +1,7 @@
 import type { SeatRef, VenueConfig } from '../types/venue'
 
 export type PositionedSeat = SeatRef & {
+  service?: boolean
   position: [number, number, number]
   rotation: number
 }
@@ -40,6 +41,10 @@ export function estimateSeatScore(seat: SeatRef, config: VenueConfig) {
 }
 
 export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
+  return generatePhysicalSeatLayout(config).filter((seat) => !seat.service)
+}
+
+export function generatePhysicalSeatLayout(config: VenueConfig): PositionedSeat[] {
   const output: PositionedSeat[] = []
   const spacing = config.seatSpacing ?? 0.72
   const rowSpacing = config.rowSpacing ?? 0.92
@@ -48,14 +53,18 @@ export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
   for (let row = 0; row < config.rows; row += 1) {
     const rowWidth = getRowSeats(config, row)
     const rowOverride = config.rowOverrides?.[row]
+    // The sourced stalls row has 19 sale seats plus two service places on its right.
+    // Keep the existing half-width offset so saved projects need no destructive migration.
+    const serviceCount = rowOverride?.numberingSource === 'nd-stalls-2025' && rowOverride.ticketRow === '7' && rowOverride.levelId === 'stalls' && rowWidth === 19 ? 2 : 0
+    const physicalWidth = rowWidth + serviceCount
     const rowCurve = rowOverride?.curve ?? config.curve
     const rowAngle = ((rowOverride?.rotation ?? 0) * Math.PI) / 180
     const rowOffsetX = rowOverride?.offsetX ?? 0
     const rowOffsetZ = rowOverride?.offsetY ?? 0
     const level = config.seatingLevels?.find((item) => item.id === rowOverride?.levelId)
     const elevation = (level?.elevation ?? 0) + (rowOverride?.elevation ?? row * config.rake)
-    for (let seat = 0; seat < rowWidth; seat += 1) {
-      const normalized = rowWidth === 1 ? 0 : seat / (rowWidth - 1) - 0.5
+    for (let seat = 0; seat < physicalWidth; seat += 1) {
+      const normalized = physicalWidth === 1 ? 0 : seat / (physicalWidth - 1) - 0.5
       const fanAmount = config.geometry === 'fan' ? rowCurve * normalized : 0
       const sectionIndex = Math.min(sections - 1, Math.floor((seat * sections) / rowWidth))
       const aisleOffset = (sectionIndex - (sections - 1) / 2) * aisleWidth
@@ -66,7 +75,8 @@ export function generateSeatLayout(config: VenueConfig): PositionedSeat[] {
       output.push({
         row,
         seat,
-        label: getSeatLabel(config, row, seat),
+        label: seat >= rowWidth ? `Service place · row ${row + 1}/${seat - rowWidth + 1}` : getSeatLabel(config, row, seat),
+        ...(seat >= rowWidth ? { service: true } : {}),
         position: [
           localX * Math.cos(rowAngle) + localZ * Math.sin(rowAngle) + rowOffsetX,
           0.25 + elevation,
