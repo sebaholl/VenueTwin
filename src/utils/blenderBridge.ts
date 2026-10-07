@@ -28,7 +28,7 @@ export function blenderBlueprint(config: VenueConfig, detailed = false) {
     profile: 'nd-photo-study-v1', stageWidth: config.stageWidth, stage,
     rows: Array.from({ length: config.rows }, (_, row) => {
       const points = seats.filter((seat) => seat.row === row)
-      return { ...config.rowOverrides[row], floor: points[0]?.position[1] - .25, row }
+      return { ...config.rowOverrides[row], parapetHeight: config.seatingLevels?.find((l) => l.id === config.rowOverrides[row]?.levelId)?.parapetHeight ?? .8, floor: points[0]?.position[1] - .25, row }
     }),
   } : undefined
   return { format: 'venuetwin-blender', version: 1, name: config.name, studyNotice: config.studyNotice, units: 'metres', axes: 'three-y-up', detail, boxes, serviceSeats: generatePhysicalSeatLayout(config).filter((s) => s.service), seats: seats.map((s) => ({ row: s.row, seat: s.seat, label: s.label, position: s.position, rotation: s.rotation })) }
