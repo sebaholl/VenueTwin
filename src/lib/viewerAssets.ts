@@ -17,7 +17,8 @@ async function limitedFetch(url: string, limit: number, signal: AbortSignal) {
   return new Blob(chunks)
 }
 
-export async function loadPublishedViewer(path: string, signal: AbortSignal): Promise<ViewerSnapshot> {
+export async function loadPublishedViewer(path: string, signal: AbortSignal, onStage?: (stage: string) => void): Promise<ViewerSnapshot> {
+  onStage?.('Loading venue details…')
   const manifestUrl = assetUrl(path, location.origin, location.origin)
   const data = JSON.parse(await (await limitedFetch(manifestUrl, 2 * 1024 * 1024, signal)).text())
   if (data?.format !== 'venuetwin-viewer' || data.version !== 1) throw new Error('Unsupported viewer manifest.')
@@ -25,7 +26,9 @@ export async function loadPublishedViewer(path: string, signal: AbortSignal): Pr
   let model: Blob | null = null
   if (data.model !== undefined) {
     if (typeof data.model?.file !== 'string' || !/^[a-f0-9]{64}$/.test(data.model?.sha256)) throw new Error('Invalid model manifest.')
+    onStage?.('Downloading the 3D model…')
     model = await limitedFetch(assetUrl(data.model.file, manifestUrl, location.origin), 25 * 1024 * 1024, signal)
+    onStage?.('Checking model integrity…')
     if (await sha256(model) !== data.model.sha256) throw new Error('The model does not match this viewer project. Upload the matching venue.json and venue.glb.')
   }
   return { config, model, createdAt: '' }
