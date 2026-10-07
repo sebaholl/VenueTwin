@@ -62,6 +62,10 @@ def validate(data):
     seats = data.get('seats')
     if not isinstance(seats, list) or not 1 <= len(seats) <= 2000:
         raise ValueError('Expected 1–2,000 seats.')
+    service = data.get('serviceSeats', [])
+    if not isinstance(service, list) or len(service) > 100:
+        raise ValueError('Invalid service places.')
+    seats = seats + service
     for s in seats:
         if not isinstance(s, dict) or not isinstance(s.get('label'),str) or not isinstance(s.get('position'), list) or len(s['position']) != 3 or not all(finite(v, -60, 60) for v in s['position']) or not finite(s.get('rotation'), -10, 10):
             raise ValueError('Invalid seat transform.')
@@ -147,6 +151,24 @@ def radial(radius, angle, y, centre_z):
     return (math.sin(angle)*radius, y, centre_z+math.cos(angle)*radius)
 
 
+def seats_for_row(seats, row):
+    """Stable row IDs in new exports; exact labels for older blueprints."""
+    def matches(seat):
+        if 'row' in seat:
+            return seat['row'] == row['row']
+        label = seat.get('label', '')
+        if row.get('ticketRow'):
+            prefix = ' · ' + row['ticketRow'] + '/'
+            return prefix in label and label.rsplit(prefix, 1)[1].isdigit()
+        index = row['row'] + 1
+        prefix = ''
+        while index:
+            index, remainder = divmod(index - 1, 26)
+            prefix = chr(65 + remainder) + prefix
+        return label.startswith(prefix) and label[len(prefix):].isdigit()
+    return [seat for seat in seats if matches(seat)]
+
+
 def make_geometry(data):
     data = validate(data)
     g = Geometry()
@@ -164,7 +186,7 @@ def make_geometry(data):
     for r in rows:
         if r.get('arcRadius'):
             continue
-        seats = [s for s in data['seats'] if s['label'].startswith(chr(65+r['row']))]
+        seats = seats_for_row(data['seats'] + data.get('serviceSeats', []), r)
         if not seats:
             continue
         xs=[s['position'][0] for s in seats]; zs=[s['position'][2] for s in seats]
@@ -337,7 +359,7 @@ def make_geometry(data):
             g.tube('Chandelier','gold',[(0,cy+.55,centre_z),p],.018,6)
             g.ellipsoid('Chandelier','lamp',(p[0],p[1]-.16,p[2]),(.055,.17,.055),8,6)
     # Detailed seats in .blend only; web uses the exact same exported transforms.
-    for seat in data['seats']:
+    for seat in data['seats'] + data.get('serviceSeats', []):
         x,y,z=seat['position']; a=seat['rotation']
         def point(dx,dy,dz):
             return (x+dx*math.cos(a)+dz*math.sin(a),y+dy,z-dx*math.sin(a)+dz*math.cos(a))

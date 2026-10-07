@@ -92,3 +92,6 @@
   .customer-enter { position: sticky; bottom: 12px; box-shadow: 0 3px 20px #061f2330; }
 }
 @media (prefers-reduced-motion: reduce) { .viewer-spinner { animation: none; } }
+.seat-numbering-note { padding: 12px; border: 1px solid currentColor; border-radius: 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.seat-numbering-note a { color: inherit; text-underline-offset: 3px; }
+.customer-selection strong { overflow-wrap: anywhere; }

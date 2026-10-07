@@ -2,6 +2,8 @@ export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
 export type RowOverride = {
+  ticketRow?: string
+  numberingSource?: 'nd-stalls-2025'
   levelId?: string
   elevation?: number
   arcRadius?: number

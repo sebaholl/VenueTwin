@@ -1,5 +1,5 @@
 import type { VenueConfig } from '../types/venue'
-import { generateSeatLayout } from './venue'
+import { generateSeatLayout, generatePhysicalSeatLayout } from './venue'
 import { projectSlug } from './projectExport'
 import { levelArchitecture } from './levelGeometry'
 
@@ -31,7 +31,7 @@ export function blenderBlueprint(config: VenueConfig, detailed = false) {
       return { ...config.rowOverrides[row], floor: points[0]?.position[1] - .25, row }
     }),
   } : undefined
-  return { format: 'venuetwin-blender', version: 1, name: config.name, studyNotice: config.studyNotice, units: 'metres', axes: 'three-y-up', detail, boxes, seats: seats.map((s) => ({ label: s.label, position: s.position, rotation: s.rotation })) }
+  return { format: 'venuetwin-blender', version: 1, name: config.name, studyNotice: config.studyNotice, units: 'metres', axes: 'three-y-up', detail, boxes, serviceSeats: generatePhysicalSeatLayout(config).filter((s) => s.service), seats: seats.map((s) => ({ row: s.row, seat: s.seat, label: s.label, position: s.position, rotation: s.rotation })) }
 }
 
 export function downloadBlenderBlueprint(config: VenueConfig, detailed = false) {

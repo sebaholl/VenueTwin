@@ -8,7 +8,7 @@ import { LevelArchitecture } from './LevelArchitecture'
 import { DetailedSeats } from './DetailedSeats'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { seatCategory } from '../utils/seatCategories'
-import { generateSeatLayout } from '../utils/venue'
+import { generatePhysicalSeatLayout, generateSeatLayout } from '../utils/venue'
 import { getObstacles, obstacleBoxes } from '../utils/obstacles'
 
 type SceneProps = {
@@ -49,6 +49,10 @@ function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interio
         </mesh>
         {!config.studyNotice && <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>}
       </group>}
+      {generatePhysicalSeatLayout(config).filter((seat) => seat.service).map((seat) => <group key={seat.label} position={seat.position} rotation={[0, seat.rotation, 0]} onClick={(event) => event.stopPropagation()}>
+        <RoundedBox args={[.48, .48, .12]} radius={.05} position={[0, .34, .16]}><meshStandardMaterial color="#667780" /></RoundedBox>
+        <RoundedBox args={[.48, .12, .48]} radius={.05} position={[0, .04, -.05]}><meshStandardMaterial color="#667780" /></RoundedBox>
+      </group>)}
       {detailed ? <DetailedSeats seats={seats} selectedSeat={selectedSeat} onSeatSelect={onSeatSelect} /> : seats.map((seat) => {
         const active = selectedSeat?.label === seat.label
         return (

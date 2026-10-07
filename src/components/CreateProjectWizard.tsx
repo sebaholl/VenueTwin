@@ -4,6 +4,7 @@ import type { GeometryType, VenueConfig, VenueType } from '../types/venue'
 import { createProjectConfig, venueTypeLabel } from '../utils/projectPresets'
 import { estimateCapacity } from '../utils/venue'
 import { createNationalTheatreStudy } from '../utils/nationalTheatreStudy'
+import { createNationalTheatreSeatingStudy } from '../utils/nationalTheatreSeating'
 
 type Props = {
   open: boolean
@@ -53,6 +54,8 @@ export function CreateProjectWizard({ open, onClose, onCreate }: Props) {
 
       {step === 1 ? <div className="wizard-step">
         <button className="button button-ghost" type="button" onClick={() => { onCreate(createNationalTheatreStudy(), null); setStep(1) }}>Open National Theatre study · estimated geometry</button>
+        <button className="button button-ghost" type="button" onClick={() => { onCreate(createNationalTheatreSeatingStudy(), null); setStep(1) }}>Open sourced stalls study · rows 1–13</button>
+        <small>Separate project with official stalls numbering and estimated geometry. Rebuild the Blender model for this layout; the previous GLB has different row decks.</small>
         <label className="wizard-name">Project name<input autoFocus maxLength={120} value={name} placeholder="e.g. Esbjerg Cinema · Screen 1" onChange={(event) => setName(event.target.value)} /></label>
         <div className="venue-type-grid">{venueTypes.map(({ type, icon: Icon, description }) => <button key={type} className={venueType === type ? 'active' : ''} onClick={() => selectType(type)}><Icon /><span><b>{venueTypeLabel(type)}</b><small>{description}</small></span>{venueType === type && <Check className="venue-type-check" />}</button>)}</div>
         <label className="floorplan-picker"><input hidden type="file" accept="image/png,image/jpeg,image/webp,.pdf,application/pdf" onChange={(event) => setFloorplan(event.target.files?.[0] ?? null)} />{floorplan ? <><FileImage /><span><b>{floorplan.name}</b><small>Ready to use as the source plan</small></span><button type="button" onClick={(event) => { event.preventDefault(); setFloorplan(null) }}>Remove</button></> : <><Upload /><span><b>Add a floor plan</b><small>Optional · PNG, JPG, WebP or PDF</small></span></>}</label>
