@@ -10,7 +10,8 @@ import { disposeLocalModel, loadLocalGlb } from '../utils/localGlb'
 import { downloadViewerFile, embedCode, viewerLevels, viewerManifest, type ViewerSnapshot } from '../utils/customerViewer'
 import { seatCategory } from '../utils/seatCategories'
 import type { SeatRef, VenueConfig } from '../types/venue'
-import type { PositionedSeat } from '../utils/venue'
+import { getRowLabel, type PositionedSeat } from '../utils/venue'
+import { SeatNumberingNote } from '../components/SeatNumberingNote'
 import '../viewer.css'
 
 type Loaded = { snapshot: ViewerSnapshot; model: Group | null }
@@ -77,10 +78,11 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
       <aside className="customer-picker" aria-label="Choose your seat">
         <div className="customer-title"><span className="customer-eyebrow">EXPLORE THE AUDITORIUM</span><h1>{config.name.replace(/ · estimated study$/, '')}</h1><p>Find a seat. Take a look around.</p></div>
         <section><h2><span>01</span> Choose a level</h2><div className="customer-levels">{levels.map((l) => <button key={l.id} aria-pressed={levelId === l.id} onClick={() => { setLevelId(l.id); setRow(l.seats[0].row); setSelected(null); setMode('overview') }}><span>{l.name}<small>{l.seats.length} seats</small></span>{levelId === l.id && <Check size={17} />}</button>)}</div></section>
-        <section><h2><span>02</span> Choose a seat</h2><label className="customer-row-label">Row<select aria-label="Choose row" value={currentRow} onChange={(e) => { setRow(Number(e.target.value)); setSelected(null); setMode('overview') }}>{rows.map((r) => <option key={r} value={r}>Row {String.fromCharCode(65 + r)}</option>)}</select></label>
-          <div className="customer-seat-grid" aria-label={`Seats in row ${String.fromCharCode(65 + currentRow)}`}>{rowSeats.map((seat) => <button key={seat.label} aria-label={`Select seat ${seat.label}`} aria-pressed={selected?.label === seat.label} onClick={() => pickSeat(seat)}>{seat.seat + 1}</button>)}</div>
+        <section><h2><span>02</span> Choose a seat</h2><label className="customer-row-label">Row<select aria-label="Choose row" value={currentRow} onChange={(e) => { setRow(Number(e.target.value)); setSelected(null); setMode('overview') }}>{rows.map((r) => <option key={r} value={r}>Row {getRowLabel(config, r)}</option>)}</select></label>
+          <div className="customer-seat-grid" aria-label={`Seats in row ${getRowLabel(config, currentRow)}`}>{rowSeats.map((seat) => <button key={seat.label} aria-label={`Select seat ${seat.label}`} aria-pressed={selected?.label === seat.label} onClick={() => pickSeat(seat)}>{seat.seat + 1}</button>)}</div>
         </section>
-        <div className="customer-selection" aria-live="polite">{selected ? <><span className="customer-eyebrow">YOUR SELECTED VIEW</span><div><strong>{selected.label}</strong><p>{level.name}<br />Row {String.fromCharCode(65 + selected.row)} · Seat {selected.seat + 1}</p></div><small>{category?.name} · Preview only</small></> : <><MousePointer2 size={22} /><p>Select a numbered seat or choose one in the model.</p></>}</div>
+        {config.studyNotice && <SeatNumberingNote config={config} row={currentRow} />}
+        <div className="customer-selection" aria-live="polite">{selected ? <><span className="customer-eyebrow">YOUR SELECTED VIEW</span><div><strong>{selected.label}</strong><p>{level.name}<br />Row {getRowLabel(config, selected.row)} · Seat {selected.seat + 1}</p></div><small>{category?.name} · Preview only</small></> : <><MousePointer2 size={22} /><p>Select a numbered seat or choose one in the model.</p></>}</div>
         <button className="customer-enter" disabled={!selected} onClick={() => { setTab('3d'); setMode(mode === 'seat' && tab === '3d' ? 'overview' : 'seat'); if (window.innerWidth <= 850) root.current?.querySelector('.customer-stage')?.scrollIntoView({ block: 'start' }) }}><Eye size={18} />{mode === 'seat' && tab === '3d' ? 'Back to auditorium' : 'View from this seat'}<ArrowRight size={18} /></button>
         {local && <WebsiteExport snapshot={snapshot} />}
       </aside>
@@ -90,7 +92,7 @@ function CustomerViewer({ snapshot, model, local }: Loaded & { local: boolean })
           {tab === '3d' ? <VenueScene config={config} selectedSeat={selected} onSeatSelect={pickSeat} importedModel={model} viewMode={mode} onViewModeChange={setMode} customer /> : <CustomerSeatMap seats={level.seats} selected={selected} onSelect={pickSeat} config={config} />}
         </div>
         <div className="customer-view-footer"><span>{tab === 'plan' ? 'Showing seats on the selected level' : mode === 'seat' ? 'Drag to look around · Arrow keys also work' : 'Drag to rotate · Scroll or pinch to zoom'}</span>{selected && <div><button aria-label="Previous seat" disabled={selectedIndex <= 0} onClick={() => pickSeat(rowSeats[selectedIndex - 1])}><ArrowLeft size={16} /></button><b>{selected.label}</b><button aria-label="Next seat" disabled={selectedIndex < 0 || selectedIndex === rowSeats.length - 1} onClick={() => pickSeat(rowSeats[selectedIndex + 1])}><ArrowRight size={16} /></button></div>}</div>
-        <p className="customer-disclaimer">{config.studyNotice ? 'Illustrative theatre study. Dimensions, seat labels and decoration are estimated; views have not been checked against the real auditorium.' : 'Approximate view of the supplied model. People, event equipment and missing structures can affect your view.'} {!model && 'Showing generated geometry.'} No booking or live availability.</p>
+        <p className="customer-disclaimer">{config.studyNotice ? config.studyNotice : 'Approximate view of the supplied model. People, event equipment and missing structures can affect your view.'} {!model && 'Showing generated geometry.'} No booking or live availability.</p>
         {status && <p role="status" className="customer-status">{status}</p>}
       </section>
     </main>
