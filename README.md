@@ -208,3 +208,9 @@ Local verification: attach an image plan and photos, add a sourced measurement, 
 Calibration now sets SVG units per metre for seats, stage, obstacles, dragging and automatic layout. It changes how existing geometry is drawn over the plan, not its stored real-world dimensions. The background image and pointer coordinates share the same SVG coordinate system so resizing/letterboxing does not shift the calibration points. Auto-generated row offsets use the actual row-spacing formula rather than the former display-row gap.
 
 Saved measurements remain reference notes until explicitly selected and applied to two points; estimates do not become verified measurements. Stage placement can be dragged on the plan. Existing manually positioned geometry may need alignment after setting a new scale. Check plan calibration, dragging and boundary generation locally at desktop and narrow viewport sizes before relying on a new layout.
+
+### Stage setup
+
+In **Layout → Stage**, edit stage width, horizontal/depth offsets and rotation. Choose a saved reference measurement to fill the width draft, check its evidence/source, then explicitly **Apply stage changes**. Width supports 1–100 m; offsets and rotation stay within the published viewer's existing ±100 limits. Reset position draft clears offsets/rotation only and still requires Apply. Draft edits are discarded when leaving the tool; applied changes can be undone through Studio history.
+
+The stage can also be dragged directly on the 2D plan. Its rotated centre now matches the Three.js stage and Blender export rather than rotating about an incorrectly projected centre. Changing the stage does not move existing seats or automatically regenerate their layout. Imported architecture becomes stale until rebuilt; generated 3D and new Blender exports use the updated stage. Test a translated/rotated stage in 2D and 3D, then undo it, before proceeding to a new seating layout.
