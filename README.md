@@ -144,3 +144,38 @@ Before publishing, verify on a real phone and desktop:
 - Simulate a slow connection or invalid model and check the loading/retry messages.
 
 Automated build/lint and geometry tests do not replace these device checks. A local browser preview is stored per browser; opening the same localhost viewer URL on another device does not transfer its model.
+
+### Complete embedded demo
+
+Run the viewer and the independent sample customer website in two terminals:
+
+```bash
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+```bash
+npm run demo:host
+```
+
+Open **http://127.0.0.1:4174**. The Lantern is an original fictional demonstration theatre, not a reconstruction of the National Theatre. Its small GLB and 140-seat layout are generated automatically before dev/build. The independent HTML website embeds the viewer from port 5173 (a different origin), with sample seat buttons and a full-viewer link. Connection settings can point to a different viewer origin or venue manifest. The standalone `demo-host/index.html` can later be placed on another website; update its default viewer origin for deployment.
+
+Direct demo link:
+`http://127.0.0.1:5173/viewer?venue=%2Fvenues%2Fdemo-theatre%2Fv1%2Fvenue.json&seat=r6-s7`
+
+The viewer selects that seat and opens its perspective. Copy link to this seat creates a standalone URL in published-file mode, with a selectable-text fallback if clipboard access is unavailable. Invalid/unavailable seat IDs show a notice and leave the visitor free to choose another seat. Local IndexedDB previews deliberately do not offer share links. Localhost URLs work only on your computer; public sharing requires your deployed domain.
+
+To package a real project and its matching Blender GLB:
+
+```bash
+npm run demo:prepare -- --project /path/to/theatre.venuetwin.json --model /path/to/theatre.glb --slug national-theatre/v1
+```
+
+This writes `public/venues/national-theatre/v1/venue.json` and a content-hashed GLB beside it. Point the demo connection settings to `/venues/national-theatre/v1/venue.json`. Use a self-contained GLB below 25 MB, exported for precisely that layout. The viewer validates geometry and verifies the model hash before opening. Inspect the result locally before publishing.
+
+Keep existing version folders unchanged once shared: seat IDs encode one-based row/seat indices within that exact manifest. A new layout needs a new folder (`v2`, etc.); the packager refuses to overwrite an existing custom version. Retain previous folders on the host so old seat links keep working. Hashed model filenames avoid mixing cached geometry with a new manifest. Generated demo assets need not be committed; custom packages must be retained with the project or in your asset storage.
+
+When ready to publish, `npm run build` includes the prepared venue folders in `dist`. Upload the complete build and the updated `.htaccess`. Only `/viewer` is exempted from the app's same-origin framing restriction; Studio retains it. If the hosting control panel injects its own framing/CSP restrictions, verify the deployed response headers and permit the intended embedding website there. No deployment happens automatically.
+
+Apache header expression reference: https://httpd.apache.org/docs/2.4/mod/mod_headers.html and https://httpd.apache.org/docs/current/expr.html. The original request line is used so the SPA rewrite does not hide the viewer path.
+
+Release checks: open the independent host, choose all three sample views, copy/open a seat link in a fresh browser, reload, test an unavailable seat, test phone portrait/landscape, and test the deployed iframe from the actual customer domain. Local HTTP checks do not validate Simply.com's Apache configuration or physical phone behaviour.
