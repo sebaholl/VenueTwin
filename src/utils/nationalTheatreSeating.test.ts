@@ -43,8 +43,19 @@ describe('official stalls numbering', () => {
   it('roundtrips into the viewer and exports exactly matching Blender seat transforms', () => {
     const c = parseViewerConfig(JSON.parse(JSON.stringify(createNationalTheatreSeatingStudy())))
     const seats = generateSeatLayout(c)
-    expect(blenderBlueprint(c, true).seats).toEqual(seats.map(({ label, position, rotation }) => ({ label, position, rotation })))
+    expect(blenderBlueprint(c, true).seats).toEqual(seats.map(({ row, seat, label, position, rotation }) => ({ row, seat, label, position, rotation })))
     expect(geometrySignature(c)).not.toBe(geometrySignature(createNationalTheatreStudy()))
     expect(getSeatLabel(c, 0, 0)).toBe(seats[0].label)
+  })
+  it('curves both sides of the stalls towards the stage symmetrically', () => {
+    const c = createNationalTheatreSeatingStudy()
+    const row = generateSeatLayout(c).filter((s) => s.row === 0)
+    for (let i = 0; i < row.length; i++) {
+      const opposite = row[row.length - 1 - i]
+      expect(row[i].position[0]).toBeCloseTo(-opposite.position[0])
+      expect(row[i].position[2]).toBeCloseTo(opposite.position[2])
+      expect(row[i].rotation).toBeCloseTo(-opposite.rotation)
+    }
+    expect(row[0].position[2]).toBeLessThan(row[10].position[2])
   })
 })
