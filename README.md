@@ -1,5 +1,7 @@
 # VenueTwin
 
+View comparison workspace: [reference sources, camera matching and geometry drafts](docs/VIEW_REVIEW.md).
+
 Customer seat viewer: [local preview, website export and embedding](docs/CUSTOMER_VIEWER.md).
 
 Detailed National Theatre Blender workflow: [photo study and model generation](docs/NATIONAL_THEATRE_DETAIL.md).
