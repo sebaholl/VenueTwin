@@ -147,6 +147,24 @@ def radial(radius, angle, y, centre_z):
     return (math.sin(angle)*radius, y, centre_z+math.cos(angle)*radius)
 
 
+def seats_for_row(seats, row):
+    """Stable row IDs in new exports; exact labels for older blueprints."""
+    def matches(seat):
+        if 'row' in seat:
+            return seat['row'] == row['row']
+        label = seat.get('label', '')
+        if row.get('ticketRow'):
+            prefix = ' · ' + row['ticketRow'] + '/'
+            return prefix in label and label.rsplit(prefix, 1)[1].isdigit()
+        index = row['row'] + 1
+        prefix = ''
+        while index:
+            index, remainder = divmod(index - 1, 26)
+            prefix = chr(65 + remainder) + prefix
+        return label.startswith(prefix) and label[len(prefix):].isdigit()
+    return [seat for seat in seats if matches(seat)]
+
+
 def make_geometry(data):
     data = validate(data)
     g = Geometry()
@@ -164,7 +182,7 @@ def make_geometry(data):
     for r in rows:
         if r.get('arcRadius'):
             continue
-        seats = [s for s in data['seats'] if s['label'].startswith(chr(65+r['row']))]
+        seats = seats_for_row(data['seats'], r)
         if not seats:
             continue
         xs=[s['position'][0] for s in seats]; zs=[s['position'][2] for s in seats]
