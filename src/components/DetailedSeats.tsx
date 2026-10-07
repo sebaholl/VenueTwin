@@ -39,7 +39,7 @@ function SeatPart({ seats, selectedSeat, onSeatSelect, part }: Props & { part: t
   }, [seats, selectedSeat, part, matrix])
   return <instancedMesh ref={ref} args={[undefined, undefined, seats.length]} onClick={(event: ThreeEvent<MouseEvent>) => {
     event.stopPropagation()
-    if (event.instanceId !== undefined && seats[event.instanceId]) onSeatSelect(seats[event.instanceId])
+    if (event.delta <= 6 && event.instanceId !== undefined && seats[event.instanceId]) onSeatSelect(seats[event.instanceId])
   }} geometry={geometry}><meshStandardMaterial roughness={part.fabric ? .92 : .5} /></instancedMesh>
 }
 
