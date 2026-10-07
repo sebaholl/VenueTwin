@@ -10,7 +10,7 @@ import { disposeLocalModel, loadLocalGlb } from '../utils/localGlb'
 import { downloadViewerFile, embedCode, viewerLevels, viewerManifest, type ViewerSnapshot } from '../utils/customerViewer'
 import { seatCategory } from '../utils/seatCategories'
 import type { SeatRef, VenueConfig } from '../types/venue'
-import { getRowLabel, type PositionedSeat } from '../utils/venue'
+import { generatePhysicalSeatLayout, getRowLabel, type PositionedSeat } from '../utils/venue'
 import { SeatNumberingNote } from '../components/SeatNumberingNote'
 import '../viewer.css'
 
@@ -111,8 +111,9 @@ function CustomerSeatMap({ seats, selected, onSelect, config }: { seats: Positio
   const minZ = Math.min(centre[1] - extentZ, ...zs) - 1, maxZ = Math.max(centre[1] + extentZ, ...zs) + 1
   return <div className="customer-map"><svg viewBox={`${minX} ${minZ} ${maxX - minX} ${maxZ - minZ}`} aria-label="Seat map for the selected level. Use the numbered seat buttons to select with a keyboard." role="img">
     <g transform={`translate(${centre[0]},${centre[1]}) rotate(${-stage.rotation})`}><rect x={-stageWidth / 2} y={-.6} width={stageWidth} height={1.2} rx={.15} fill="#26363d" /><text x={0} y={.16} textAnchor="middle" fill="#c7d6d7" fontSize={.42}>STAGE</text></g>
+    {generatePhysicalSeatLayout(config).filter((s) => s.service && seats.some((seat) => seat.row === s.row)).map((s) => <g key={s.label} transform={`translate(${s.position[0]},${s.position[2]})`}><title>Service place · not for sale</title><rect x={-.2} y={-.2} width={.4} height={.4} fill="none" stroke="#a4b5bd" strokeWidth={.04} /><path d="M -.13 -.13 L .13 .13 M .13 -.13 L -.13 .13" stroke="#a4b5bd" strokeWidth={.04} /></g>)}
     {seats.map((s) => <circle key={s.label} cx={s.position[0]} cy={s.position[2]} r={.2} fill={selected?.label === s.label ? '#ff946f' : '#72d7bf'} onClick={() => onSelect(s)}><title>{s.label}</title></circle>)}
-  </svg><p>Use the numbered buttons for precise seat selection.</p></div>
+  </svg><p>Use the numbered buttons for precise seat selection. Crossed squares are service places, not for sale.</p></div>
 }
 
 function WebsiteExport({ snapshot }: { snapshot: ViewerSnapshot }) {
