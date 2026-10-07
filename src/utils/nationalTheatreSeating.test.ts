@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createNationalTheatreSeatingStudy, hasSourcedStallsNumbering, ND_STALLS_COUNTS } from './nationalTheatreSeating'
 import { createNationalTheatreStudy } from './nationalTheatreStudy'
-import { generateSeatLayout, getRowLabel, getSeatLabel } from './venue'
+import { generatePhysicalSeatLayout, generateSeatLayout, getRowLabel, getSeatLabel } from './venue'
 import { geometrySignature, parseViewerConfig } from './customerViewer'
 import { blenderBlueprint } from './blenderBridge'
 
@@ -57,5 +57,20 @@ describe('official stalls numbering', () => {
       expect(row[i].rotation).toBeCloseTo(-opposite.rotation)
     }
     expect(row[0].position[2]).toBeLessThan(row[10].position[2])
+  })
+  it('keeps row 7 on the 21-place curve while excluding its two service places from selection', () => {
+    const c = createNationalTheatreSeatingStudy()
+    const physical = generatePhysicalSeatLayout(c)
+    const first = physical.filter((s) => s.row === 0)
+    const seventh = physical.filter((s) => s.row === 6)
+    expect(seventh).toHaveLength(21)
+    for (let i = 0; i < 21; i++) {
+      expect(seventh[i].position[0]).toBeCloseTo(first[i].position[0])
+      expect(seventh[i].position[2] - first[i].position[2]).toBeCloseTo(6 * c.rowSpacing!)
+      expect(seventh[i].rotation).toBeCloseTo(first[i].rotation)
+    }
+    expect(seventh.slice(19).every((s) => s.service)).toBe(true)
+    expect(generateSeatLayout(c).filter((s) => s.row === 6)).toHaveLength(19)
+    expect(blenderBlueprint(c, true).serviceSeats).toEqual(seventh.slice(19))
   })
 })
