@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest'
 import { defaultVenue } from '../types/venue'
 import { useVenueStore } from '../store/venueStore'
-import { applyPilotPlan, checkPilotBase, parsePilotPlan, type PilotPlan, type PilotAction } from './studioPilot'
+import { applyPilotPlan, checkPilotBase, parsePilotPlan, pilotSnapshot, type PilotPlan, type PilotAction } from './studioPilot'
 import { generateSeatLayout } from './venue'
 const plan = (actions: PilotAction[], expectedSeatCount: number | null = null): PilotPlan => ({ summary: 'Test proposal', actions, expectedSeatCount, questions: [], limitations: [] })
 const evidence = { basis: 'provided' as const, source: 'User brief' }
@@ -53,9 +53,9 @@ describe('Studio Pilot action execution', () => {
     expect(applyPilotPlan(defaultVenue, { ...plan([]), questions: ['How many rows?'] }, false)).toEqual(defaultVenue)
   })
   it('rejects stale proposals rather than overwriting concurrent edits', () => {
-    const base = JSON.stringify(defaultVenue)
+    const base = pilotSnapshot(defaultVenue)
     expect(() => checkPilotBase(defaultVenue, base)).not.toThrow()
-    expect(() => checkPilotBase({ ...defaultVenue, name: 'Edited' }, base)).toThrow('changed')
+    expect(() => checkPilotBase({ ...defaultVenue, stageWidth: 19 }, base)).toThrow('changed')
   })
   it('preserves row overrides when setting defaults and removes rows outside the new range', () => {
     const base = { ...defaultVenue, rowOverrides: { 0: { seats: 8, ticketRow: 'First' }, 9: { seats: 3 } } }
@@ -73,5 +73,30 @@ describe('Pilot store history', () => {
     expect(useVenueStore.getState().config).toEqual(defaultVenue)
     useVenueStore.getState().redo()
     expect(useVenueStore.getState().config.stageWidth).toBe(11)
+  })
+})
+
+describe('Pilot partial measurements and snapshot equivalence', () => {
+  it('applies a supplied width while preserving omitted/default stage offsets', () => {
+    const base = { ...defaultVenue, stagePosition: undefined, aisleWidth: undefined }
+    const next = applyPilotPlan(base, plan([{ ...stage, x: null, z: null, rotation: null }]), false)
+    expect(next.stageWidth).toBe(11)
+    expect(next.stagePosition).toEqual({ offsetX: 0, offsetY: 0, rotation: 0 })
+    expect(generateSeatLayout(next)).toEqual(generateSeatLayout(base))
+  })
+  it('preserves a custom stage position on a width-only edit', () => {
+    const base = { ...defaultVenue, stagePosition: { offsetX: 3, offsetY: -2, rotation: 15 } }
+    expect(applyPilotPlan(base, plan([{ ...stage, x: null, z: null, rotation: null }]), false).stagePosition).toEqual(base.stagePosition)
+  })
+  it('treats reordered keys and explicit render defaults as the same layout', () => {
+    const base = { ...defaultVenue, stagePosition: undefined, aisleWidth: undefined }
+    const reordered = Object.fromEntries(Object.entries({ ...base, stagePosition: { rotation: 0, offsetY: 0, offsetX: 0 }, aisleWidth: .9 }).reverse())
+    expect(pilotSnapshot(reordered as typeof base)).toBe(pilotSnapshot(base))
+  })
+  it('does not invalidate a proposal for a rename, and keeps the latest name when applying', () => {
+    const renamed = { ...defaultVenue, name: 'New project name' }
+    expect(() => checkPilotBase(renamed, pilotSnapshot(defaultVenue))).not.toThrow()
+    expect(applyPilotPlan(renamed, plan([stage]), false).name).toBe(renamed.name)
+    expect(() => checkPilotBase({ ...renamed, rowOverrides: { 0: { elevation: 1 } } }, pilotSnapshot(defaultVenue))).toThrow('changed')
   })
 })
