@@ -100,3 +100,8 @@
 .stage-setup summary { font-size: 12px; cursor: pointer; color: #80dcc6; }
 .stage-setup .button { width: 100%; margin: 6px 0; font-size: 12px; }
 .stage-setup [role=alert] { color: #ffc09a; font-size: 12px; line-height: 1.6; }
+
+.level-management details { border-top: 1px solid #2d4356; padding: 14px 0; }
+.level-management summary { cursor: pointer; color: #cbe6de; font-size: 12px; overflow-wrap: anywhere; }
+.level-management .level-card { margin: 8px 0; padding: 12px; border: 1px solid #2d4356; border-radius: 8px; background: #102335; }
+.level-management [role=alert] { color: #ffc09c; }
