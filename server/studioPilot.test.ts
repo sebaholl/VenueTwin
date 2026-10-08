@@ -52,3 +52,16 @@ describe('Pilot provider boundary', () => {
     expect(isLocalPilotRequest(request('localhost:5173', undefined, '192.168.1.2'))).toBe(false)
   })
 })
+
+describe('Pilot legacy project context', () => {
+  it('sends effective defaults and accepts a width-only partial proposal', async () => {
+    const partial = { ...plan, actions: [{ ...plan.actions[0], x: null, z: null, rotation: null }], questions: ['Please supply the row arrangement.'] }
+    const fetcher = mock({ ...result, output: [{ ...result.output[0], arguments: JSON.stringify(partial) }] })
+    const legacy = { ...input, config: { ...defaultVenue, aisleWidth: undefined, stagePosition: undefined, rowSpacing: undefined, seatSpacing: undefined } }
+    expect(await generatePilotPlan(legacy, settings, fetcher)).toEqual({ plan: partial })
+    const body = JSON.parse(String(fetcher.mock.calls[0][1]?.body))
+    const sent = JSON.parse(body.input[0].content)
+    expect(sent.config).toMatchObject({ aisleWidth: .9, seatSpacing: .72, rowSpacing: .92, stagePosition: { offsetX: 0, offsetY: 0, rotation: 0 } })
+    expect(body.instructions).toContain('never claim to record them automatically')
+  })
+})
