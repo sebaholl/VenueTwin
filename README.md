@@ -214,3 +214,11 @@ Saved measurements remain reference notes until explicitly selected and applied 
 In **Layout → Stage**, edit stage width, horizontal/depth offsets and rotation. Choose a saved reference measurement to fill the width draft, check its evidence/source, then explicitly **Apply stage changes**. Width supports 1–100 m; offsets and rotation stay within the published viewer's existing ±100 limits. Reset position draft clears offsets/rotation only and still requires Apply. Draft edits are discarded when leaving the tool; applied changes can be undone through Studio history.
 
 The stage can also be dragged directly on the 2D plan. Its rotated centre now matches the Three.js stage and Blender export rather than rotating about an incorrectly projected centre. Changing the stage does not move existing seats or automatically regenerate their layout. Imported architecture becomes stale until rebuilt; generated 3D and new Blender exports use the updated stage. Test a translated/rotated stage in 2D and 3D, then undo it, before proceeding to a new seating layout.
+
+### Add and manage seating levels
+
+**Layout → Levels** is available for every project. Add a level, expand its card and apply a distinct name, base height and balcony railing height. New levels start empty at 0 m: they never silently create or relocate seats. Assign a first/last row range to the level explicitly; existing row rise and seat metadata are retained, so the new base height moves those rows vertically. The current-row selector also exposes row rise and existing arc controls without needing a 3D seat selection.
+
+Removing a level asks for confirmation. Its rows become unassigned while retaining their absolute heights and seat counts. Changes which create duplicate ticket-row labels are rejected, preserving the original project. Applied changes are undoable; unfinished level-card drafts should be applied before leaving the tool. Renaming preserves internal level IDs; numbering supported by a venue source remains subject to its existing checks.
+
+Inspect assignments in the plan level filter, 3D and customer preview. Empty levels do not appear in the customer seat picker. Generated railings currently affect arc rows only, and multi-level automatic layout is still unavailable. Rebuild an imported Blender model after physical changes.
