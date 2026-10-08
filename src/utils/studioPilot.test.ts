@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { defaultVenue } from '../types/venue'
+import { defaultVenue, type VenueConfig } from '../types/venue'
 import { useVenueStore } from '../store/venueStore'
 import { applyPilotPlan, checkPilotBase, parsePilotPlan, pilotSnapshot, type PilotPlan, type PilotAction } from './studioPilot'
 import { generateSeatLayout } from './venue'
@@ -91,7 +91,7 @@ describe('Pilot partial measurements and snapshot equivalence', () => {
   it('treats reordered keys and explicit render defaults as the same layout', () => {
     const base = { ...defaultVenue, stagePosition: undefined, aisleWidth: undefined }
     const reordered = Object.fromEntries(Object.entries({ ...base, stagePosition: { rotation: 0, offsetY: 0, offsetX: 0 }, aisleWidth: .9 }).reverse())
-    expect(pilotSnapshot(reordered as typeof base)).toBe(pilotSnapshot(base))
+    expect(pilotSnapshot(reordered as VenueConfig)).toBe(pilotSnapshot(base))
   })
   it('does not invalidate a proposal for a rename, and keeps the latest name when applying', () => {
     const renamed = { ...defaultVenue, name: 'New project name' }
