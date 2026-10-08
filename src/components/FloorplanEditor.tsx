@@ -64,7 +64,7 @@ export function FloorplanEditor({ measurements = [], config, imageUrl, fileName,
   useEffect(() => { if (selectedRow >= config.rows) setSelectedRow(Math.max(0, config.rows - 1)) }, [config.rows, selectedRow])
 
   const updateRow = (row: number, patch: Partial<RowOverride>) => onConfigChange({ rowOverrides: { ...(config.rowOverrides ?? {}), [row]: { ...(config.rowOverrides?.[row] ?? {}), ...patch } } })
-  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; next[selectedRow] = { levelId: selectedOverride.levelId, elevation: selectedOverride.elevation, arcRadius: selectedOverride.arcRadius, arcDegrees: selectedOverride.arcDegrees, categoryId: selectedOverride.categoryId, seatCategories: selectedOverride.seatCategories, accessibleSeats: selectedOverride.accessibleSeats }; onConfigChange({ rowOverrides: next }) }
+  const resetRow = () => { const next = { ...(config.rowOverrides ?? {}) }; next[selectedRow] = { frontRailing: selectedOverride.frontRailing, levelId: selectedOverride.levelId, elevation: selectedOverride.elevation, arcRadius: selectedOverride.arcRadius, arcDegrees: selectedOverride.arcDegrees, categoryId: selectedOverride.categoryId, seatCategories: selectedOverride.seatCategories, accessibleSeats: selectedOverride.accessibleSeats }; onConfigChange({ rowOverrides: next }) }
   const addRow = (duplicate = false) => {
     if (config.rows >= 50) return
     const insertAt = selectedRow + 1
