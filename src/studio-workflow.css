@@ -126,3 +126,8 @@
 .pilot-proposal summary span { display: block; font-size: 10px; color: #efcb8a; }
 .pilot-proposal pre { max-height: 220px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 10px; color: #aac1ce; }
 .studio-pilot [role=alert] { color: #ffc09b; }
+
+.local-blender-build { border: 1px solid #345b65; border-radius: 10px; padding: 13px; margin: 14px 0; background: #102636; }
+.local-blender-build button { width: 100%; min-height: 44px; margin: 6px 0; }
+.local-blender-build small, .local-blender-build p { color: #b4c9d3; line-height: 1.6; font-size: 12px; overflow-wrap: anywhere; }
+.local-blender-build summary { cursor: pointer; color: #c7e5e0; font-size: 12px; margin-top: 12px; }
