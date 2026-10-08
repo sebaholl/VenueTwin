@@ -1,3 +1,4 @@
+import { StudioPilotPanel } from '../components/StudioPilotPanel'
 import { StageSetupPanel } from '../components/StageSetupPanel'
 import type { ReferenceMeasurement } from '../lib/projectReferences'
 import { ProjectReferencesPanel } from '../components/ProjectReferencesPanel'
@@ -229,6 +230,7 @@ export function StudioPage() {
 
             <div className="workflow-note"><strong>Already have a project?</strong><p>Use the Project menu above to open a cloud project, import a file or choose a new starting template.</p></div>
           </>}
+          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} /></div>
           <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['stage', 'Stage'], ['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
