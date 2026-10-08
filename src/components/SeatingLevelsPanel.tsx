@@ -1,3 +1,4 @@
+import { rowHasFrontRailing } from '../utils/levelGeometry'
 import { useEffect, useState } from 'react'
 import { SeatNumberingNote } from './SeatNumberingNote'
 import { getRowLabel } from '../utils/venue'
@@ -49,9 +50,9 @@ export function SeatingLevelsPanel({ config, selectedSeat, onChange }: { config:
       <button onClick={() => perform(() => assignRowRange(config, row, last, levels.some((level) => level.id === target) ? target : ''), `${last - row + 1} row(s) assigned.`)}>Apply row assignment</button>
     </details>
     <details><summary>Current row details · {getRowLabel(config, row)}</summary><SeatNumberingNote config={config} row={row} />
-      <label>Row rise above level (m)<input type="number" min="0" max="100" step=".05" value={override.elevation ?? row * config.rake} onChange={(event) => { if (event.target.value && Number.isFinite(Number(event.target.value))) updateRow({ elevation: Math.max(0, Math.min(100, Number(event.target.value))) }) }} /></label>
+      {levels.length > 0 && <label><input type="checkbox" checked={rowHasFrontRailing(config, row)} onChange={(event) => updateRow({ frontRailing: event.target.checked })} /> Front railing for this row</label>}{typeof override.frontRailing === 'boolean' && <button onClick={() => { const next = { ...override }; delete next.frontRailing; onChange({ rowOverrides: { ...config.rowOverrides, [row]: next } }) }}>Use automatic railing</button>}<p className="workflow-hint">Uses the assigned level’s railing height (0.8 m for unassigned rows). Choose the front edge row yourself when a level has several separate sections.</p><label>Row rise above level (m)<input type="number" min="0" max="100" step=".05" value={override.elevation ?? row * config.rake} onChange={(event) => { if (event.target.value && Number.isFinite(Number(event.target.value))) updateRow({ elevation: Math.max(0, Math.min(100, Number(event.target.value))) }) }} /></label>
       {override.arcRadius && <><label>Arc radius (m)<input type="number" min="2" max="30" step=".1" value={override.arcRadius} onChange={(event) => { if (event.target.value) updateRow({ arcRadius: Math.max(2, Math.min(30, Number(event.target.value))) }) }} /></label><label>Arc span (degrees)<input type="number" min="10" max="175" value={override.arcDegrees ?? 140} onChange={(event) => { if (event.target.value) updateRow({ arcDegrees: Math.max(10, Math.min(175, Number(event.target.value))) }) }} /></label></>}
     </details>
-    <small>Apply name/height edits before leaving this tool. Changes are undoable. Rebuild imported Blender geometry after physical edits. Generated balcony railings currently apply to arc rows only.</small>
+    <small>Apply name/height edits before leaving this tool. Changes are undoable. Rebuild imported Blender geometry after physical edits. Generated decks and front railings support straight and arc rows. These are approximate surfaces, not structural or safety assessments.</small>
   </section>
 }
