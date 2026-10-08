@@ -17,6 +17,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
   for (let row = 0; row < value.rows; row++) {
     const r = value.rowOverrides[row] ?? {}
     if (!record(r)) throw new Error('Invalid row.')
+    if (r.frontRailing !== undefined && typeof r.frontRailing !== 'boolean') throw new Error('Invalid row railing setting.')
     if (r.ticketRow !== undefined && (typeof r.ticketRow !== 'string' || !r.ticketRow.trim() || r.ticketRow.length > 30)) throw new Error('Invalid ticket row label.')
     if (r.numberingSource !== undefined && r.numberingSource !== 'nd-stalls-2025') throw new Error('Unknown numbering source.')
     if (r.seats !== undefined && (!finite(r.seats, 1, 200) || !Number.isInteger(r.seats))) throw new Error('Invalid row seat count.')
@@ -41,7 +42,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
 }
 
 export function geometrySignature(config: VenueConfig) {
-  return JSON.stringify({ seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
+  return JSON.stringify({ seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), ...(Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean') ? { railings: Object.entries(config.rowOverrides).filter(([, value]) => typeof value.frontRailing === 'boolean').map(([row, value]) => [row, value.frontRailing]) } : {}), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
 }
 
 export function viewerLevels(config: VenueConfig) {

@@ -5,6 +5,7 @@ import { levelArchitecture } from './levelGeometry'
 
 type Box = { name: string; position: number[]; size: number[]; rotation: number; color: string }
 export function blenderBlueprint(config: VenueConfig, detailed = false) {
+  if (detailed && Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean')) throw new Error('Custom row railings require the general Blender scene export.')
   const seats = generateSeatLayout(config)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const angle = stage.rotation * Math.PI / 180

@@ -15,6 +15,7 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource }: { projec
   const [source, setSource] = useState<{ file: File; signature: string } | null>(null)
   const [storage, setStorage] = useState('')
   const [saved, setSaved] = useState(false)
+  const customRailings = Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean')
   const stale = !!source && source.signature !== geometrySignature(config)
   useEffect(() => {
     const requests = request
@@ -73,7 +74,7 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource }: { projec
   }
   return <section className="control-section category-panel"><h2>Build the architecture</h2><p>Export your layout, build it in Blender, then load the finished model here.</p>
     <button onClick={() => downloadBlenderBlueprint(config)}>Export Blender scene JSON</button>
-    {config.studyNotice && !!config.seatingLevels?.length && <><button onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button></>}
+    {config.studyNotice && !!config.seatingLevels?.length && <><button disabled={customRailings} onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button>{customRailings && <p>Custom row railings use the general scene export above and build_venue.py. The detailed theatre template uses its own ornamental railings.</p>}</>}
     <details className="blender-help"><summary>How to build in Blender</summary><p>1. Export scene JSON above. For the theatre study, choose the detailed export.</p><p>2. In Blender’s Scripting workspace, open and run <code>scripts/blender/build_venue.py</code>, or <code>scripts/blender/build_national_theatre.py</code> for the detailed theatre. Select the exported JSON.</p><p>3. Load the generated GLB below. Use metres and the original origin; the model is not automatically centred or scaled.</p><p>Dimensions and decorative details are approximate.</p></details>
     <label>Load local GLB (up to 25 MB)<input type="file" accept=".glb" disabled={busy} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void attach(file) }} /></label>
     {busy && <p role="status">Loading model…</p>}{error && <p role="alert">{error}</p>}

@@ -221,4 +221,14 @@ The stage can also be dragged directly on the 2D plan. Its rotated centre now ma
 
 Removing a level asks for confirmation. Its rows become unassigned while retaining their absolute heights and seat counts. Changes which create duplicate ticket-row labels are rejected, preserving the original project. Applied changes are undoable; unfinished level-card drafts should be applied before leaving the tool. Renaming preserves internal level IDs; numbering supported by a venue source remains subject to its existing checks.
 
-Inspect assignments in the plan level filter, 3D and customer preview. Empty levels do not appear in the customer seat picker. Generated railings currently affect arc rows only, and multi-level automatic layout is still unavailable. Rebuild an imported Blender model after physical changes.
+Inspect assignments in the plan level filter, 3D and customer preview. Empty levels do not appear in the customer seat picker. Generated railings support straight and arc rows, and multi-level automatic layout is still unavailable. Rebuild an imported Blender model after physical changes.
+
+### Supporting geometry for custom tiers
+
+Generated multi-level architecture now orients straight-row decks with their rows, avoiding enlarged world-axis slabs when rows rotate. Raised straight levels receive a front parapet on their first row by default; arc levels retain their existing segmented decks and fronts.
+
+Under **Layout → Levels → Current row details**, Front railing can explicitly enable or disable a row front. Use this for separated sections and choose the true front row yourself. Height comes from the assigned level (0.8 m if unassigned). These are approximate platforms/solid parapets; they are not structural or safety assessments and do not infer walkways or side guarding.
+
+The live generator and general Blender scene export share these boxes. Rebuild with `scripts/blender/build_venue.py` after changes. The detailed National Theatre template builds its own ornamental fronts and therefore cannot export custom row-railing overrides; the detailed export is disabled for those projects with a visible explanation. Keep a separate theatre-study project if using that specialised template.
+
+Row-railing overrides participate in the saved-model geometry check, so stale imported geometry is not silently reused. Existing projects without overrides retain their prior signature format. Check the front railing from a seat view and after generic Blender export; browser/Blender visual verification is still needed.
