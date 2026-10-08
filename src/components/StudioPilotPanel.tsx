@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react'
 import { projectReferences } from '../lib/projectReferences'
 import { useVenueStore } from '../store/venueStore'
 import type { VenueConfig } from '../types/venue'
-import { applyPilotPlan, checkPilotBase, parsePilotPlan, pilotActionLabel, type PilotPlan } from '../utils/studioPilot'
+import { applyPilotPlan, checkPilotBase, parsePilotPlan, pilotActionLabel, pilotSnapshot, type PilotPlan } from '../utils/studioPilot'
 import { generateSeatLayout } from '../utils/venue'
 
 const sample = 'Arrange this project as a straight cinema layout with 8 rows and 12 seats in every row, 2 sections, 0.65 m seat spacing, 1 m row spacing, 1 m aisle width, 0.15 m rise per row and zero curve. Set stage width to 9 m and preserve its position. Preserve other settings. Check that there are exactly 96 seats.'
@@ -31,7 +31,7 @@ export function StudioPilotPanel({ projectId, config, onApplied }: { projectId: 
     const controller = new AbortController(); active.current = controller
     const state = useVenueStore.getState()
     if (state.transactionStart) { setError('Finish your current edit first.'); return }
-    const base = JSON.stringify(state.config)
+    const base = pilotSnapshot(state.config)
     setBusy(true); setError(''); setNotice(''); setProposal(null)
     try {
       let references = ''
@@ -61,7 +61,7 @@ export function StudioPilotPanel({ projectId, config, onApplied }: { projectId: 
       onApplied()
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not apply this proposal.') }
   }
-  const stale = proposal !== null && proposal.base !== JSON.stringify(config)
+  const stale = proposal !== null && proposal.plan.actions.length > 0 && proposal.base !== pilotSnapshot(config)
   return <section className="control-section studio-pilot" aria-labelledby="pilot-title">
     <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>Early access</small></h2>
     <p>Describe your venue or an edit. Pilot proposes changes using the Studio tools; you review and apply them.</p>
@@ -81,13 +81,13 @@ export function StudioPilotPanel({ projectId, config, onApplied }: { projectId: 
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status" className="pilot-status">{notice}</p>}
       {proposal && <div className="pilot-proposal" aria-label="Proposed venue changes">
-        <h3>Review proposal</h3><p>{proposal.plan.summary}</p>
+        <h3>{proposal.plan.actions.length ? 'Review proposal' : 'More information needed'}</h3><p>{proposal.plan.summary}</p>
         <p className="pilot-count">{generateSeatLayout(config).length} → {generateSeatLayout(proposal.next).length} seats · {proposal.plan.actions.length} actions</p>
         {proposal.plan.actions.map((action, index) => <details key={index}><summary>{pilotActionLabel(action)} <span>{action.basis === 'estimated' ? 'Estimate' : 'Provided / existing'}</span></summary><p>{action.source}</p><pre>{JSON.stringify(action, null, 2)}</pre></details>)}
         {proposal.plan.questions.length > 0 && <><h4>Information still needed</h4><ul>{proposal.plan.questions.map((question, index) => <li key={index}>{question}</li>)}</ul><p>Add answers to your brief and generate again.</p></>}
         {proposal.plan.limitations.length > 0 && <><h4>Limits of this draft</h4><ul>{proposal.plan.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
         {stale && <p role="alert">Your venue changed. Generate a fresh proposal before applying.</p>}
-        <button className="button button-primary" disabled={stale || !proposal.plan.actions.length} onClick={apply}>Apply {proposal.plan.actions.length} changes</button>
+        {proposal.plan.actions.length > 0 && <button className="button button-primary" disabled={stale} onClick={apply}>Apply {proposal.plan.actions.length} changes</button>}
         <button className="button button-secondary" onClick={() => setProposal(null)}>Discard proposal</button>
       </div>}
     </>}
