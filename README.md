@@ -232,3 +232,44 @@ Under **Layout → Levels → Current row details**, Front railing can explicitl
 The live generator and general Blender scene export share these boxes. Rebuild with `scripts/blender/build_venue.py` after changes. The detailed National Theatre template builds its own ornamental fronts and therefore cannot export custom row-railing overrides; the detailed export is disabled for those projects with a visible explanation. Keep a separate theatre-study project if using that specialised template.
 
 Row-railing overrides participate in the saved-model geometry check, so stale imported geometry is not silently reused. Existing projects without overrides retain their prior signature format. Check the front railing from a seat view and after generic Blender export; browser/Blender visual verification is still needed.
+
+## VenueTwin Pilot — first AI operator
+
+The product goal is **customer materials → AI-operated Studio → automated Blender model → interactive seat views**. The first Pilot increment connects a real model to a bounded set of Studio actions. It does not yet interpret uploaded photos/PDFs or launch Blender automatically.
+
+### Run locally
+
+1. Switch to `feature/studio-pilot` and run `npm ci` if dependencies are not installed.
+2. Add these **server-only** settings to your existing `.env.local` (keep your Supabase settings):
+   ```dotenv
+   OPENAI_API_KEY=your-openai-api-key
+   OPENAI_MODEL=gpt-5-mini
+   ```
+   Do not prefix the API key with `VITE_`, commit it, or put it in `public_html`. `.env.local` is ignored by Git. You can select another model available to your API account that supports Responses strict function calling.
+3. Restart `npm run dev`, open the local Studio, then **Project → VenueTwin Pilot**.
+4. Enter a brief or use **Example layout**. Optionally include saved reference notes and measurements. Unsaved reference edits and all uploaded photos/PDFs are excluded.
+5. Generate, review the proposed actions and missing information, then **Apply changes**. The 3D view updates; one Undo restores the previous configuration. Edit the brief to request another adjustment.
+
+Only the brief, current project configuration and opted-in saved text references are sent to OpenAI. The key remains in the Vite dev server; requests set `store: false`. This setting does not itself define the provider's overall data retention policy. API requests use the configured API account. Missing credentials, refusals, incomplete output and provider errors produce explicit messages; there is no simulated AI fallback.
+
+Pilot is intentionally **local-development-only**. Its endpoint checks loopback addresses, local Host and matching Origin, accepts JSON only, limits request size, allows one in-flight request, and aborts provider work after 60 seconds or client disconnect. The production static build displays a local-only notice. It does not deploy an AI service to Simply.com.
+
+### Action contract
+
+- `set_stage`: width and position/rotation using existing stage geometry.
+- `set_seating`: row count, default seats, sections, geometry, rake and spacing. Existing overrides on surviving rows are preserved; rows beyond a reduced row count are removed.
+- `edit_row`: selected seat count, elevation, offsets, rotation, curve and front railing. Row numbers are 1-based; null values preserve existing values.
+- `save_level` / `assign_rows`: use the existing level-management functions.
+- `save_obstacle`: create/update a column, wall or railing by ID.
+
+The model submits a strict `propose_studio_changes` function call containing these actions. The server executes them against a cloned configuration to validate the result. The browser validates again before applying a single history entry. Unknown tools, extra properties, bad bounds, impossible row assignments and mismatched expected seat counts reject the whole proposal. A proposal cannot overwrite manual changes made since its request. This is a single planning call, not yet a multi-turn autonomous agent loop.
+
+Every action carries a supplied/existing or estimated basis and a source explanation. Estimates require the checkbox and add an approximation notice to the project. These labels are the model's account of the evidence, not independent verification. Proposal details are session-only; applied geometry persists through the usual project storage/export.
+
+### Mže pilot brief and remaining work
+
+The **Mže measurements** example cites the [venue operator's page](https://www.mkstc.cz/kinosal-mze.html): stage 11 × 4.5 m, screen 9 × 3.8 m, seating 2.5 m from the stage, and 259 places including six wheelchair places. These facts alone do not establish a row layout or elevations. The current stage action supports width and position, **not stage depth or screen dimensions**; dedicated wheelchair-space geometry is also pending. The agent is instructed to expose those limits and ask for missing data. This example is not a completed reconstruction.
+
+Next increments: photo/PDF extraction with source-linked measurements; missing geometry actions; queued Blender execution and model return; render/geometry validation; then an authenticated hosted service with project access checks and usage limits. Existing manual Blender export/import continues to work with applied Pilot geometry.
+
+Implementation follows the official [OpenAI function-calling documentation](https://developers.openai.com/api/docs/guides/function-calling) and [GPT-5 mini model documentation](https://developers.openai.com/api/docs/models/gpt-5-mini). Automated tests use mocked provider responses to check the real request/validation code; they do not prove live model quality or visual browser behaviour.
