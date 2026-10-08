@@ -279,3 +279,26 @@ Implementation follows the official [OpenAI function-calling documentation](http
 Pilot resolves omitted stage offsets and spacing to Studio's existing render defaults before sending older projects to the model. Preserving those values is allowed with estimates disabled; it does not establish that they match the real venue. A `set_stage` proposal may now use null x/z/rotation to preserve position while changing only the supplied width. Supported independent edits should be proposed while unknown row layouts remain questions. Unsupported dimensions are listed, not automatically saved as references.
 
 The stale-proposal check canonicalizes object key order and effective defaults. Renaming a project or updating its descriptive study notice does not invalidate a layout proposal; applying it retains the latest descriptions. Actual layout changes still block application. Clarification-only responses have no Apply button or stale-application warning.
+
+## Automatic local Blender builds
+
+In local Studio, open **Model → Build 3D model with Blender**. VenueTwin sends a snapshot of the current configuration to its development server, generates the existing general Blender blueprint, runs Blender in the background, checks the resulting GLB, then imports and saves it in this browser. Stage messages show progress; Cancel is available while the build runs. Once import begins, let it finish. Use **Download model GLB** to keep a backup.
+
+On a standard macOS installation, no extra configuration is needed: VenueTwin uses `/Applications/Blender.app/Contents/MacOS/Blender`. If Blender is elsewhere, add the executable path to your existing `.env.local` and restart `npm run dev`:
+
+```dotenv
+BLENDER_PATH=/Applications/Blender.app/Contents/MacOS/Blender
+```
+
+Linux/Windows default to `blender` on PATH, or use a full executable path in `BLENDER_PATH`. Paths with spaces are passed directly as an executable argument, without a shell. You do not need an open Blender window or an OpenAI API key for this step. The static production build does not expose local build controls; keep the manual export/import workflow for hosted use.
+
+### Scope and safeguards
+
+- This uses `build_venue.py` through the trusted `build_job.py` entry point: approximate decks, floor, stage and screen/curtain reference. It is **not** a photorealistic reconstruction or an image render. Interactive seats and obstacles remain in the web viewer.
+- The detailed National Theatre generator remains a separate manual export/build workflow. Automatic builds do not select it based on a venue name or study notice.
+- One build runs at a time; a second request asks you to finish/cancel the current job. Each job has a random ID, private temporary directory and a snapshot signature. The executable/script/output paths cannot be supplied by the browser or AI.
+- Blender launches with factory startup, autoexec disabled, no shell, and only basic operating-system environment variables (no AI/Supabase credentials). Only local Host/Origin and loopback requests are accepted.
+- Cancellation terminates the child process, escalating after two seconds. Jobs time out after ten minutes. Failed/cancelled job files are removed. Up to four job directories are retained during a server session; older finished jobs are evicted, and normal server shutdown removes retained files. Abrupt process/computer termination can leave OS temporary files.
+- A model is accepted only after a successful exit and self-contained GLB validation, capped at 25 MB. Layout changes during generation or loading prevent automatic attachment. The current model stays intact on generation, download or parse failure. Successful imports use existing browser storage, with the usual preview-only warning if saving fails.
+
+Verification uses controlled worker fixtures for successful/failed/cancelled/timed-out jobs, real temporary files and a real missing-executable failure, plus client handoff tests. The current development environment has no Blender executable, so the actual Blender run and browser visual result still require testing on a machine with Blender installed. Command-line flags follow the [official Blender manual](https://docs.blender.org/manual/en/latest/advanced/command_line/arguments.html).
