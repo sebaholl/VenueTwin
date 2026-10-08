@@ -5,7 +5,7 @@ import { generateSeatLayout, getRowSeats } from './venue'
 
 type Evidence = { basis: 'provided' | 'estimated'; source: string }
 export type PilotAction = Evidence & (
-  | { tool: 'set_stage'; width: number; x: number; z: number; rotation: number }
+  | { tool: 'set_stage'; width: number; x: number | null; z: number | null; rotation: number | null }
   | { tool: 'set_seating'; rows: number; seatsPerRow: number; sectors: number; geometry: 'straight' | 'fan' | 'blocks'; rake: number; curve: number; seatSpacing: number; rowSpacing: number; aisleWidth: number }
   | { tool: 'edit_row'; row: number; seats: number | null; elevation: number | null; offsetX: number | null; offsetY: number | null; rotation: number | null; curve: number | null; frontRailing: boolean | null }
   | { tool: 'save_level'; id: string; name: string; elevation: number; parapetHeight: number }
@@ -27,7 +27,7 @@ const action = (tool: string, properties: Record<string, Schema>) => object({ to
 export const pilotPlanSchema = object({
   summary: string(1200),
   actions: { type: 'array', maxItems: 80, items: { anyOf: [
-    action('set_stage', { width: number(1, 100), x: number(-100, 100), z: number(-100, 100), rotation: number(-100, 100) }),
+    action('set_stage', { width: number(1, 100), x: nullable(number(-100, 100)), z: nullable(number(-100, 100)), rotation: nullable(number(-100, 100)) }),
     action('set_seating', { rows: integer(1, 50), seatsPerRow: integer(1, 200), sectors: integer(1, 3), geometry: choice('straight', 'fan', 'blocks'), rake: number(0, 3), curve: number(-5, 5), seatSpacing: number(.1, 20), rowSpacing: number(.1, 20), aisleWidth: number(.1, 20) }),
     action('edit_row', { row: integer(1, 50), seats: nullable(integer(1, 200)), elevation: nullable(number(0, 100)), offsetX: nullable(number(-100, 100)), offsetY: nullable(number(-100, 100)), rotation: nullable(number(-100, 100)), curve: nullable(number(-5, 5)), frontRailing: nullable({ type: 'boolean' }) }),
     action('save_level', { id: string(80), name: string(80), elevation: number(0, 100), parapetHeight: number(.2, 2) }),
@@ -65,7 +65,7 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
   let config = parseViewerConfig(base)
   for (const item of plan.actions) {
     switch (item.tool) {
-      case 'set_stage': config = { ...config, stageWidth: item.width, stagePosition: { offsetX: item.x, offsetY: item.z, rotation: item.rotation } }; break
+      case 'set_stage': config = { ...config, stageWidth: item.width, stagePosition: { offsetX: item.x ?? config.stagePosition?.offsetX ?? 0, offsetY: item.z ?? config.stagePosition?.offsetY ?? 0, rotation: item.rotation ?? config.stagePosition?.rotation ?? 0 } }; break
       case 'set_seating': {
         // Keep edits and ticket metadata on surviving rows; this is never a silent reset.
         const rowOverrides = Object.fromEntries(Object.entries(config.rowOverrides).filter(([key]) => Number(key) < item.rows))
@@ -99,12 +99,28 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
   if (plan.actions.some((a) => a.basis === 'estimated')) config.studyNotice = [config.studyNotice, 'Pilot draft includes estimated geometry; seat views have not been validated against identified-seat photos.'].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join('\n')
   return config
 }
+// Resolve the same implicit defaults as Studio, without claiming they are measured facts.
+export function pilotEffectiveConfig(config: VenueConfig): VenueConfig {
+  return { ...config, stagePosition: config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }, seatSpacing: config.seatSpacing ?? .72, rowSpacing: config.rowSpacing ?? .92, aisleWidth: config.aisleWidth ?? .9 }
+}
+export function pilotSnapshot(config: VenueConfig) {
+  const value: Partial<VenueConfig> = pilotEffectiveConfig(config)
+  // These descriptions do not affect any Pilot operation; apply always retains current values.
+  delete value.name
+  delete value.studyNotice
+  const canonical = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(canonical)
+    if (item && typeof item === 'object') return Object.fromEntries(Object.entries(item).filter(([, v]) => v !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, canonical(v)]))
+    return item
+  }
+  return JSON.stringify(canonical(value))
+}
 export function checkPilotBase(current: VenueConfig, snapshot: string) {
-  if (JSON.stringify(current) !== snapshot) throw new Error('The venue changed after this proposal was requested. Generate a fresh proposal to keep your edits.')
+  if (pilotSnapshot(current) !== snapshot) throw new Error('The venue changed after this proposal was requested. Generate a fresh proposal to keep your edits.')
 }
 export function pilotActionLabel(action: PilotAction) {
   switch (action.tool) {
-    case 'set_stage': return `Stage: ${action.width} m wide; position ${action.x}, ${action.z} m; ${action.rotation}°`
+    case 'set_stage': return `Stage: ${action.width} m wide; offsets ${action.x ?? 'unchanged'}, ${action.z ?? 'unchanged'}; rotation ${action.rotation === null ? 'unchanged' : action.rotation + '°'}`
     case 'set_seating': return `Seating: ${action.rows} rows, ${action.seatsPerRow} default seats; ${action.geometry}`
     case 'edit_row': return `Edit row ${action.row}`
     case 'save_level': return `Level: ${action.name}, ${action.elevation} m above ground`
