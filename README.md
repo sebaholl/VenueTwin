@@ -273,3 +273,9 @@ The **Mže measurements** example cites the [venue operator's page](https://www.
 Next increments: photo/PDF extraction with source-linked measurements; missing geometry actions; queued Blender execution and model return; render/geometry validation; then an authenticated hosted service with project access checks and usage limits. Existing manual Blender export/import continues to work with applied Pilot geometry.
 
 Implementation follows the official [OpenAI function-calling documentation](https://developers.openai.com/api/docs/guides/function-calling) and [GPT-5 mini model documentation](https://developers.openai.com/api/docs/models/gpt-5-mini). Automated tests use mocked provider responses to check the real request/validation code; they do not prove live model quality or visual browser behaviour.
+
+### Pilot partial-input fixes
+
+Pilot resolves omitted stage offsets and spacing to Studio's existing render defaults before sending older projects to the model. Preserving those values is allowed with estimates disabled; it does not establish that they match the real venue. A `set_stage` proposal may now use null x/z/rotation to preserve position while changing only the supplied width. Supported independent edits should be proposed while unknown row layouts remain questions. Unsupported dimensions are listed, not automatically saved as references.
+
+The stale-proposal check canonicalizes object key order and effective defaults. Renaming a project or updating its descriptive study notice does not invalidate a layout proposal; applying it retains the latest descriptions. Actual layout changes still block application. Clarification-only responses have no Apply button or stale-application warning.
