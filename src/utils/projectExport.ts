@@ -1,3 +1,4 @@
+import { stageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { categorySummary, getCategories, seatCategory } from './seatCategories'
 import { venueTypeLabel } from './projectPresets'
@@ -26,7 +27,7 @@ export function renderVenuePlanSvg(config: VenueConfig) {
   <text x="1135" y="82" text-anchor="end" fill="#78909a" font-family="Arial,sans-serif" font-size="9" letter-spacing="1">TOTAL SEATS</text>
   <g transform="translate(${planX} ${planY})"><rect width="1000" height="620" rx="14" fill="#0a1725" stroke="#1d3447"/><rect width="1000" height="620" rx="14" fill="url(#grid)"/>
   ${boundary.length >= 3 ? `<polygon points="${boundary.map((point) => `${point.x},${point.y}`).join(' ')}" fill="#5be2c30d" stroke="#5be2c399" stroke-width="2" stroke-dasharray="9 6"/>` : ''}
-  <g transform="translate(${500 + stage.offsetX * 24} ${76 + stage.offsetY * 24}) rotate(${stage.rotation})"><rect x="${-(150 + config.stageWidth * 10)}" y="-34" width="${300 + config.stageWidth * 20}" height="68" rx="7" fill="#162d3f" stroke="#577181"/><text y="6" text-anchor="middle" fill="#a4b9b6" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="3">STAGE · ${config.stageWidth} M</text></g>
+  <g transform="translate(${500 + (stage.offsetX - Math.sin(stage.rotation * Math.PI / 180) * 2.2) * 24} ${150 + (stage.offsetY - Math.cos(stage.rotation * Math.PI / 180) * 2.2) * 24}) rotate(${-stage.rotation})"><rect x="${-config.stageWidth * 12}" y="${-stageGeometry(config).depth * 12}" width="${config.stageWidth * 24}" height="${stageGeometry(config).depth * 24}" rx="7" fill="#162d3f" stroke="#577181"/><text y="6" text-anchor="middle" fill="#a4b9b6" font-family="Arial,sans-serif" font-size="13" font-weight="700" letter-spacing="3">STAGE · ${config.stageWidth} M</text></g>
   ${seats.map((seat) => `<circle cx="${500 + seat.position[0] * 24}" cy="${150 + seat.position[2] * 24}" r="5.3" fill="${seatCategory(config, seat.row, seat.seat).color}" stroke="#07111f" stroke-width="2"/>`).join('')}
   ${rows.map((rowSeats, row) => rowSeats.length ? `<text x="${Math.min(...rowSeats.map((seat) => 500 + seat.position[0] * 24)) - 24}" y="${150 + rowSeats[0].position[2] * 24 + 4}" text-anchor="middle" fill="#718a93" font-family="Arial,sans-serif" font-size="11" font-weight="700">${escapeMarkup(getRowLabel(config, row))}</text>` : '').join('')}
   ${getObstacles(config).map((o) => `<g transform="${obstaclePlanTransform(o)}"><title>${escapeMarkup(o.name)} · ${o.height} m high</title><rect x="${-o.width * 12}" y="${-o.depth * 12}" width="${o.width * 24}" height="${o.depth * 24}" fill="#f5bc66" fill-opacity="0.65" stroke="#f5bc66"/></g>`).join('')}
