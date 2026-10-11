@@ -314,3 +314,11 @@ Reviews are saved in this browser, separately from cloud projects. Changed file 
 Layout → Stage now supports stage depth, screen width/height and screen bottom height above venue floor zero. Pilot can propose these through `set_stage_dimensions`; null fields preserve existing values. Existing projects retain the prior dimensions (2.2 m stage depth, screen width 84% of stage width, height 4.6 m, bottom 0.4 m). These defaults are not measured facts. Stage depth expands about its existing centre and the screen stays at its rear. Seat cameras and the general Blender build use the same dimensions. Custom dimensions require the general build, not the ornamental National Theatre template. Rebuild imported models after changing dimensions.
 
 Official API references: [PDF inputs](https://developers.openai.com/api/docs/guides/file-inputs), [image inputs](https://developers.openai.com/api/docs/guides/images-vision). Automated tests use mocked responses; live extraction quality must be checked against your actual references.
+
+### Guided Pilot build
+
+In Project → Pilot, choose **Build from reviewed findings** to fill a starting brief (this does not send a request). Generate the proposal after reviewing your sources. Missing-information questions now have individual answer fields: **Generate with my answers** adds the non-empty answers to your brief and makes a new paid Pilot request. Unknown answers remain unknown; they are not automatically filled.
+
+Review the proposed changes, then use **Apply and build 3D model** to apply the layout as one undoable edit and start the existing local Blender generator with that exact layout. **Apply changes** remains available for layout-only work. Model progress, cancellation, errors and local storage status are visible in Project; advanced import/export controls are collapsed there and remain available in Model. Blender building itself has no AI charge.
+
+If Blender fails or is cancelled, the applied layout remains editable and undoable. A previous model is retained until a valid replacement is imported; layout changes during a build prevent importing the outdated result. A build is an approximate architecture draft, not verification of source accuracy or automatic customer delivery. Inspect representative seat views before sharing.
