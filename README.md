@@ -336,3 +336,13 @@ For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief 
 Project now separates **Materials** (saved plans/photos/measurements) from **Pilot** (analysis, briefs and proposals). Both stay mounted when switching, preserving drafts and in-flight work. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
 
 The frontpage includes an interactive, illustrative seating diagram with three position choices and a plan/spatial toggle. It makes no seat-quality score claims. The visual uses local CSS and React, with keyboard-accessible buttons and reduced-motion support; no external images, libraries or tracking were added. Mobile styles retain the selection controls and simplify decorative labels.
+
+### Bounded Pilot review and correction
+
+**Check and attempt one correction** is enabled in Pilot's Sources & estimation settings. The visible request notice states that a proposal can use up to two paid AI requests. Turn it off for the previous one-request behaviour.
+
+The server validates the first proposal using the same Studio action executor and local geometry checks. An invalid action proposal or new/worsened chair/stage warnings can trigger exactly one correction request. Correction context includes the original project and request, the unapplied first proposal when valid, and validation feedback. Existing unrelated intersections alone do not trigger repair. Both passes retain the same estimate restrictions and validation; neither applies edits or runs Blender.
+
+A valid first proposal is kept if the correction fails or increases the total detected intersections. If both proposals are invalid, no proposal is returned. Initial network/quota failures are not retried. Cancellation stops the workflow without returning a fallback proposal. Each provider call has its existing 60-second timeout; the review session has a 125-second overall deadline. Results show the request count and what happened; remaining geometry findings and questions stay visible for review.
+
+This is bounded assistance, not proof of source fidelity or goal completion. A reduced intersection count cannot prove that a correction is correct. Review action sources, counts and questions before applying. The broader fully autonomous customer pipeline still needs real-reference evaluation and richer architecture generation.
