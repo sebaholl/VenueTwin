@@ -1,3 +1,4 @@
+import { stageGeometry } from './stageGeometry'
 import type { SeatRef, VenueConfig } from '../types/venue'
 import { generateSeatLayout } from './venue'
 
@@ -16,7 +17,8 @@ export function getSeatView(config: VenueConfig, selected: SeatRef | null, eyeHe
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const angle = stage.rotation * Math.PI / 180
   const position: [number, number, number] = [seat.position[0], seat.position[1] - .25 + eyeHeight + modelOffset[1], seat.position[2] + modelOffset[2]]
-  const target: [number, number, number] = [stage.offsetX - Math.sin(angle) * 3.25, 2.7 + modelOffset[1], stage.offsetY - Math.cos(angle) * 3.25 + modelOffset[2]]
+  const screen = stageGeometry(config)
+  const target: [number, number, number] = [stage.offsetX + Math.sin(angle) * screen.screenZ, screen.screenY + modelOffset[1], stage.offsetY + Math.cos(angle) * screen.screenZ + modelOffset[2]]
   const dx = target[0] - position[0], dy = target[1] - position[1], dz = target[2] - position[2]
   return { position, target, yaw: Math.atan2(dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) }
 }
