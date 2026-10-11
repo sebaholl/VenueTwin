@@ -1,3 +1,4 @@
+import { stageGeometry, customStageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { generateSeatLayout, generatePhysicalSeatLayout, getSeatLabel } from './venue'
 
@@ -9,6 +10,7 @@ const finite = (n: unknown, min: number, max: number): n is number => typeof n =
 // Validate before generating geometry: published manifests are untrusted input.
 export function parseViewerConfig(value: unknown): VenueConfig {
   if (!record(value) || typeof value.name !== 'string' || value.name.length > 200 || !finite(value.rows, 1, 50) || !Number.isInteger(value.rows) || !finite(value.seatsPerRow, 1, 200) || !Number.isInteger(value.seatsPerRow) || !finite(value.sectors, 1, 3) || !Number.isInteger(value.sectors) || !finite(value.rake, 0, 3) || !finite(value.curve, -5, 5) || !finite(value.stageWidth, 1, 100) || !['straight', 'fan', 'blocks'].includes(String(value.geometry)) || !record(value.rowOverrides)) throw new Error('Invalid venue geometry in the viewer project.')
+  for (const key of ['stageDepth', 'screenWidth', 'screenHeight', 'screenBottom']) if (value[key] !== undefined && !finite(value[key], key === 'screenBottom' ? 0 : .1, 100)) throw new Error('Invalid stage or screen dimensions.')
   for (const field of ['seatSpacing', 'rowSpacing', 'aisleWidth']) if (value[field] !== undefined && !finite(value[field], .01, 20)) throw new Error('Invalid seat spacing.')
   if (value.seatingLevels !== undefined && (!Array.isArray(value.seatingLevels) || value.seatingLevels.length > 30 || value.seatingLevels.some((level) => !record(level) || typeof level.id !== 'string' || typeof level.name !== 'string' || !finite(level.elevation, 0, 100) || (level.parapetHeight !== undefined && !finite(level.parapetHeight, .2, 2))))) throw new Error('Invalid seating levels.')
   if (Array.isArray(value.seatingLevels) && (new Set(value.seatingLevels.map((l) => l.id)).size !== value.seatingLevels.length || value.seatingLevels.some((l) => l.id === '__main'))) throw new Error('Seating levels need unique IDs.')
@@ -42,7 +44,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
 }
 
 export function geometrySignature(config: VenueConfig) {
-  return JSON.stringify({ seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), ...(Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean') ? { railings: Object.entries(config.rowOverrides).filter(([, value]) => typeof value.frontRailing === 'boolean').map(([row, value]) => [row, value.frontRailing]) } : {}), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
+  return JSON.stringify({ ...(customStageGeometry(config) ? { stageGeometry: stageGeometry(config) } : {}), seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), ...(Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean') ? { railings: Object.entries(config.rowOverrides).filter(([, value]) => typeof value.frontRailing === 'boolean').map(([row, value]) => [row, value.frontRailing]) } : {}), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
 }
 
 export function viewerLevels(config: VenueConfig) {
