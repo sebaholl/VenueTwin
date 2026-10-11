@@ -1,3 +1,4 @@
+import '../home-polish.css'
 import { ArrowRight, Box, Eye, Layers3, ScanLine, Sparkles, Upload, WandSparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { MiniVenue } from '../components/MiniVenue'
