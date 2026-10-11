@@ -39,7 +39,7 @@ export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }
     try { saveAnalysis(projectId, next); setReport(next); onChange() } catch { setMessage('Review could not be saved. Check browser storage.') }
   }
   return <details className="pilot-setup"><summary>1. Analyse plans and photos</summary>
-    <p>Add and save files in Venue references, then refresh this list. Analysis sends selected files and captions to OpenAI using your paid API account. Up to 4 files / 12 MB per request.</p>
+    <p>Add and save files in the Materials tab, then return here and refresh this list. Analysis sends selected files and captions to OpenAI using your paid API account. Up to 4 files / 12 MB per request.</p>
     <button type="button" disabled={busy || disabled} onClick={() => void refresh()}>Refresh saved files</button>
     {assets.map((a) => <label className="pilot-check" key={a.id}><input type="checkbox" disabled={busy || disabled} checked={selected.includes(a.id)} onChange={() => setSelected(selected.includes(a.id) ? selected.filter((id) => id !== a.id) : [...selected, a.id])} />{a.name}</label>)}
     <button type="button" className="button button-secondary" disabled={busy || disabled || !selected.length || selected.length > 4} onClick={() => void analyse()}>Analyse selected files</button>
