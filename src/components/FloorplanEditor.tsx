@@ -1,3 +1,4 @@
+import { stageGeometry } from '../utils/stageGeometry'
 import { stagePlanPose } from '../utils/stagePlan'
 import { calibratePlan, planScale } from '../utils/planScale'
 import type { ReferenceMeasurement } from '../lib/projectReferences'
@@ -147,7 +148,7 @@ export function FloorplanEditor({ measurements = [], config, imageUrl, fileName,
       <svg viewBox="0 0 1000 620" onPointerDown={handleCanvasPointerDown}>
         <image href={imageUrl ?? undefined} x="0" y="0" width="1000" height="620" preserveAspectRatio="xMidYMid meet" opacity=".34" pointerEvents="none" />
         <BoundaryOverlay points={visibleBoundary} drawing={drawingBoundary} />
-        <g className="plan-stage draggable" transform={`translate(${stagePose.x}, ${stagePose.y}) rotate(${stagePose.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(config.stageWidth * scale / 2)} y={-1.1 * scale} width={config.stageWidth * scale} height={2.2 * scale} rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
+        <g className="plan-stage draggable" transform={`translate(${stagePose.x}, ${stagePose.y}) rotate(${stagePose.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(config.stageWidth * scale / 2)} y={-stageGeometry(config).depth / 2 * scale} width={config.stageWidth * scale} height={stageGeometry(config).depth * scale} rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
         {rows.filter(({ row }) => visibleLevel === 'all' || config.rowOverrides[row]?.levelId === visibleLevel).map(({ row, seats }) => {
           if (!seats.length) return null
           const points = seats.map((seat) => ({ seat: seat.seat, service: seat.service, x: 500 + seat.position[0] * scale, y: 150 + seat.position[2] * scale }))
