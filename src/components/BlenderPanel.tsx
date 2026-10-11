@@ -114,7 +114,7 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource, ref, compa
     {error && <p role="alert">{error}</p>}
     {storage && <p role="status">{storage}</p>}
     {stale && <p role="alert">The model needs rebuilding for the current layout.</p>}
-    <details open={compact ? undefined : true}><summary>Model files, setup and storage</summary>
+    <details className={compact ? "model-options compact" : "model-options"}><summary>Model files, setup and storage</summary>
     <button onClick={() => downloadBlenderBlueprint(config)}>Export Blender scene JSON</button>
     {config.studyNotice && !!config.seatingLevels?.length && <><button disabled={customRailings || customStageGeometry(config)} onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button>{customStageGeometry(config) && <p>Custom stage and screen dimensions use the general scene export and automatic build.</p>}{customRailings && <p>Custom row railings use the general scene export above and build_venue.py. The detailed theatre template uses its own ornamental railings.</p>}</>}
     <details className="blender-help"><summary>How to build in Blender</summary><p>1. Export scene JSON above. For the theatre study, choose the detailed export.</p><p>2. In Blender’s Scripting workspace, open and run <code>scripts/blender/build_venue.py</code>, or <code>scripts/blender/build_national_theatre.py</code> for the detailed theatre. Select the exported JSON.</p><p>3. Load the generated GLB below. Use metres and the original origin; the model is not automatically centred or scaled.</p><p>Dimensions and decorative details are approximate.</p></details>
