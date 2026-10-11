@@ -1,3 +1,4 @@
+import { LayoutChecksPanel } from './LayoutChecksPanel'
 import { briefWithAnswers, reviewedLayoutBrief } from '../utils/pilotWorkflow'
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
@@ -106,6 +107,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
       {proposal && <div className="pilot-proposal" aria-label="Proposed venue changes">
         <h3>{proposal.plan.actions.length ? 'Review proposal' : 'More information needed'}</h3><p>{proposal.plan.summary}</p>
         <p className="pilot-count">{generateSeatLayout(config).length} → {generateSeatLayout(proposal.next).length} seats · {proposal.plan.actions.length} actions</p>
+        <LayoutChecksPanel config={proposal.next} onRepair={(request) => { const nextBrief = `Review the CURRENT layout using my original brief below. The warnings describe an UNAPPLIED proposal; do not assume those edits are already in the current layout.\n\n${brief}\n\nProposed edits (not applied): ${JSON.stringify(proposal.plan.actions)}\n\n${request}`; if (nextBrief.length > 12000) { setError("The fix request is too long. Shorten your brief or address the listed rows in Layout."); return } setBrief(nextBrief); clearProposal(); setNotice("Fix request prepared. Review the brief, then generate a new proposal.") }} />
         {proposal.plan.actions.map((action, index) => <details key={index}><summary>{pilotActionLabel(action)} <span>{action.basis === 'estimated' ? 'Estimate' : 'Provided / existing'}</span></summary><p>{action.source}</p><pre>{JSON.stringify(action, null, 2)}</pre></details>)}
         {proposal.plan.questions.length > 0 && <><h4>Information still needed</h4><ul>{proposal.plan.questions.map((question, index) => <li key={index}><label>{question}<textarea rows={2} maxLength={2000} value={answers[index] ?? ""} onChange={(event) => setAnswers((old) => { const next = [...old]; next[index] = event.target.value; return next })} placeholder="Your answer, measurement or clarification" /></label></li>)}</ul><button type="button" className="button button-secondary" onClick={() => { try { const next = briefWithAnswers(brief, proposal.plan.questions, answers); setBrief(next); void generate(next) } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not add answers.") } }}>Generate with my answers</button></>}
         {proposal.plan.limitations.length > 0 && <><h4>Limits of this draft</h4><ul>{proposal.plan.limitations.map((item, index) => <li key={index}>{item}</li>)}</ul></>}
