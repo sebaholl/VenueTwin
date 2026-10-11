@@ -1,3 +1,4 @@
+import { generateReviewedPlan } from './pilotReview'
 import { analyseReferences } from './referenceAnalysis'
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -10,7 +11,7 @@ export class PilotError extends Error {
   constructor(message: string, status = 400) { super(message); this.status = status }
 }
 const instructions = `You are VenueTwin Pilot, a venue layout operator. Return one propose_studio_changes call.
-Work from the supplied CURRENT project, brief and saved text references. Preserve unrelated edits.
+Work from the supplied CURRENT project, brief and saved text references. If reviewContext is supplied, correct the previous UNAPPLIED proposal using that validation feedback. Never trade away the user goal or source fidelity merely to remove warnings. Preserve unrelated edits.
 The config contains effective Studio defaults (including stage offsets, aisleWidth and spacing) even for older projects. Keeping an existing/default value is NOT a new estimate and is allowed when allowEstimates=false. It is also NOT evidence that the value matches the real venue. Preserve existing rake and row elevations unless explicitly asked to change them; do not require confirmation to preserve them.
 Perform supported independent edits even if other parts of the brief are incomplete. For example, an 11 m stage width with an unknown real row layout should produce set_stage(width=11,x=null,z=null,rotation=null), leave seats unchanged, and ask only for the missing row layout. Do not hold that width edit hostage to aisle width, stage coordinates or row elevations.
 set_stage x and z are OFFSETS (not absolute world centre coordinates); null x/z/rotation means preserve the effective current setting. Use null for a width-only change. Never ask for coordinates merely to preserve position.
@@ -33,7 +34,7 @@ function parseRequest(value: unknown) {
   if (typeof data.brief !== 'string' || !data.brief.trim() || data.brief.length > 12000 || typeof data.allowEstimates !== 'boolean' || typeof data.references !== 'string' || data.references.length > 80000) throw new PilotError('Use a brief of 1–12,000 characters and saved text references below 80,000 characters.')
   return { brief: data.brief.trim(), config: pilotEffectiveConfig(parseViewerConfig(data.config)), allowEstimates: data.allowEstimates, references: data.references }
 }
-export async function generatePilotPlan(input: unknown, settings: PilotSettings, fetcher: typeof fetch = fetch, signal?: AbortSignal) {
+export async function generatePilotPlan(input: unknown, settings: PilotSettings, fetcher: typeof fetch = fetch, signal?: AbortSignal, reviewContext?: unknown) {
   const request = parseRequest(input)
   if (!settings.apiKey) throw new PilotError('Add OPENAI_API_KEY to .env.local and restart npm run dev. Never use a VITE_ prefix for this key.', 503)
   if (!settings.model) throw new PilotError('Set OPENAI_MODEL in .env.local and restart npm run dev.', 503)
@@ -44,7 +45,7 @@ export async function generatePilotPlan(input: unknown, settings: PilotSettings,
       headers: { Authorization: `Bearer ${settings.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: settings.model, store: false, instructions,
-        input: [{ role: 'user', content: JSON.stringify(request) }],
+        input: [{ role: 'user', content: JSON.stringify({ ...request, ...(reviewContext ? { reviewContext } : {}) }) }],
         tools: [{ type: 'function', name: 'propose_studio_changes', description: 'Propose a bounded sequence of Studio actions with evidence, questions and limitations. Does not modify the project.', parameters: pilotPlanSchema, strict: true }],
         tool_choice: { type: 'function', name: 'propose_studio_changes' }, parallel_tool_calls: false, max_output_tokens: 10000,
       }),
@@ -65,6 +66,11 @@ export async function generatePilotPlan(input: unknown, settings: PilotSettings,
     applyPilotPlan(request.config, plan, request.allowEstimates)
     return { plan }
   } catch (error) { throw new PilotError(error instanceof Error ? error.message : 'Pilot validation failed. Nothing was changed.', 422) }
+}
+
+async function generatePlanRequest(input: unknown, settings: PilotSettings, signal: AbortSignal) {
+  if (input && typeof input === 'object' && 'autoReview' in input && typeof input.autoReview !== 'boolean') throw new PilotError('Invalid review setting.')
+  return input && typeof input === 'object' && 'autoReview' in input && input.autoReview === true ? generateReviewedPlan(input, settings, fetch, signal) : generatePilotPlan(input, settings, fetch, signal)
 }
 export function isLocalPilotRequest(request: Pick<IncomingMessage, 'headers' | 'socket'>) {
   if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress ?? '')) return false
@@ -103,7 +109,7 @@ export function studioPilotPlugin(settings: PilotSettings): Plugin {
         const controller = new AbortController()
         const cancel = () => controller.abort()
         response.on('close', cancel)
-        try { send(response, 200, await (path === '/api/pilot/analyse' ? analyseReferences(await readBody(request, 18 * 1024 * 1024), settings, fetch, controller.signal) : generatePilotPlan(await readBody(request), settings, fetch, controller.signal))) }
+        try { send(response, 200, await (path === '/api/pilot/analyse' ? analyseReferences(await readBody(request, 18 * 1024 * 1024), settings, fetch, controller.signal) : generatePlanRequest(await readBody(request), settings, controller.signal))) }
         catch (error) { send(response, error instanceof PilotError ? error.status : 400, { error: error instanceof Error ? error.message : 'Pilot failed. Nothing was changed.' }) }
         finally { busy = false; response.off('close', cancel) }
       })
