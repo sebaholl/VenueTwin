@@ -10,7 +10,7 @@ import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from '
 import { Link } from 'react-router-dom'
 import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
 import { ObstaclePanel } from '../components/ObstaclePanel'
-import { BlenderPanel } from '../components/BlenderPanel'
+import { BlenderPanel, type BlenderBuildHandle } from '../components/BlenderPanel'
 import { SeatingLevelsPanel } from '../components/SeatingLevelsPanel'
 import { CustomerPreviewButton } from '../components/CustomerPreviewButton'
 import type { Group } from 'three'
@@ -48,6 +48,7 @@ type SyncStatus = 'local' | 'saving' | 'saved' | 'offline' | 'error'
 
 export function StudioPage() {
   const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName } = useVenueStore()
+  const blender = useRef<BlenderBuildHandle>(null)
   const [referenceMeasures, setReferenceMeasures] = useState<{ projectId: string; items: ReferenceMeasurement[] } | null>(null)
   const receiveMeasurements = useCallback((id: string, items: ReferenceMeasurement[]) => setReferenceMeasures({ projectId: id, items }), [])
   const [step, setStep] = useState(0)
@@ -230,7 +231,7 @@ export function StudioPage() {
 
             <div className="workflow-note"><strong>Already have a project?</strong><p>Use the Project menu above to open a cloud project, import a file or choose a new starting template.</p></div>
           </>}
-          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} /></div>
+          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); await blender.current.build(next) }} /></div>
           <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['stage', 'Stage'], ['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
@@ -242,8 +243,10 @@ export function StudioPage() {
             {layoutTool === 'levels' && <SeatingLevelsPanel key={projectId} config={config} selectedSeat={selectedSeat} onChange={(next) => { setConfig(next); selectSeat(null) }} />}
             {layoutTool === 'obstacles' && <ObstaclePanel config={config} onChange={setConfig} />}
           </>}
+          <div hidden={step !== 0 && step !== 2}>
+            <BlenderPanel ref={blender} compact={step === 0} key={projectId} projectId={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
+          </div>
           <div hidden={step !== 2}>
-            <BlenderPanel key={projectId} projectId={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
             <section className="control-section"><h2>Check the view</h2><p className="workflow-hint">Compare representative seat views with reference photos. Changes stay in a draft until you apply them.</p><button className="button button-secondary" onClick={() => setView('review')}>Review seat views <ArrowRight size={16} /></button></section>
           </div>
           {step === 3 && <>
