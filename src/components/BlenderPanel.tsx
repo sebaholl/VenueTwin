@@ -1,3 +1,4 @@
+import { customStageGeometry } from '../utils/stageGeometry'
 import { buildLocalModel, assertBuildCurrent } from '../lib/blenderJobs'
 import { loadProjectModel, removeProjectModel, saveProjectModel } from '../lib/projectModels'
 import { useEffect, useRef, useState } from 'react'
@@ -106,7 +107,7 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource }: { projec
       <details><summary>Blender setup</summary><p>On macOS, the default location is <code>/Applications/Blender.app/Contents/MacOS/Blender</code>. For a different installation, set <code>BLENDER_PATH</code> in <code>.env.local</code> to the executable path and restart <code>npm run dev</code>. Keep Blender installed; you do not need to open it.</p></details>
     </div>}
     <button onClick={() => downloadBlenderBlueprint(config)}>Export Blender scene JSON</button>
-    {config.studyNotice && !!config.seatingLevels?.length && <><button disabled={customRailings} onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button>{customRailings && <p>Custom row railings use the general scene export above and build_venue.py. The detailed theatre template uses its own ornamental railings.</p>}</>}
+    {config.studyNotice && !!config.seatingLevels?.length && <><button disabled={customRailings || customStageGeometry(config)} onClick={() => downloadBlenderBlueprint(config, true)}>Export detailed theatre JSON</button>{customStageGeometry(config) && <p>Custom stage and screen dimensions use the general scene export and automatic build.</p>}{customRailings && <p>Custom row railings use the general scene export above and build_venue.py. The detailed theatre template uses its own ornamental railings.</p>}</>}
     <details className="blender-help"><summary>How to build in Blender</summary><p>1. Export scene JSON above. For the theatre study, choose the detailed export.</p><p>2. In Blender’s Scripting workspace, open and run <code>scripts/blender/build_venue.py</code>, or <code>scripts/blender/build_national_theatre.py</code> for the detailed theatre. Select the exported JSON.</p><p>3. Load the generated GLB below. Use metres and the original origin; the model is not automatically centred or scaled.</p><p>Dimensions and decorative details are approximate.</p></details>
     <label>Load local GLB (up to 25 MB)<input type="file" accept=".glb" disabled={busy || building} onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; if (file) void attach(file) }} /></label>
     {busy && <p role="status">Loading model…</p>}{error && <p role="alert">{error}</p>}
