@@ -1,3 +1,4 @@
+import { stageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { generatePhysicalSeatLayout } from './venue'
 
@@ -18,9 +19,10 @@ export function levelArchitecture(config: VenueConfig): ArchitectureBox[] {
   const seats = generatePhysicalSeatLayout(config), boxes: ArchitectureBox[] = []
   if (config.studyNotice) {
     const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
+    const screen = stageGeometry(config), portalHeight = Math.max(6.2, screen.bottom + screen.height + 1.2)
     const angle = stage.rotation * Math.PI / 180
-    for (const side of [-1, 1]) boxes.push({ name: 'Estimated portal side', position: [stage.offsetX + side * config.stageWidth / 2 * Math.cos(angle) - 3.25 * Math.sin(angle), 3.1, stage.offsetY - side * config.stageWidth / 2 * Math.sin(angle) - 3.25 * Math.cos(angle)], size: [.55, 6.2, .7], rotation: angle, color: '#bca16b' })
-    boxes.push({ name: 'Estimated portal top', position: [stage.offsetX - 3.25 * Math.sin(angle), 6.3, stage.offsetY - 3.25 * Math.cos(angle)], size: [config.stageWidth + .55, .5, .7], rotation: angle, color: '#bca16b' })
+    for (const side of [-1, 1]) boxes.push({ name: 'Estimated portal side', position: [stage.offsetX + side * config.stageWidth / 2 * Math.cos(angle) + screen.screenZ * Math.sin(angle), portalHeight / 2, stage.offsetY - side * config.stageWidth / 2 * Math.sin(angle) + screen.screenZ * Math.cos(angle)], size: [.55, portalHeight, .7], rotation: angle, color: '#bca16b' })
+    boxes.push({ name: 'Estimated portal top', position: [stage.offsetX + screen.screenZ * Math.sin(angle), portalHeight + .1, stage.offsetY + screen.screenZ * Math.cos(angle)], size: [config.stageWidth + .55, .5, .7], rotation: angle, color: '#bca16b' })
   }
   for (let row = 0; row < config.rows; row++) {
     const override = config.rowOverrides[row] ?? {}

@@ -45,6 +45,10 @@ export type VenueConfig = {
   sectors: number
   rake: number
   curve: number
+  stageDepth?: number
+  screenWidth?: number
+  screenHeight?: number
+  screenBottom?: number
   stageWidth: number
   geometry: GeometryType
   rowOverrides: Record<number, RowOverride>

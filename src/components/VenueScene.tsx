@@ -1,3 +1,4 @@
+import { stageGeometry } from '../utils/stageGeometry'
 import type { ReviewCamera } from '../utils/viewReview'
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox, Text } from '@react-three/drei'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
@@ -43,14 +44,14 @@ function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interio
         {obstacleBoxes(o).map((box, index) => <mesh key={index} position={[box.x, box.y, 0]} onClick={(event) => event.stopPropagation()}><boxGeometry args={[box.width, box.height, box.depth]} /><meshStandardMaterial color={o.kind === 'railing' ? '#b4bec9' : '#8d8478'} roughness={.7} /></mesh>)}
       </group>)}
       {!importedModel && <group position={[stage.offsetX, 0, stage.offsetY]} rotation={[0, stageRotation, 0]}>
-        <RoundedBox args={[config.stageWidth, 0.45, 2.2]} radius={0.12} position={[0, 0, -2.2]}>
+        <RoundedBox args={[config.stageWidth, 0.45, stageGeometry(config).depth]} radius={0.12} position={[0, 0, -2.2]}>
           <meshStandardMaterial color="#17243a" roughness={0.5} />
         </RoundedBox>
-        <mesh position={[0, 2.7, -3.25]}>
-          <planeGeometry args={[config.stageWidth * 0.84, 4.6]} />
+        <mesh position={[0, stageGeometry(config).screenY, stageGeometry(config).screenZ]}>
+          <planeGeometry args={[stageGeometry(config).width, stageGeometry(config).height]} />
           <meshStandardMaterial color={config.studyNotice ? '#702b3b' : '#e8f0f3'} emissive="#19304b" emissiveIntensity={0.16} />
         </mesh>
-        {!config.studyNotice && <Text position={[0, 2.7, -3.18]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>}
+        {!config.studyNotice && <Text position={[0, stageGeometry(config).screenY, stageGeometry(config).screenZ + .07]} fontSize={0.42} color="#07111f" anchorX="center">VENUE TWIN</Text>}
       </group>}
       {generatePhysicalSeatLayout(config).filter((seat) => seat.service).map((seat) => <group key={seat.label} position={seat.position} rotation={[0, seat.rotation, 0]} onClick={(event) => event.stopPropagation()}>
         <RoundedBox args={[.48, .48, .12]} radius={.05} position={[0, .34, .16]}><meshStandardMaterial color="#667780" /></RoundedBox>
