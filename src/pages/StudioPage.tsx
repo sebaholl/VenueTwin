@@ -52,6 +52,7 @@ export function StudioPage() {
   const [referenceMeasures, setReferenceMeasures] = useState<{ projectId: string; items: ReferenceMeasurement[] } | null>(null)
   const receiveMeasurements = useCallback((id: string, items: ReferenceMeasurement[]) => setReferenceMeasures({ projectId: id, items }), [])
   const [step, setStep] = useState(0)
+  const [projectTool, setProjectTool] = useState<'materials' | 'pilot'>('materials')
   const [layoutTool, setLayoutTool] = useState('seating')
   const projectMenu = useRef<HTMLDetailsElement>(null)
   const goToStep = (next: number) => { setStep(next); setView(next < 2 ? 'plan' : 'model') }
@@ -229,10 +230,10 @@ export function StudioPage() {
           {step === 0 && <>
             <label className="project-name-field">Project name<input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} /></label>
 
-            <div className="workflow-note"><strong>Already have a project?</strong><p>Use the Project menu above to open a cloud project, import a file or choose a new starting template.</p></div>
+            <div className="project-tool-switch" role="group" aria-label="Project tools"><button aria-pressed={projectTool === "materials"} onClick={() => setProjectTool("materials")}><span>01</span> Materials<small>Plans, photos & measurements</small></button><button aria-pressed={projectTool === "pilot"} onClick={() => setProjectTool("pilot")}><span>02</span> Pilot<small>Analyse & propose a layout</small></button></div>
           </>}
-          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); await blender.current.build(next) }} /></div>
-          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
+          <div hidden={step !== 0 || projectTool !== "pilot"}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); setStep(2); setView('model'); await blender.current.build(next) }} /></div>
+          <div hidden={step !== 0 || projectTool !== "materials"}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['stage', 'Stage'], ['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
             {layoutTool === 'stage' && <StageSetupPanel key={projectId + JSON.stringify([config.stageWidth, config.stagePosition, config.stageDepth, config.screenWidth, config.screenHeight, config.screenBottom])} config={config} measurements={referenceMeasures?.projectId === projectId ? referenceMeasures.items : []} onChange={setConfig} />}
@@ -243,8 +244,8 @@ export function StudioPage() {
             {layoutTool === 'levels' && <SeatingLevelsPanel key={projectId} config={config} selectedSeat={selectedSeat} onChange={(next) => { setConfig(next); selectSeat(null) }} />}
             {layoutTool === 'obstacles' && <ObstaclePanel config={config} onChange={setConfig} />}
           </>}
-          <div hidden={step !== 0 && step !== 2}>
-            <BlenderPanel ref={blender} compact={step === 0} key={projectId} projectId={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
+          <div hidden={step !== 2}>
+            <BlenderPanel ref={blender} compact={false} key={projectId} projectId={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
           </div>
           <div hidden={step !== 2}>
             <section className="control-section"><h2>Check the view</h2><p className="workflow-hint">Compare representative seat views with reference photos. Changes stay in a draft until you apply them.</p><button className="button button-secondary" onClick={() => setView('review')}>Review seat views <ArrowRight size={16} /></button></section>
@@ -254,7 +255,7 @@ export function StudioPage() {
             <section className="delivery-card"><h2>2. Export your project</h2><p>Download a project backup or use the available export formats.</p><button className="button button-secondary" onClick={() => setExportOpen(true)}><Download size={16} /> Export options</button></section>
             <section className="delivery-card"><h2>3. Share when ready</h2><p>Manage the public cloud preview. Imported Blender models stay local and are not included in cloud sharing.</p><button className="button button-secondary" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Sharing settings</button></section>
           </>}
-          {step < 3 && <div className="workflow-next"><button className="button button-primary" onClick={() => goToStep(step + 1)}>Continue to {workflowSteps[step + 1].title.toLowerCase()} <ArrowRight size={16} /></button><small>You can return to any step at any time.</small></div>}
+          {step < 3 && <div className="workflow-next">{step === 0 && projectTool === "materials" ? <><button className="button button-primary" onClick={() => setProjectTool("pilot")}>Continue with Pilot <ArrowRight size={16} /></button><button className="workflow-skip" onClick={() => goToStep(1)}>Or arrange the layout manually</button></> : <button className="button button-secondary" onClick={() => goToStep(step + 1)}>Continue to {workflowSteps[step + 1].title.toLowerCase()} <ArrowRight size={16} /></button>}</div>}
         </aside>
         <section className="viewport">
           {view !== 'review' && <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>}

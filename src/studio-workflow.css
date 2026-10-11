@@ -131,3 +131,29 @@
 .local-blender-build button { width: 100%; min-height: 44px; margin: 6px 0; }
 .local-blender-build small, .local-blender-build p { color: #b4c9d3; line-height: 1.6; font-size: 12px; overflow-wrap: anywhere; }
 .local-blender-build summary { cursor: pointer; color: #c7e5e0; font-size: 12px; margin-top: 12px; }
+
+/* Focused workspace: one task surface, secondary controls on demand. */
+.studio-workflow .studio-main { grid-template-columns: 380px minmax(0, 1fr); }
+.studio-workflow .control-panel { background: #0b1824; padding: 26px; }
+.workflow-intro { margin-bottom: 22px; }.workflow-intro h1 { font-size: 28px; }.workflow-intro p { margin-bottom: 0; }
+.project-tool-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 22px; }
+.project-tool-switch button { text-align: left; padding: 14px 12px; border: 1px solid #294050; border-radius: 12px; color: #aec4cb; background: #112230; cursor: pointer; font-size: 13px; font-weight: 600; }
+.project-tool-switch button > span { font-size: 9px; color: #7e9f9f; display: block; margin-bottom: 8px; letter-spacing: 2px; }
+.project-tool-switch small { display: block; font-size: 10px; line-height: 1.5; margin-top: 6px; font-weight: 400; color: #91aab7; }
+.project-tool-switch button[aria-pressed=true] { background: linear-gradient(135deg,#18392f,#12272b); border-color: #548676; color: #d4f7e7; box-shadow: inset 0 1px 0 #c2ffdd10; }
+.workflow-skip { display: block; width: 100%; padding: 13px 8px; background: transparent; border: 0; color: #9fb9c1; cursor: pointer; font-size: 12px; }
+.studio-workflow .control-section { border-bottom-color: #203442; padding-bottom: 24px; }
+.studio-workflow .control-section h2 { font-size: 15px; letter-spacing: -.2px; text-transform: none; }
+.studio-pilot .pilot-setup { background: #112730; border-color: #294b50; padding: 15px; }
+.pilot-options { padding: 12px 0; border-top: 1px solid #263c49; }.pilot-options > summary { font-size: 12px; color: #a4bdc6; }.pilot-options[open] > summary { margin-bottom: 13px; }.pilot-options .pilot-check { margin: 12px 0; }
+.studio-pilot form { gap: 8px; }.studio-pilot form > label { margin-top: 15px; margin-bottom: 3px; }.studio-pilot form > small { font-size: 10px; color: #8ca7b3; }
+.studio-pilot textarea { min-height: 120px; background: #0d1e2b; border-color: #304858; border-radius: 12px; }.studio-pilot li textarea { min-height: 72px; margin: 8px 0; }
+.studio-pilot .button, .local-blender-build button { border-radius: 10px; box-shadow: none; }.studio-workflow .button-secondary { background: #182d3c; color: #d0e2e7; border: 1px solid #334e5e; }
+.pilot-proposal { padding: 18px; background: #10242d; border-color: #355750; border-radius: 14px; }.pilot-count { border-top: 1px solid #29483f; border-bottom: 1px solid #29483f; padding: 12px 0; color: #a4ead2 !important; }
+.layout-checks { padding: 13px 14px; margin: 14px 0; background: #10222c; border: 1px solid #2a424a; border-radius: 10px; font-size: 12px; line-height: 1.65; color: #a8c0c8; }.layout-checks > summary { cursor: pointer; color: #d0e6df; }.layout-checks > summary > small { display: block; margin: 2px 0 0 15px; font-size: 10px; color: #8fafaa; }.layout-checks details { padding: 10px 0; border-top: 1px solid #28404a; }.layout-checks p { font-size: 12px; }.layout-checks > small { display: block; font-size: 10px; }
+.model-options { border-top: 1px solid #29424f; padding: 16px 0; font-size: 12px; }.model-options > summary { cursor: pointer; color: #a9c5ca; margin-bottom: 12px; }.local-blender-build { background: #10282d; padding: 16px; border-color: #34594f; }.local-blender-build > button:first-child { border-radius: 10px; background: #5be2c3; color: #071c1a; font-weight: 700; border: 0; }
+.studio-workflow :is(button,summary,input,textarea,select):focus-visible { outline: 2px solid #74e7c9; outline-offset: 3px; }
+@media (max-width:1100px) { .studio-workflow .studio-main { grid-template-columns: 330px minmax(0,1fr); }.studio-workflow .control-panel { padding: 20px; } }
+.studio-workflow .review-workspace { grid-template-columns: minmax(0,1fr); }
+@media (max-width:680px) { .studio-workflow .control-panel { padding: 20px 16px; }.workflow-intro h1 { font-size: 24px; }.project-tool-switch button { min-height: 90px; }.studio-workflow .viewport { min-height: 420px; }.studio-workflow .workflow-nav { position: sticky; top: 0; z-index: 9; } }
+@media (prefers-reduced-motion:reduce) { .studio-workflow *, .studio-workflow *::before, .studio-workflow *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

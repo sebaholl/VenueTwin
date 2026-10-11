@@ -330,3 +330,9 @@ Pilot proposals and the Blender panel show deterministic layout checks. They fla
 These are advisory checks for approximate Studio meshes, not imported-model collision tests or certification of source accuracy, sightlines, accessibility, evacuation routes or safety clearances. Draft builds remain available. Explicit dimension fields do not prove measurements have been verified.
 
 For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief with the original request, unapplied proposed actions and warnings. Nothing is edited or sent automatically. Review the brief and click Generate proposal to request changes. Oversized fix briefs are rejected rather than silently truncated. You can also adjust the affected rows directly in Layout.
+
+### Focused Studio and frontpage refresh
+
+Project now separates **Materials** (saved plans/photos/measurements) from **Pilot** (analysis, briefs and proposals). Both stay mounted when switching, preserving drafts and in-flight work. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
+
+The frontpage includes an interactive, illustrative seating diagram with three position choices and a plan/spatial toggle. It makes no seat-quality score claims. The visual uses local CSS and React, with keyboard-accessible buttons and reduced-motion support; no external images, libraries or tracking were added. Mobile styles retain the selection controls and simplify decorative labels.
