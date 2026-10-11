@@ -322,3 +322,11 @@ In Project → Pilot, choose **Build from reviewed findings** to fill a starting
 Review the proposed changes, then use **Apply and build 3D model** to apply the layout as one undoable edit and start the existing local Blender generator with that exact layout. **Apply changes** remains available for layout-only work. Model progress, cancellation, errors and local storage status are visible in Project; advanced import/export controls are collapsed there and remain available in Model. Blender building itself has no AI charge.
 
 If Blender fails or is cancelled, the applied layout remains editable and undoable. A previous model is retained until a valid replacement is imported; layout changes during a build prevent importing the outdated result. A build is an approximate architecture draft, not verification of source accuracy or automatic customer delivery. Inspect representative seat views before sharing.
+
+### Local layout checks
+
+Pilot proposals and the Blender panel show deterministic layout checks. They flag intersections between conservative Studio chair envelopes (including service seats) and other chairs or the stage platform. Tests cover coincident rows, rotated geometry and vertical separation; balconies above stalls are not treated as collisions when their envelopes do not intersect. Reports count all detected pairs/seats and show up to eight examples. Template-default stage/screen fields and a screen wider than the stage are listed separately as information.
+
+These are advisory checks for approximate Studio meshes, not imported-model collision tests or certification of source accuracy, sightlines, accessibility, evacuation routes or safety clearances. Draft builds remain available. Explicit dimension fields do not prove measurements have been verified.
+
+For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief with the original request, unapplied proposed actions and warnings. Nothing is edited or sent automatically. Review the brief and click Generate proposal to request changes. Oversized fix briefs are rejected rather than silently truncated. You can also adjust the affected rows directly in Layout.
