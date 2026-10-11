@@ -1,3 +1,4 @@
+import { LayoutChecksPanel } from './LayoutChecksPanel'
 import { customStageGeometry } from '../utils/stageGeometry'
 import { buildLocalModel, assertBuildCurrent } from '../lib/blenderJobs'
 import { loadProjectModel, removeProjectModel, saveProjectModel } from '../lib/projectModels'
@@ -102,6 +103,7 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource, ref, compa
     finally { if (ticket === request.current) setBusy(false) }
   }
   return <section className="control-section category-panel"><h2>Build the architecture</h2><p>Build approximate architecture from your current layout. Studio keeps the seats and obstacles interactive.</p>
+    <LayoutChecksPanel config={config} />
     {import.meta.env.DEV && <div className="local-blender-build">
       <button disabled={busy || building} onClick={() => void build().catch((reason) => setError(reason instanceof Error ? reason.message : 'Build could not start.'))}>Build 3D model with Blender</button>
       {building && !busy && <button onClick={() => buildController.current?.abort()}>Cancel build</button>}
