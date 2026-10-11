@@ -12,8 +12,9 @@ import { generateSeatLayout } from '../utils/venue'
 
 const sample = 'Arrange this project as a straight cinema layout with 8 rows and 12 seats in every row, 2 sections, 0.65 m seat spacing, 1 m row spacing, 1 m aisle width, 0.15 m rise per row and zero curve. Set stage width to 9 m and preserve its position. Preserve other settings. Check that there are exactly 96 seats.'
 const mze = 'Use these published Kinosál Mže measurements: stage 11 m wide × 4.5 m deep; screen 9 m × 3.8 m; seating starts 2.5 m from the stage; total capacity 259 places including 6 wheelchair places. Source: https://www.mkstc.cz/kinosal-mze.html . The row arrangement, row elevations and room height have not been supplied. Apply only supported dimensions and tell me what you still need. Do not turn wheelchair places into ordinary chairs.'
-type Proposal = { plan: PilotPlan; base: string; allowEstimates: boolean; next: VenueConfig; references: string }
+type Proposal = { plan: PilotPlan; base: string; allowEstimates: boolean; next: VenueConfig; references: string; review?: { attempts: number; outcome: string; note: string } }
 export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { projectId: string; config: VenueConfig; onApplied: () => void; onBuild?: (config: VenueConfig) => Promise<void> }) {
+  const [autoReview, setAutoReview] = useState(true)
   const [answers, setAnswers] = useState<string[]>([])
   const [building, setBuilding] = useState(false)
   const [brief, setBrief] = useState('')
@@ -53,12 +54,12 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
     try {
       const references = await referenceContext()
       if (controller.signal.aborted) return
-      const response = await fetch('/api/pilot/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ brief: nextBrief, config: state.config, allowEstimates, references }) })
+      const response = await fetch('/api/pilot/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ brief: nextBrief, config: state.config, allowEstimates, references, autoReview }) })
       const data = await response.json()
       if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Pilot request failed.')
       const plan = parsePilotPlan(data.plan)
       const next = applyPilotPlan(state.config, plan, allowEstimates)
-      if (!controller.signal.aborted) setProposal({ plan, base, allowEstimates, next, references })
+      if (!controller.signal.aborted) setProposal({ plan, base, allowEstimates, next, references, review: data.review })
     } catch (failure) { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Pilot request failed. Nothing was changed.') }
     finally { if (active.current === controller) { active.current = null; setBusy(false) } }
   }
@@ -96,9 +97,9 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
         <textarea id="pilot-brief" rows={6} maxLength={12000} required value={brief} disabled={busy || analysing || building} onChange={(event) => { setBrief(event.target.value); clearProposal(); setNotice('') }} placeholder="For example: make row 3 sit 0.4 metres above its level and keep everything else." />
         <details className="pilot-options"><summary>Starting points</summary><div className="pilot-examples"><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(reviewedLayoutBrief); clearProposal() }}>Build from reviewed findings</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(sample); clearProposal() }}>Example layout</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(mze); clearProposal() }}>Mže measurements</button></div></details>
         <details className="pilot-options"><summary>Sources & estimation settings</summary><label className="pilot-check"><input type="checkbox" checked={includeReferences} disabled={busy || analysing || building} onChange={(event) => { setIncludeReferences(event.target.checked); clearProposal() }} /> Include saved notes, measurements and accepted findings</label>
-        <label className="pilot-check"><input type="checkbox" checked={allowEstimates} disabled={busy || analysing || building} onChange={(event) => { setAllowEstimates(event.target.checked); clearProposal() }} /> Allow clearly labelled estimates</label></details>
-        <small>Your brief, current layout and accepted reference findings are sent to OpenAI. Analyse photos and PDFs separately above, then describe the changes you want.</small>
-        <button className="button button-primary" disabled={busy || analysing || building || ready !== true || !brief.trim()}>{busy ? 'Preparing and checking changes…' : 'Generate proposal'}</button>
+        <label className="pilot-check"><input type="checkbox" checked={allowEstimates} disabled={busy || analysing || building} onChange={(event) => { setAllowEstimates(event.target.checked); clearProposal() }} /> Allow clearly labelled estimates</label><label className="pilot-check"><input type="checkbox" checked={autoReview} disabled={busy || analysing || building} onChange={(event) => { setAutoReview(event.target.checked); clearProposal() }} /> Check and attempt one correction</label></details>
+        <small>{autoReview ? "Up to two paid AI requests per proposal, with at most one correction attempt. " : "One paid AI request per proposal. "}Your brief, current layout and accepted reference findings are sent to OpenAI. Analyse photos and PDFs separately above, then describe the changes you want.</small>
+        <button className="button button-primary" disabled={busy || analysing || building || ready !== true || !brief.trim()}>{busy ? 'Planning and checking…' : 'Generate proposal'}</button>
         {busy && <button type="button" className="button button-secondary" onClick={() => { active.current?.abort(); setNotice('Cancelled. Your venue was not changed.') }}>Cancel</button>}
       </form>
       {busy && <p role="status">Pilot is working. Your current venue stays unchanged.</p>}
@@ -106,6 +107,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
       {notice && <p role="status" className="pilot-status">{notice}</p>}
       {proposal && <div className="pilot-proposal" aria-label="Proposed venue changes">
         <h3>{proposal.plan.actions.length ? 'Review proposal' : 'More information needed'}</h3><p>{proposal.plan.summary}</p>
+        {proposal.review && <p className="pilot-status" role="status">{proposal.review.attempts} AI request{proposal.review.attempts === 1 ? "" : "s"} · {proposal.review.note}</p>}
         <p className="pilot-count">{generateSeatLayout(config).length} → {generateSeatLayout(proposal.next).length} seats · {proposal.plan.actions.length} actions</p>
         <LayoutChecksPanel config={proposal.next} onRepair={(request) => { const nextBrief = `Review the CURRENT layout using my original brief below. The warnings describe an UNAPPLIED proposal; do not assume those edits are already in the current layout.\n\n${brief}\n\nProposed edits (not applied): ${JSON.stringify(proposal.plan.actions)}\n\n${request}`; if (nextBrief.length > 12000) { setError("The fix request is too long. Shorten your brief or address the listed rows in Layout."); return } setBrief(nextBrief); clearProposal(); setNotice("Fix request prepared. Review the brief, then generate a new proposal.") }} />
         <details className="proposal-edits"><summary>Proposed edits · {proposal.plan.actions.length}</summary>{proposal.plan.actions.map((action, index) => <details key={index}><summary>{pilotActionLabel(action)} <span>{action.basis === 'estimated' ? 'Estimate' : 'Provided / existing'}</span></summary><p>{action.source}</p><details><summary>Technical details</summary><pre>{JSON.stringify(action, null, 2)}</pre></details></details>)}</details>
