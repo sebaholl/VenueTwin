@@ -1,6 +1,7 @@
 import type { VenueConfig, RowOverride, VenueObstacle, RoomOpening } from '../types/venue'
 import { parseViewerConfig } from './customerViewer'
-import { assignRowRange, saveSeatingLevel } from './levelManagement'
+import { assignRowRange, saveSeatingLevel, removeSeatingLevel } from './levelManagement'
+import { getCategories, removeCategory } from './seatCategories'
 import { generateSeatLayout, getRowSeats } from './venue'
 
 type Evidence = { basis: 'provided' | 'estimated'; source: string }
@@ -16,6 +17,16 @@ export type PilotAction = Evidence & (
   | { tool: 'save_level'; id: string; name: string; elevation: number; parapetHeight: number }
   | { tool: 'assign_rows'; firstRow: number; lastRow: number; levelId: string }
   | { tool: 'save_obstacle'; obstacle: VenueObstacle }
+  | { tool: 'remove_obstacle'; id: string }
+  | { tool: 'remove_level'; id: string }
+  | { tool: 'set_row_arc'; row: number; radius: number | null; degrees: number | null }
+  | { tool: 'set_row_label'; row: number; label: string | null }
+  | { tool: 'save_category'; id: string; name: string; color: string; price: number | null }
+  | { tool: 'remove_category'; id: string }
+  | { tool: 'assign_row_category'; firstRow: number; lastRow: number; categoryId: string }
+  | { tool: 'assign_seat_category'; row: number; seat: number; categoryId: string | null }
+  | { tool: 'label_accessible_seat'; row: number; seat: number; accessible: boolean }
+  | { tool: 'set_currency'; currency: NonNullable<VenueConfig['currency']> }
 )
 export type PilotPlan = { summary: string; actions: PilotAction[]; questions: string[]; limitations: string[]; expectedSeatCount: number | null }
 
@@ -42,6 +53,16 @@ export const pilotPlanSchema = object({
     action('edit_row', { row: integer(1, 50), seats: nullable(integer(1, 200)), elevation: nullable(number(0, 100)), offsetX: nullable(number(-100, 100)), offsetY: nullable(number(-100, 100)), rotation: nullable(number(-100, 100)), curve: nullable(number(-5, 5)), frontRailing: nullable({ type: 'boolean' }) }),
     action('save_level', { id: string(80), name: string(80), elevation: number(0, 100), parapetHeight: number(.2, 2) }),
     action('assign_rows', { firstRow: integer(1, 50), lastRow: integer(1, 50), levelId: { type: 'string', maxLength: 80 } }),
+    action('remove_obstacle', { id: string(80) }),
+    action('remove_level', { id: string(80) }),
+    action('set_row_arc', { row: integer(1, 50), radius: nullable(number(.1, 100)), degrees: nullable(number(1, 360)) }),
+    action('set_row_label', { row: integer(1, 50), label: nullable(string(30)) }),
+    action('save_category', { id: string(80), name: string(40), color: string(7), price: nullable(number(0, 1000000)) }),
+    action('remove_category', { id: string(80) }),
+    action('assign_row_category', { firstRow: integer(1, 50), lastRow: integer(1, 50), categoryId: string(80) }),
+    action('assign_seat_category', { row: integer(1, 50), seat: integer(1, 200), categoryId: nullable(string(80)) }),
+    action('label_accessible_seat', { row: integer(1, 50), seat: integer(1, 200), accessible: { type: 'boolean' } }),
+    action('set_currency', { currency: choice('CZK', 'EUR', 'DKK', 'USD', 'GBP') }),
     action('save_obstacle', { obstacle: object({ id: string(80), name: string(100), kind: choice('column', 'wall', 'railing'), x: number(-100, 100), z: number(-100, 100), elevation: number(0, 100), width: number(.01, 100), depth: number(.01, 100), height: number(.01, 100), rotation: number(-100, 100) }) }),
   ] } },
   questions: { type: 'array', maxItems: 10, items: string() },
@@ -103,6 +124,51 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
         config = { ...config, rowOverrides: { ...config.rowOverrides, [row]: { ...config.rowOverrides[row], ...patch } } }
         break
       }
+      case 'remove_obstacle': {
+        if (!config.obstacles?.some((o) => o.id === item.id)) throw new Error('That obstacle does not exist.')
+        config = { ...config, obstacles: config.obstacles.filter((o) => o.id !== item.id) }; break
+      }
+      case 'remove_level': config = removeSeatingLevel(config, item.id); break
+      case 'set_currency': config = { ...config, currency: item.currency }; break
+      case 'save_category': {
+        if (!item.name.trim() || !/^#[0-9a-f]{6}$/i.test(item.color)) throw new Error('Use a category name and a #RRGGBB colour.')
+        const categories = getCategories(config)
+        const category = { id: item.id, name: item.name.trim(), color: item.color, ...(item.price === null ? {} : { price: item.price }) }
+        const next = categories.some((c) => c.id === item.id) ? categories.map((c) => c.id === item.id ? category : c) : [...categories, category]
+        if (next.length > 8) throw new Error('Use at most 8 seat categories.')
+        config = { ...config, categories: next }; break
+      }
+      case 'remove_category': {
+        if (item.id === 'standard' || !getCategories(config).some((c) => c.id === item.id)) throw new Error('Choose an existing non-Standard category to remove.')
+        config = { ...config, ...removeCategory(config, item.id) }; break
+      }
+      case 'assign_row_category': {
+        if (item.firstRow > item.lastRow || item.lastRow > config.rows) throw new Error('Choose an existing row range.')
+        if (!getCategories(config).some((c) => c.id === item.categoryId)) throw new Error('That category does not exist.')
+        for (let row = item.firstRow - 1; row < item.lastRow; row++) config.rowOverrides[row] = { ...config.rowOverrides[row], categoryId: item.categoryId, seatCategories: {} }
+        break
+      }
+      case 'set_row_arc': case 'set_row_label': case 'assign_seat_category': case 'label_accessible_seat': {
+        const row = item.row - 1
+        if (row >= config.rows) throw new Error(`Row ${item.row} does not exist.`)
+        const override = { ...config.rowOverrides[row] }
+        if (item.tool === 'set_row_arc') {
+          if ((item.radius === null) !== (item.degrees === null)) throw new Error('Supply both arc radius and span, or null for both to remove the arc.')
+          override.arcRadius = item.radius ?? undefined; override.arcDegrees = item.degrees ?? undefined
+        } else if (item.tool === 'set_row_label') override.ticketRow = item.label ?? undefined
+        else {
+          const seat = item.seat - 1
+          if (!generateSeatLayout(config).some((s) => s.row === row && s.seat === seat)) throw new Error('That seat does not exist in this row.')
+          if (item.tool === 'label_accessible_seat') override.accessibleSeats = { ...override.accessibleSeats, [seat]: item.accessible }
+          else {
+            if (item.categoryId !== null && !getCategories(config).some((c) => c.id === item.categoryId)) throw new Error('That category does not exist.')
+            override.seatCategories = { ...override.seatCategories }
+            if (item.categoryId === null) delete override.seatCategories[seat]
+            else override.seatCategories[seat] = item.categoryId
+          }
+        }
+        config.rowOverrides[row] = override; break
+      }
       case 'save_level': config = saveSeatingLevel(config, { id: item.id, name: item.name, elevation: item.elevation, parapetHeight: item.parapetHeight }); break
       case 'assign_rows': config = assignRowRange(config, item.firstRow - 1, item.lastRow - 1, item.levelId); break
       case 'save_obstacle': {
@@ -152,6 +218,16 @@ export function pilotActionLabel(action: PilotAction) {
     case 'edit_row': return `Edit row ${action.row}`
     case 'save_level': return `Level: ${action.name}, ${action.elevation} m above ground`
     case 'assign_rows': return `Assign rows ${action.firstRow}–${action.lastRow} to ${action.levelId || 'main floor'}`
+    case 'remove_obstacle': return `Remove obstacle ${action.id}`
+    case 'remove_level': return `Remove level ${action.id}; preserve row world heights`
+    case 'set_row_arc': return action.radius === null ? `Remove arc from row ${action.row}` : `Row ${action.row}: ${action.radius} m radius, ${action.degrees}° arc`
+    case 'set_row_label': return `Row ${action.row}: ticket label ${action.label ?? 'default'}`
+    case 'save_category': return `Category: ${action.name}, ${action.price === null ? 'unpriced' : action.price}`
+    case 'remove_category': return `Remove category ${action.id}; reassign to Standard`
+    case 'assign_row_category': return `Rows ${action.firstRow}–${action.lastRow}: category ${action.categoryId}; replace seat overrides`
+    case 'assign_seat_category': return `Row ${action.row}, seat position ${action.seat}: ${action.categoryId ?? 'inherit row category'}`
+    case 'label_accessible_seat': return `Row ${action.row}, seat position ${action.seat}: ${action.accessible ? 'add' : 'remove'} accessibility label only`
+    case 'set_currency': return `Display prices in ${action.currency} (no conversion)`
     case 'save_obstacle': return `${action.obstacle.kind}: ${action.obstacle.name}`
   }
 }

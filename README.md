@@ -1,5 +1,7 @@
 # VenueTwin
 
+Pilot local v1: [capabilities, complete workflow, acceptance checks and remaining limits](docs/PILOT_V1.md).
+
 View comparison workspace: [reference sources, camera matching and geometry drafts](docs/VIEW_REVIEW.md).
 
 Customer seat viewer: [local preview, website export and embedding](docs/CUSTOMER_VIEWER.md).
