@@ -24,7 +24,7 @@ export function blenderBlueprint(config: VenueConfig, detailed = false) {
     const points = seats.filter((s) => s.row === row)
     if (!points.length) continue
     const xs = points.map((s) => s.position[0]), zs = points.map((s) => s.position[2])
-    const height = row * config.rake + .1
+    const height = Math.max(.001, points[0].position[1] - .25 + .1)
     boxes.push({ name: `Approximate row deck ${row + 1}`, position: [(Math.min(...xs) + Math.max(...xs)) / 2, height / 2 - .1, (Math.min(...zs) + Math.max(...zs)) / 2], size: [Math.max(...xs) - Math.min(...xs) + .8, height, Math.max(...zs) - Math.min(...zs) + (config.rowSpacing ?? .92)], rotation: 0, color: '#253447' })
   }
   const xs = [...seats.map((s) => s.position[0]), -config.stageWidth / 2 + stage.offsetX, config.stageWidth / 2 + stage.offsetX]
