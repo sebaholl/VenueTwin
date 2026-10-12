@@ -1,3 +1,4 @@
+import { roomGeometry } from '../utils/roomGeometry'
 import { stageGeometry } from '../utils/stageGeometry'
 import type { ReviewCamera } from '../utils/viewReview'
 import { ContactShadows, Environment, Lightformer, OrbitControls, RoundedBox, Text } from '@react-three/drei'
@@ -29,16 +30,17 @@ type SceneProps = {
 function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interior }: SceneProps) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
   const architecture = useMemo(() => levelArchitecture(config), [config])
+  const room = useMemo(() => roomGeometry(config).filter((box) => interior || box.name === 'VT_ROOM_FLOOR'), [config, interior])
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const stageRotation = stage.rotation * Math.PI / 180
   const detailed = !!importedModel?.getObjectByName('VT_ND_DETAIL_ROOT')
   useEffect(() => {
-    importedModel?.traverse((object) => { if (object.userData.venueTwinShell === true) object.visible = !!interior })
+    importedModel?.traverse((object) => { if (object.userData.venueTwinShell === true || object.name.startsWith('VT_ROOM_SHELL_')) object.visible = !!interior })
   }, [importedModel, interior])
 
   return (
     <group position={modelOffset}>
-      {!importedModel && <LevelArchitecture boxes={architecture} />}
+      {!importedModel && <><LevelArchitecture boxes={architecture} /><LevelArchitecture boxes={room} /></>}
       {importedModel && <primitive object={importedModel} dispose={null} onClick={(event: { stopPropagation: () => void }) => event.stopPropagation()} />}
       {getObstacles(config).map((o) => <group key={o.id} position={[o.x, o.elevation, o.z]} rotation={[0, o.rotation * Math.PI / 180, 0]}>
         {obstacleBoxes(o).map((box, index) => <mesh key={index} position={[box.x, box.y, 0]} onClick={(event) => event.stopPropagation()}><boxGeometry args={[box.width, box.height, box.depth]} /><meshStandardMaterial color={o.kind === 'railing' ? '#b4bec9' : '#8d8478'} roughness={.7} /></mesh>)}
