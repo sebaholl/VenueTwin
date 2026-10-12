@@ -1,5 +1,7 @@
 # VenueTwin
 
+Architectural reconstruction: [source-aware detail components for Pilot and Blender](docs/ARCHITECTURAL_DETAILS.md).
+
 Pilot local v1: [capabilities, complete workflow, acceptance checks and remaining limits](docs/PILOT_V1.md).
 
 View comparison workspace: [reference sources, camera matching and geometry drafts](docs/VIEW_REVIEW.md).
