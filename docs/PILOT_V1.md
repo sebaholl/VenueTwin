@@ -61,7 +61,7 @@ Before calling this production-ready, complete this local acceptance run:
 
 - AI and Blender jobs remain localhost-only. Hosted queues, customer authentication for paid work, usage budgets, durable job storage and automatic delivery require a backend deployment.
 - Pointer-driven plan calibration/boundary tracing, arbitrary row insertion/deletion, specialised National Theatre numbering and reference-view matching remain manual Studio tasks. Pilot can change total row counts and individual row settings, but cannot safely infer those pointer/identity operations.
-- No polygonal room shells, complex ceiling meshes, curved wall systems, door leaves/glass/frames, texture reconstruction or automatic decorative modelling. The detailed National Theatre study remains a separate specialised workflow.
+- The architectural detail extension adds framed panels, portals, coffers, faceted columns and curved balcony fascias; see [Architectural details](ARCHITECTURAL_DETAILS.md). Polygonal room shells, complex ceiling meshes, door leaves/glass, texture reconstruction and sculptural ornament remain unsupported. The detailed National Theatre study remains a separate specialised workflow.
 - Dedicated wheelchair bays and circulation routes are not represented by ordinary chair labels.
 - Layout checks are conservative modelling diagnostics, not collision-complete, accessibility, egress, structural or sightline certification.
 - No automatic proof that a photo is from an identified seat. Human comparison and better source material remain necessary.
