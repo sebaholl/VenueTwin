@@ -1,3 +1,4 @@
+import { validateRoomOpenings } from './roomOpenings'
 import { stageGeometry, customStageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { generateSeatLayout, generatePhysicalSeatLayout, getSeatLabel } from './venue'
@@ -13,6 +14,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
   if (value.room !== undefined) {
     const r = value.room
     if (!record(r) || !['width', 'depth', 'height'].every((k) => finite(r[k], 1, 100)) || !['x', 'z', 'rotation'].every((k) => finite(r[k], -100, 100)) || typeof r.ceiling !== 'boolean' || !['wallColor', 'floorColor'].every((k) => typeof r[k] === 'string' && /^#[0-9a-fA-F]{6}$/.test(r[k] as string))) throw new Error('Invalid room dimensions or colours.')
+    validateRoomOpenings(r.openings, { width: r.width as number, depth: r.depth as number, height: r.height as number })
   }
   for (const key of ['stageDepth', 'screenWidth', 'screenHeight', 'screenBottom']) if (value[key] !== undefined && !finite(value[key], key === 'screenBottom' ? 0 : .1, 100)) throw new Error('Invalid stage or screen dimensions.')
   for (const field of ['seatSpacing', 'rowSpacing', 'aisleWidth']) if (value[field] !== undefined && !finite(value[field], .01, 20)) throw new Error('Invalid seat spacing.')
