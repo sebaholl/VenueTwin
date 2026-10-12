@@ -148,6 +148,7 @@ export function FloorplanEditor({ measurements = [], config, imageUrl, fileName,
       <svg viewBox="0 0 1000 620" onPointerDown={handleCanvasPointerDown}>
         <image href={imageUrl ?? undefined} x="0" y="0" width="1000" height="620" preserveAspectRatio="xMidYMid meet" opacity=".34" pointerEvents="none" />
         <BoundaryOverlay points={visibleBoundary} drawing={drawingBoundary} />
+        {config.room && <g pointerEvents="none" transform={`translate(${500 + config.room.x * scale}, ${150 + config.room.z * scale}) rotate(${-config.room.rotation})`}><rect x={-config.room.width * scale / 2} y={-config.room.depth * scale / 2} width={config.room.width * scale} height={config.room.depth * scale} fill="none" stroke="#57867a" strokeWidth="2" strokeDasharray="8 5" /></g>}
         <g className="plan-stage draggable" transform={`translate(${stagePose.x}, ${stagePose.y}) rotate(${stagePose.rotation})`} onPointerDown={startStageDrag} onPointerMove={moveStageDrag} onPointerUp={endStageDrag} onPointerCancel={endStageDrag}><rect x={-(config.stageWidth * scale / 2)} y={-stageGeometry(config).depth / 2 * scale} width={config.stageWidth * scale} height={stageGeometry(config).depth * scale} rx="7" /><text x="0" y="6">STAGE · {config.stageWidth} M</text></g>
         {rows.filter(({ row }) => visibleLevel === 'all' || config.rowOverrides[row]?.levelId === visibleLevel).map(({ row, seats }) => {
           if (!seats.length) return null
