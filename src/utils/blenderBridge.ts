@@ -9,6 +9,7 @@ type Box = { name: string; position: number[]; size: number[]; rotation: number;
 export function blenderBlueprint(config: VenueConfig, detailed = false) {
   if (detailed && Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean')) throw new Error('Custom row railings require the general Blender scene export.')
   if (detailed && customStageGeometry(config)) throw new Error('Custom stage and screen dimensions require the general Blender scene export.')
+  if (detailed && config.architecturalDetails?.length) throw new Error('Architectural details require the general Blender build.')
   if (detailed && config.room) throw new Error('Room shells require the general Blender build.')
   const dimensions = stageGeometry(config)
   const seats = generateSeatLayout(config)
@@ -30,6 +31,7 @@ export function blenderBlueprint(config: VenueConfig, detailed = false) {
   const xs = [...seats.map((s) => s.position[0]), -config.stageWidth / 2 + stage.offsetX, config.stageWidth / 2 + stage.offsetX]
   const zs = [...seats.map((s) => s.position[2]), stage.offsetY - Math.max(5, dimensions.depth / 2 + 2.2)]
   boxes.push({ name: 'Base floor', position: [(Math.min(...xs) + Math.max(...xs)) / 2, -.22, (Math.min(...zs) + Math.max(...zs)) / 2], size: [Math.max(...xs) - Math.min(...xs) + 4, .2, Math.max(...zs) - Math.min(...zs) + 4], rotation: 0, color: '#111e2b' })
+  if (boxes.length > 2000) throw new Error('Scene exceeds the 2,000-piece Blender budget. Reduce detail segments or openings.')
   const detail = detailed && config.studyNotice && config.seatingLevels?.length ? {
     profile: 'nd-photo-study-v1', stageWidth: config.stageWidth, stage,
     rows: Array.from({ length: config.rows }, (_, row) => {
