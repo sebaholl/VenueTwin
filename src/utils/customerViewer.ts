@@ -1,3 +1,4 @@
+import { architecturalDetailGeometry } from './architecturalDetails'
 import { validateRoomOpenings } from './roomOpenings'
 import { stageGeometry, customStageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
@@ -11,6 +12,7 @@ const finite = (n: unknown, min: number, max: number): n is number => typeof n =
 // Validate before generating geometry: published manifests are untrusted input.
 export function parseViewerConfig(value: unknown): VenueConfig {
   if (!record(value) || typeof value.name !== 'string' || value.name.length > 200 || !finite(value.rows, 1, 50) || !Number.isInteger(value.rows) || !finite(value.seatsPerRow, 1, 200) || !Number.isInteger(value.seatsPerRow) || !finite(value.sectors, 1, 3) || !Number.isInteger(value.sectors) || !finite(value.rake, 0, 3) || !finite(value.curve, -5, 5) || !finite(value.stageWidth, 1, 100) || !['straight', 'fan', 'blocks'].includes(String(value.geometry)) || !record(value.rowOverrides)) throw new Error('Invalid venue geometry in the viewer project.')
+  architecturalDetailGeometry(value.architecturalDetails)
   if (value.room !== undefined) {
     const r = value.room
     if (!record(r) || !['width', 'depth', 'height'].every((k) => finite(r[k], 1, 100)) || !['x', 'z', 'rotation'].every((k) => finite(r[k], -100, 100)) || typeof r.ceiling !== 'boolean' || !['wallColor', 'floorColor'].every((k) => typeof r[k] === 'string' && /^#[0-9a-fA-F]{6}$/.test(r[k] as string))) throw new Error('Invalid room dimensions or colours.')
@@ -50,7 +52,7 @@ export function parseViewerConfig(value: unknown): VenueConfig {
 }
 
 export function geometrySignature(config: VenueConfig) {
-  return JSON.stringify({ ...(config.room ? { room: config.room } : {}), ...(customStageGeometry(config) ? { stageGeometry: stageGeometry(config) } : {}), seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), ...(Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean') ? { railings: Object.entries(config.rowOverrides).filter(([, value]) => typeof value.frontRailing === 'boolean').map(([row, value]) => [row, value.frontRailing]) } : {}), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
+  return JSON.stringify({ ...(config.architecturalDetails?.length ? { architecturalDetails: config.architecturalDetails } : {}), ...(config.room ? { room: config.room } : {}), ...(customStageGeometry(config) ? { stageGeometry: stageGeometry(config) } : {}), seats: generatePhysicalSeatLayout(config).map((s) => [s.row, s.seat, s.position, s.rotation]), ...(Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean') ? { railings: Object.entries(config.rowOverrides).filter(([, value]) => typeof value.frontRailing === 'boolean').map(([row, value]) => [row, value.frontRailing]) } : {}), stage: config.stagePosition, width: config.stageWidth, rowSpacing: config.rowSpacing, parapets: config.seatingLevels?.map((l) => [l.id, l.parapetHeight ?? .8]), obstacles: (config.obstacles ?? []).map((o) => [o.kind, o.x, o.z, o.elevation, o.width, o.height, o.depth, o.rotation]) })
 }
 
 export function viewerLevels(config: VenueConfig) {

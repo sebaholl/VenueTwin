@@ -1,3 +1,4 @@
+import type { ArchitecturalDetail } from '../utils/architecturalDetails'
 export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
@@ -35,6 +36,7 @@ export type StagePosition = {
 export type RoomOpening = { id: string; wall: 'front' | 'back' | 'left' | 'right'; offset: number; width: number; height: number; bottom: number }
 
 export type VenueConfig = {
+  architecturalDetails?: ArchitecturalDetail[]
   room?: { openings?: RoomOpening[]; width: number; depth: number; height: number; x: number; z: number; rotation: number; ceiling: boolean; wallColor: string; floorColor: string }
   seatingLevels?: { id: string; name: string; elevation: number; parapetHeight?: number }[]
   studyNotice?: string

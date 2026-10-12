@@ -1,3 +1,4 @@
+import type { ArchitecturalDetail } from './architecturalDetails'
 import type { VenueConfig, RowOverride, VenueObstacle, RoomOpening } from '../types/venue'
 import { parseViewerConfig } from './customerViewer'
 import { assignRowRange, saveSeatingLevel, removeSeatingLevel } from './levelManagement'
@@ -6,6 +7,8 @@ import { generateSeatLayout, getRowSeats } from './venue'
 
 type Evidence = { basis: 'provided' | 'estimated'; source: string }
 export type PilotAction = Evidence & (
+  | { tool: 'save_architectural_detail'; detail: Omit<ArchitecturalDetail, 'basis' | 'source'> }
+  | { tool: 'remove_architectural_detail'; id: string }
   | { tool: 'set_room'; room: Omit<NonNullable<VenueConfig['room']>, 'openings'> }
   | { tool: 'save_room_opening'; opening: RoomOpening }
   | { tool: 'remove_room_opening'; id: string }
@@ -43,6 +46,8 @@ const action = (tool: string, properties: Record<string, Schema>) => object({ to
 export const pilotPlanSchema = object({
   summary: string(1200),
   actions: { type: 'array', maxItems: 80, items: { anyOf: [
+    action('save_architectural_detail', { detail: object({ id: string(80), name: string(80), kind: choice('panel', 'portal', 'coffer', 'column', 'curved-wall'), x: number(-100, 100), z: number(-100, 100), bottom: number(0, 100), width: number(.05, 100), height: number(.05, 100), depth: number(.05, 100), rotation: number(-180, 180), color: string(7), trimColor: string(7), roughness: number(0, 1), metalness: number(0, 1), trimRoughness: number(0, 1), trimMetalness: number(0, 1), trim: number(.01, 1), radius: nullable(number(1, 50)), span: nullable(number(5, 180)), segments: integer(1, 48) }) }),
+    action('remove_architectural_detail', { id: string(80) }),
     action('set_room', { room: object({ width: number(1, 100), depth: number(1, 100), height: number(1, 100), x: number(-100, 100), z: number(-100, 100), rotation: number(-100, 100), ceiling: { type: 'boolean' }, wallColor: string(7), floorColor: string(7) }) }),
     action('remove_room', {}),
     action('save_room_opening', { opening: object({ id: string(80), wall: choice('front', 'back', 'left', 'right'), offset: number(-100, 100), width: number(.1, 100), height: number(.1, 100), bottom: number(0, 100) }) }),
@@ -96,6 +101,11 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
   let config = parseViewerConfig(base)
   for (const item of plan.actions) {
     switch (item.tool) {
+      case 'save_architectural_detail': config = { ...config, architecturalDetails: [...(config.architecturalDetails ?? []).filter((d) => d.id !== item.detail.id), { ...item.detail, basis: item.basis, source: item.source }] }; break
+      case 'remove_architectural_detail': {
+        if (!config.architecturalDetails?.some((d) => d.id === item.id)) throw new Error('That architectural detail does not exist.')
+        config = { ...config, architecturalDetails: config.architecturalDetails.filter((d) => d.id !== item.id) }; break
+      }
       case 'set_room': config = { ...config, room: { ...structuredClone(item.room), ...(config.room?.openings ? { openings: config.room.openings } : {}) } }; break
       case 'save_room_opening': {
         if (!config.room) throw new Error('Create the room before adding openings.')
@@ -208,6 +218,8 @@ export function checkPilotBase(current: VenueConfig, snapshot: string) {
 }
 export function pilotActionLabel(action: PilotAction) {
   switch (action.tool) {
+    case 'save_architectural_detail': return `Architectural ${action.detail.kind}: ${action.detail.name}`
+    case 'remove_architectural_detail': return `Remove architectural detail ${action.id}`
     case 'set_room': return `Room: ${action.room.width} × ${action.room.depth} × ${action.room.height} m`
     case 'save_room_opening': return `Opening ${action.opening.id}: ${action.opening.wall} wall, ${action.opening.width} × ${action.opening.height} m`
     case 'remove_room_opening': return `Remove opening ${action.id}`

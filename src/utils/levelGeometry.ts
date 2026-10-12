@@ -2,7 +2,7 @@ import { stageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { generatePhysicalSeatLayout } from './venue'
 
-export type ArchitectureBox = { name: string; position: number[]; size: number[]; rotation: number; color: string }
+export type ArchitectureBox = { name: string; position: number[]; size: number[]; rotation: number; color: string; roughness?: number; metalness?: number }
 
 export function rowHasFrontRailing(config: VenueConfig, row: number) {
   const override = config.rowOverrides[row] ?? {}

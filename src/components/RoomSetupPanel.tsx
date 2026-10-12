@@ -1,3 +1,4 @@
+import { ArchitecturalDetailsPanel } from './ArchitecturalDetailsPanel'
 import { RoomOpeningsPanel } from './RoomOpeningsPanel'
 import { parseViewerConfig } from '../utils/customerViewer'
 import { useState } from 'react'
@@ -18,6 +19,6 @@ export function RoomSetupPanel({ config, onChange }: { config: VenueConfig; onCh
       {!valid && <p role="alert">Use dimensions of 1–100 m and position/rotation within ±100.</p>}
       <button className="button button-primary" disabled={!valid}>Apply room</button>
       {config.room && <button className="button button-secondary" type="button" onClick={() => onChange({ room: undefined })}>Remove room</button>}
-    </form><RoomOpeningsPanel config={config} onChange={onChange} /><p className="workflow-hint">Room floor is at elevation zero. Seats keep their positions. Rebuild Blender after changes. Openings are empty cut-outs. Decorative details are not generated yet.</p>
+    </form><RoomOpeningsPanel config={config} onChange={onChange} /><ArchitecturalDetailsPanel config={config} onChange={onChange} /><p className="workflow-hint">Room floor is at elevation zero. Seats keep their positions. Rebuild Blender after changes. Openings are empty cut-outs. Architectural details are separate components; removing or moving the room does not move them.</p>
   </section>
 }
