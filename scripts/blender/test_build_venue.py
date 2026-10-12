@@ -7,6 +7,14 @@ class BlueprintTests(unittest.TestCase):
         return {'format': 'venuetwin-blender', 'version': 1, 'units': 'metres', 'axes': 'three-y-up',
                 'boxes': [{'position': [1, 2, 3], 'size': [2, 3, 4], 'rotation': .5, 'color': '#abcdef'}], 'seats': []}
 
+    def test_material_surface_limits(self):
+        data = self.blueprint()
+        data['boxes'][0].update(roughness=.3, metalness=.7)
+        self.assertEqual(validate(data)['boxes'][0]['metalness'], .7)
+        for value in [-1, 2, float('nan'), True, 'gold']:
+            data['boxes'][0]['metalness'] = value
+            with self.assertRaises(ValueError): validate(data)
+
     def test_coordinates(self):
         self.assertEqual(to_blender([1, 2, 3]), (1, -3, 2))
 
