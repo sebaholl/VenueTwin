@@ -30,7 +30,7 @@ type SceneProps = {
 function VenueModel({ config, selectedSeat, onSeatSelect, importedModel, interior }: SceneProps) {
   const seats = useMemo(() => generateSeatLayout(config), [config])
   const architecture = useMemo(() => levelArchitecture(config), [config])
-  const room = useMemo(() => roomGeometry(config).filter((box) => interior || box.name === 'VT_ROOM_FLOOR'), [config, interior])
+  const room = useMemo(() => roomGeometry(config).filter((box) => interior || !box.name.startsWith('VT_ROOM_SHELL_')), [config, interior])
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
   const stageRotation = stage.rotation * Math.PI / 180
   const detailed = !!importedModel?.getObjectByName('VT_ND_DETAIL_ROOT')
