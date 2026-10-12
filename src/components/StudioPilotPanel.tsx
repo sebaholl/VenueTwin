@@ -1,5 +1,8 @@
+import { loadPilotSession, savePilotSession, type PilotRun } from '../lib/pilotSession'
+import { pilotHandover } from '../utils/pilotHandover'
+import { downloadViewerFile } from '../utils/customerViewer'
 import { LayoutChecksPanel } from './LayoutChecksPanel'
-import { briefWithAnswers, reviewedLayoutBrief } from '../utils/pilotWorkflow'
+import { briefWithAnswers, pilotSkills } from '../utils/pilotWorkflow'
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { ReferenceAnalysisPanel } from './ReferenceAnalysisPanel'
@@ -14,12 +17,15 @@ const sample = 'Arrange this project as a straight cinema layout with 8 rows and
 const mze = 'Use these published Kinosál Mže measurements: stage 11 m wide × 4.5 m deep; screen 9 m × 3.8 m; seating starts 2.5 m from the stage; total capacity 259 places including 6 wheelchair places. Source: https://www.mkstc.cz/kinosal-mze.html . The row arrangement, row elevations and room height have not been supplied. Apply only supported dimensions and tell me what you still need. Do not turn wheelchair places into ordinary chairs.'
 type Proposal = { plan: PilotPlan; base: string; allowEstimates: boolean; next: VenueConfig; references: string; review?: { attempts: number; outcome: string; note: string } }
 export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { projectId: string; config: VenueConfig; onApplied: () => void; onBuild?: (config: VenueConfig) => Promise<void> }) {
-  const [autoReview, setAutoReview] = useState(true)
+  const [restored] = useState(() => loadPilotSession(projectId))
+  const [lastApplied, setLastApplied] = useState<PilotRun | null>(restored.session.lastApplied)
+  const [saveError, setSaveError] = useState(restored.error)
+  const [autoReview, setAutoReview] = useState(restored.session.autoReview)
   const [answers, setAnswers] = useState<string[]>([])
   const [building, setBuilding] = useState(false)
-  const [brief, setBrief] = useState('')
-  const [allowEstimates, setAllowEstimates] = useState(false)
-  const [includeReferences, setIncludeReferences] = useState(true)
+  const [brief, setBrief] = useState(restored.session.brief)
+  const [allowEstimates, setAllowEstimates] = useState(restored.session.allowEstimates)
+  const [includeReferences, setIncludeReferences] = useState(restored.session.includeReferences)
   const [ready, setReady] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [analysing, setAnalysing] = useState(false)
@@ -40,6 +46,22 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
     }).catch(() => { if (!controller.signal.aborted) setReady(false) })
     return () => { mounted.current = false; controller.abort(); active.current?.abort() }
   }, [])
+  useEffect(() => {
+    let message = ''
+    try { savePilotSession(projectId, { version: 1, brief, allowEstimates, includeReferences, autoReview, lastApplied }) }
+    catch { message = 'Pilot draft could not be saved on this device. Copy your brief before leaving. Your venue is unchanged.' }
+    const timer = setTimeout(() => setSaveError(message), 0)
+    return () => clearTimeout(timer)
+  }, [projectId, brief, allowEstimates, includeReferences, autoReview, lastApplied])
+  async function exportHandover() {
+    try {
+      const state = useVenueStore.getState()
+      const references = await referenceContext()
+      if (!mounted.current || state.projectId !== projectId) return
+      const report = pilotHandover(state.config, lastApplied, references)
+      downloadViewerFile(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }), 'pilot-handover.json')
+    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not prepare the handover.') }
+  }
   async function referenceContext() {
     if (!includeReferences) return ""
     const saved = await projectReferences(projectId)
@@ -75,6 +97,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
       checkPilotBase(current.config, proposal.base)
       const next = applyPilotPlan(current.config, proposal.plan, proposal.allowEstimates)
       current.setConfig(next); current.selectSeat(null)
+      setLastApplied({ at: new Date().toISOString(), brief, plan: proposal.plan, snapshot: pilotSnapshot(next), references: proposal.references })
       clearProposal(); setNotice('Applied to your venue. Undo restores the previous layout. Inspect the 3D view, then rebuild Blender architecture if needed.')
       onApplied()
       if (buildAfter && onBuild) {
@@ -87,15 +110,17 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   }
   const stale = proposal !== null && proposal.plan.actions.length > 0 && proposal.base !== pilotSnapshot(config)
   return <section className="control-section studio-pilot" aria-labelledby="pilot-title">
-    <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>Early access</small></h2>
+    <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>Local v1</small></h2>
     <p>Describe your venue or an edit. Pilot proposes changes using the Studio tools; you review and apply them.</p>
     {!import.meta.env.DEV ? <p className="pilot-status">Pilot currently runs locally with <code>npm run dev</code>. Online AI hosting is a later step.</p> : <>
       {ready === false && <details className="pilot-setup" open><summary>Connect AI on your computer</summary><p>Add <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL=gpt-5-mini</code> to <code>.env.local</code>, then restart <code>npm run dev</code>. Use an OpenAI API key, without a VITE_ prefix. Requests use your API account.</p></details>}
+      <details className="pilot-options"><summary>Workflow & saved draft</summary><p>Analyse materials → review findings → describe changes → review and apply → build in Model → inspect Preview & share.</p><p>Your brief, settings and last applied proposal are saved on this device. Pending proposals are not restored after refresh; generate a fresh one. No API calls run automatically on reopening.</p><p>Handover includes the current layout, Blender blueprint, checks and last applied evidence. It can contain private reference text. Original uploads and the GLB are separate.</p><button type="button" className="button button-secondary" disabled={busy || analysing || building} onClick={() => void exportHandover()}>Download handover report</button>{lastApplied && <small>Last applied: {new Date(lastApplied.at).toLocaleString()}. The report checks whether its layout and references still match.</small>}</details>
+      {saveError && <p role="alert">{saveError}</p>}
       <ReferenceAnalysisPanel projectId={projectId} disabled={busy || analysing || building || ready !== true} onBusy={setAnalysing} onChange={() => clearProposal()} />
       <form onSubmit={(event) => { event.preventDefault(); void generate() }}>
         <label htmlFor="pilot-brief">2. Describe the layout</label>
         <textarea id="pilot-brief" rows={6} maxLength={12000} required value={brief} disabled={busy || analysing || building} onChange={(event) => { setBrief(event.target.value); clearProposal(); setNotice('') }} placeholder="For example: make row 3 sit 0.4 metres above its level and keep everything else." />
-        <details className="pilot-options"><summary>Starting points</summary><div className="pilot-examples"><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(reviewedLayoutBrief); clearProposal() }}>Build from reviewed findings</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(sample); clearProposal() }}>Example layout</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(mze); clearProposal() }}>Mže measurements</button></div></details>
+        <details className="pilot-options"><summary>Starting points</summary><div className="pilot-examples">{pilotSkills.map((skill) => <button key={skill.id} type="button" disabled={busy || analysing || building} onClick={() => { setBrief(skill.brief); clearProposal() }}>{skill.title}</button>)}<button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(sample); clearProposal() }}>Example layout</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(mze); clearProposal() }}>Mže measurements</button></div></details>
         <details className="pilot-options"><summary>Sources & estimation settings</summary><label className="pilot-check"><input type="checkbox" checked={includeReferences} disabled={busy || analysing || building} onChange={(event) => { setIncludeReferences(event.target.checked); clearProposal() }} /> Include saved notes, measurements and accepted findings</label>
         <label className="pilot-check"><input type="checkbox" checked={allowEstimates} disabled={busy || analysing || building} onChange={(event) => { setAllowEstimates(event.target.checked); clearProposal() }} /> Allow clearly labelled estimates</label><label className="pilot-check"><input type="checkbox" checked={autoReview} disabled={busy || analysing || building} onChange={(event) => { setAutoReview(event.target.checked); clearProposal() }} /> Check and attempt one correction</label></details>
         <small>{autoReview ? "Up to two paid AI requests per proposal, with at most one correction attempt. " : "One paid AI request per proposal. "}Your brief, current layout and accepted reference findings are sent to OpenAI. Analyse photos and PDFs separately above, then describe the changes you want.</small>
