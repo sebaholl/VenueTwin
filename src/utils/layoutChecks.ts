@@ -28,6 +28,14 @@ export function layoutChecks(config: VenueConfig): LayoutFinding[] {
   const stage = { x: pose.offsetX - Math.sin(angle) * 2.2, z: pose.offsetY - Math.cos(angle) * 2.2, halfX: config.stageWidth / 2, halfZ: dimensions.depth / 2, angle, bottom: -.225, top: .225, label: 'Stage' }
   const intersections = seats.filter((seat) => overlap(seat, stage))
   if (intersections.length) findings.push({ id: 'stage-overlap', severity: 'warning', title: 'Seats may intersect the stage platform', detail: 'Chair envelopes intersect the configured stage volume. Adjust stage position/depth or the affected rows, then inspect the result.', count: intersections.length, examples: intersections.slice(0, 8).map((s) => s.label) })
+  if (config.room) {
+    const r = config.room, angle = r.rotation * Math.PI / 180
+    const outside = generatePhysicalSeatLayout(config).filter((seat) => {
+      const x = seat.position[0] - r.x, z = seat.position[2] - r.z
+      return Math.abs(x * Math.cos(angle) - z * Math.sin(angle)) > r.width / 2 || Math.abs(x * Math.sin(angle) + z * Math.cos(angle)) > r.depth / 2 || seat.position[1] + .58 > r.height
+    })
+    if (outside.length) findings.push({ id: 'room-bounds', severity: 'warning', title: 'Seats outside the room or above its height', detail: 'Checks seat centres against the interior footprint and chair tops against the configured room height. This is not an aisle-clearance check.', count: outside.length, examples: outside.slice(0, 8).map((seat) => seat.label) })
+  }
   const defaults = (['stageDepth', 'screenWidth', 'screenHeight', 'screenBottom'] as const).filter((key) => config[key] === undefined)
   if (defaults.length) findings.push({ id: 'default-dimensions', severity: 'info', title: 'Some dimensions use template defaults', detail: defaults.map((key) => ({ stageDepth: 'stage depth', screenWidth: 'screen width', screenHeight: 'screen height', screenBottom: 'screen bottom elevation' })[key]).join(', ') + '. Confirm these in Layout → Stage. Explicitly configured values are not automatically verified measurements.' })
   if (dimensions.width > config.stageWidth) findings.push({ id: 'wide-screen', severity: 'info', title: 'Screen is wider than the stage', detail: 'This can be intentional. Compare both widths with the source plan.' })
