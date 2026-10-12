@@ -33,6 +33,7 @@ export type StagePosition = {
 }
 
 export type VenueConfig = {
+  room?: { width: number; depth: number; height: number; x: number; z: number; rotation: number; ceiling: boolean; wallColor: string; floorColor: string }
   seatingLevels?: { id: string; name: string; elevation: number; parapetHeight?: number }[]
   studyNotice?: string
   obstacles?: VenueObstacle[]

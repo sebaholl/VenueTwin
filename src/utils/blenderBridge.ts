@@ -1,3 +1,4 @@
+import { roomGeometry } from './roomGeometry'
 import { stageGeometry, customStageGeometry } from './stageGeometry'
 import type { VenueConfig } from '../types/venue'
 import { generateSeatLayout, generatePhysicalSeatLayout } from './venue'
@@ -8,6 +9,7 @@ type Box = { name: string; position: number[]; size: number[]; rotation: number;
 export function blenderBlueprint(config: VenueConfig, detailed = false) {
   if (detailed && Object.values(config.rowOverrides).some((row) => typeof row.frontRailing === 'boolean')) throw new Error('Custom row railings require the general Blender scene export.')
   if (detailed && customStageGeometry(config)) throw new Error('Custom stage and screen dimensions require the general Blender scene export.')
+  if (detailed && config.room) throw new Error('Room shells require the general Blender build.')
   const dimensions = stageGeometry(config)
   const seats = generateSeatLayout(config)
   const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
@@ -17,7 +19,7 @@ export function blenderBlueprint(config: VenueConfig, detailed = false) {
     { name: 'Stage', position: stagePoint(-2.2, 0), size: [config.stageWidth, .45, dimensions.depth], rotation: angle, color: '#17243a' },
     { name: 'Screen / curtain reference', position: stagePoint(dimensions.screenZ, dimensions.screenY), size: [dimensions.width, dimensions.height, .05], rotation: angle, color: config.studyNotice ? '#702b3b' : '#e8f0f3' },
   ]
-  boxes.push(...levelArchitecture(config))
+  boxes.push(...levelArchitecture(config), ...roomGeometry(config))
   for (let row = 0; !config.seatingLevels?.length && row < config.rows; row++) {
     const points = seats.filter((s) => s.row === row)
     if (!points.length) continue
