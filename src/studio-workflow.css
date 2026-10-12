@@ -157,3 +157,8 @@
 .studio-workflow .review-workspace { grid-template-columns: minmax(0,1fr); }
 @media (max-width:680px) { .studio-workflow .control-panel { padding: 20px 16px; }.workflow-intro h1 { font-size: 24px; }.project-tool-switch button { min-height: 90px; }.studio-workflow .viewport { min-height: 420px; }.studio-workflow .workflow-nav { position: sticky; top: 0; z-index: 9; } }
 @media (prefers-reduced-motion:reduce) { .studio-workflow *, .studio-workflow *::before, .studio-workflow *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+.room-openings { border-top: 1px solid #29424f; padding: 16px 0; margin-top: 12px; }
+.room-openings article { border: 1px solid #2b4552; border-radius: 10px; padding: 12px; margin: 12px 0; font-size: 12px; }
+.room-openings article p { color: #9eb8bf; line-height: 1.6; }
+.room-openings article .button { width: auto; min-height: 36px; margin-right: 6px; padding: 8px 12px; }
+.room-openings h3 { font-size: 13px; margin-top: 20px; }
