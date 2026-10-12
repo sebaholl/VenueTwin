@@ -5,6 +5,8 @@ import { generateSeatLayout, getRowSeats } from './venue'
 
 type Evidence = { basis: 'provided' | 'estimated'; source: string }
 export type PilotAction = Evidence & (
+  | { tool: 'set_room'; room: NonNullable<VenueConfig['room']> }
+  | { tool: 'remove_room' }
   | { tool: 'set_stage_dimensions'; depth: number | null; screenWidth: number | null; screenHeight: number | null; screenBottom: number | null }
   | { tool: 'set_stage'; width: number; x: number | null; z: number | null; rotation: number | null }
   | { tool: 'set_seating'; rows: number; seatsPerRow: number; sectors: number; geometry: 'straight' | 'fan' | 'blocks'; rake: number; curve: number; seatSpacing: number; rowSpacing: number; aisleWidth: number }
@@ -28,6 +30,8 @@ const action = (tool: string, properties: Record<string, Schema>) => object({ to
 export const pilotPlanSchema = object({
   summary: string(1200),
   actions: { type: 'array', maxItems: 80, items: { anyOf: [
+    action('set_room', { room: object({ width: number(1, 100), depth: number(1, 100), height: number(1, 100), x: number(-100, 100), z: number(-100, 100), rotation: number(-100, 100), ceiling: { type: 'boolean' }, wallColor: string(7), floorColor: string(7) }) }),
+    action('remove_room', {}),
     action('set_stage_dimensions', { depth: nullable(number(.1, 100)), screenWidth: nullable(number(.1, 100)), screenHeight: nullable(number(.1, 100)), screenBottom: nullable(number(0, 100)) }),
     action('set_stage', { width: number(1, 100), x: nullable(number(-100, 100)), z: nullable(number(-100, 100)), rotation: nullable(number(-100, 100)) }),
     action('set_seating', { rows: integer(1, 50), seatsPerRow: integer(1, 200), sectors: integer(1, 3), geometry: choice('straight', 'fan', 'blocks'), rake: number(0, 3), curve: number(-5, 5), seatSpacing: number(.1, 20), rowSpacing: number(.1, 20), aisleWidth: number(.1, 20) }),
@@ -67,7 +71,9 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
   let config = parseViewerConfig(base)
   for (const item of plan.actions) {
     switch (item.tool) {
-      case 'set_stage_dimensions': config = { ...config, ...(item.depth === null ? {} : { stageDepth: item.depth }), ...(item.screenWidth === null ? {} : { screenWidth: item.screenWidth }), ...(item.screenHeight === null ? {} : { screenHeight: item.screenHeight }), ...(item.screenBottom === null ? {} : { screenBottom: item.screenBottom }) }; break
+      case 'set_room': config = { ...config, room: structuredClone(item.room) }; break
+      case 'remove_room': config = { ...config, room: undefined }; break
+    case 'set_stage_dimensions': config = { ...config, ...(item.depth === null ? {} : { stageDepth: item.depth }), ...(item.screenWidth === null ? {} : { screenWidth: item.screenWidth }), ...(item.screenHeight === null ? {} : { screenHeight: item.screenHeight }), ...(item.screenBottom === null ? {} : { screenBottom: item.screenBottom }) }; break
       case 'set_stage': config = { ...config, stageWidth: item.width, stagePosition: { offsetX: item.x ?? config.stagePosition?.offsetX ?? 0, offsetY: item.z ?? config.stagePosition?.offsetY ?? 0, rotation: item.rotation ?? config.stagePosition?.rotation ?? 0 } }; break
       case 'set_seating': {
         // Keep edits and ticket metadata on surviving rows; this is never a silent reset.
@@ -123,6 +129,8 @@ export function checkPilotBase(current: VenueConfig, snapshot: string) {
 }
 export function pilotActionLabel(action: PilotAction) {
   switch (action.tool) {
+    case 'set_room': return `Room: ${action.room.width} × ${action.room.depth} × ${action.room.height} m`
+    case 'remove_room': return 'Remove room shell'
     case 'set_stage_dimensions': return 'Stage depth and screen dimensions (metres; null preserves existing values)'
     case 'set_stage': return `Stage: ${action.width} m wide; offsets ${action.x ?? 'unchanged'}, ${action.z ?? 'unchanged'}; rotation ${action.rotation === null ? 'unchanged' : action.rotation + '°'}`
     case 'set_seating': return `Seating: ${action.rows} rows, ${action.seatsPerRow} default seats; ${action.geometry}`
