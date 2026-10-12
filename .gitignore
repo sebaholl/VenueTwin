@@ -27,3 +27,7 @@ pnpm-debug.log*
 
 # Generated, reproducible demo package (prepared before dev/build)
 public/venues/demo-theatre/v1/
+
+# Python / Blender bytecode cache
+__pycache__/
+*.py[cod]
