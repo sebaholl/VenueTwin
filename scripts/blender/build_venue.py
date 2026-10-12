@@ -35,6 +35,10 @@ def validate(data):
         size = box.get('size')
         if not isinstance(size, list) or len(size) != 3 or not all(isinstance(v, (int, float)) and math.isfinite(v) and .001 <= v <= 500 for v in size):
             raise ValueError('Invalid dimensions.')
+        for key in ('roughness', 'metalness'):
+            v = box.get(key, .7 if key == 'roughness' else 0)
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or not 0 <= v <= 1:
+                raise ValueError('Invalid material surface.')
         color = box.get('color', '')
         if not isinstance(color, str) or len(color) != 7 or color[0] != '#' or any(c not in '0123456789abcdefABCDEF' for c in color[1:]):
             raise ValueError('Invalid material color.')
@@ -69,7 +73,8 @@ def build(filepath):
                 parent.objects.unlink(obj)
             collection.objects.link(obj)
             color = box['color']
-            if color not in materials:
+            material_key = (color, box.get('roughness', .7), box.get('metalness', 0))
+            if material_key not in materials:
                 mat = bpy.data.materials.new('VT ' + color)
                 mat.use_nodes = True
                 srgb = [int(color[i:i+2], 16) / 255 for i in (1, 3, 5)]
@@ -77,9 +82,10 @@ def build(filepath):
                 mat.diffuse_color = rgba
                 shader = mat.node_tree.nodes.get('Principled BSDF')
                 shader.inputs['Base Color'].default_value = rgba
-                shader.inputs['Roughness'].default_value = .7
-                materials[color] = mat
-            obj.data.materials.append(materials[color])
+                shader.inputs['Roughness'].default_value = material_key[1]
+                shader.inputs['Metallic'].default_value = material_key[2]
+                materials[material_key] = mat
+            obj.data.materials.append(materials[material_key])
             created.append(obj)
         for seat in data['seats']:
             obj = bpy.data.objects.new(str(seat.get('label', 'Seat'))[:30], None)
