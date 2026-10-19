@@ -72,7 +72,7 @@ export async function generatePilotPlan(input: unknown, settings: PilotSettings,
   } catch (error) { throw new PilotError(error instanceof Error ? error.message : 'Pilot validation failed. Nothing was changed.', 422) }
 }
 
-async function generatePlanRequest(input: unknown, settings: PilotSettings, signal: AbortSignal) {
+export async function generatePlanRequest(input: unknown, settings: PilotSettings, signal: AbortSignal) {
   if (input && typeof input === 'object' && 'autoReview' in input && typeof input.autoReview !== 'boolean') throw new PilotError('Invalid review setting.')
   return input && typeof input === 'object' && 'autoReview' in input && input.autoReview === true ? generateReviewedPlan(input, settings, fetch, signal) : generatePilotPlan(input, settings, fetch, signal)
 }
