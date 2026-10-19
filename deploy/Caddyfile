@@ -1,0 +1,9 @@
+# Install Caddy on the API host; DNS for this name must point to that host.
+# Replace with your real API domain. The API port stays bound to loopback.
+api.your-domain.example {
+    request_body {
+        max_size 19MB
+    }
+    header Strict-Transport-Security "max-age=31536000"
+    reverse_proxy 127.0.0.1:3001
+}
