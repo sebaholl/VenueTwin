@@ -6,3 +6,7 @@ deploy/*.env
 upload
 tmp
 deliverables
+
+dist-server
+coverage
+**/__pycache__

@@ -12,7 +12,12 @@
     "predev": "node scripts/prepare-demo.mjs",
     "prebuild": "node scripts/prepare-demo.mjs",
     "demo:prepare": "node scripts/prepare-demo.mjs",
-    "demo:host": "node scripts/serve-demo.mjs"
+    "demo:host": "node scripts/serve-demo.mjs",
+    "build:server": "node scripts/build-server.mjs",
+    "start:server": "node dist-server/main.mjs",
+    "postbuild": "node scripts/security-headers.mjs",
+    "test:python": "python3 -m unittest discover -s scripts/blender -p \"test_*.py\"",
+    "test:blender": "node scripts/smoke-blender.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

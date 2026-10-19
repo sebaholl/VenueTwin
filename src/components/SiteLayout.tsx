@@ -25,7 +25,7 @@ export function SiteLayout() {
       <footer className="footer">
         <Brand />
         <p>Make every seat a confident choice.</p>
-        <div><Link to="/studio">Studio</Link><Link to="/about">About</Link></div>
+        <div><Link to="/studio">Studio</Link><Link to="/about">About</Link><Link to="/service">Service & support</Link></div>
         <small>© {new Date().getFullYear()} VenueTwin. Product prototype.</small>
       </footer>
     </div>

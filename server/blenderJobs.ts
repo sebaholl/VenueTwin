@@ -10,7 +10,7 @@ import { blenderBlueprint } from '../src/utils/blenderBridge'
 import { validateGlb } from '../src/utils/localGlb'
 
 export type BuildStatus = { id: string; state: 'running' | 'completed' | 'failed' | 'cancelled'; stage: string; signature: string; error?: string }
-type Job = { status: BuildStatus; directory: string; controller: AbortController; done: Promise<void> }
+type Job = { status: BuildStatus; directory: string; controller: AbortController; done: Promise<void>; finishedAt?: number }
 export type BlenderRunner = (input: string, output: string, signal: AbortSignal, progress: (stage: string) => void) => Promise<void>
 export function blenderRunner(executable: string, script: string): BlenderRunner {
   return (input, output, signal, progress) => new Promise((resolveJob, reject) => {
@@ -39,11 +39,24 @@ export function blenderRunner(executable: string, script: string): BlenderRunner
     })
   })
 }
-export function createBlenderJobs(run: BlenderRunner, timeoutMs = 10 * 60 * 1000) {
+export function createBlenderJobs(run: BlenderRunner, timeoutMs = 10 * 60 * 1000, retentionMs = 60 * 60 * 1000) {
   const jobs = new Map<string, Job>()
   let starting = false, closed = false
   const get = (id: string) => { const job = jobs.get(id); if (!job) throw new Error('This build expired or the server restarted. Start a new build.'); return job }
   const remove = async (job: Job) => { await rm(job.directory, { recursive: true, force: true }) }
+  // Bound retention even when no later customer starts a build.
+  let pruning = Promise.resolve()
+  const sweep = setInterval(() => {
+    pruning = pruning.then(async () => {
+      for (const [id, job] of jobs) {
+        if (job.finishedAt !== undefined && Date.now() - job.finishedAt >= retentionMs) {
+          await remove(job)
+          jobs.delete(id)
+        }
+      }
+    }).catch(() => { console.error('Could not prune expired Blender files.') })
+  }, Math.min(60000, retentionMs))
+  sweep.unref()
   return {
     async start(value: unknown) {
       if (closed) throw new Error('Build server is shutting down.')
@@ -80,7 +93,7 @@ export function createBlenderJobs(run: BlenderRunner, timeoutMs = 10 * 60 * 1000
             job.status.error = timedOut ? 'Blender exceeded the 10-minute build limit. Simplify the layout and retry.' : error instanceof Error ? error.message : 'Blender build failed.'
             job.status.stage = job.status.state === 'cancelled' ? 'Cancelled' : 'Build failed'
             await remove(job).catch(() => {})
-          } finally { clearTimeout(timer) }
+          } finally { clearTimeout(timer); job.finishedAt = Date.now() }
         })()
         return { ...job.status }
       } catch (error) { if (directory) await rm(directory, { recursive: true, force: true }); throw error }
@@ -89,7 +102,7 @@ export function createBlenderJobs(run: BlenderRunner, timeoutMs = 10 * 60 * 1000
     status(id: string) { return { ...get(id).status } },
     async model(id: string) { const job = get(id); if (job.status.state !== 'completed') throw new Error('The model is not ready.'); return readFile(join(job.directory, 'venue.glb')) },
     async cancel(id: string) { const job = get(id); if (job.status.state === 'running') { job.controller.abort(); await job.done }; return { ...job.status } },
-    async close() { closed = true; for (const job of jobs.values()) job.controller.abort(); await Promise.all([...jobs.values()].map(async (job) => { await job.done; await remove(job) })); jobs.clear() },
+    async close() { closed = true; clearInterval(sweep); await pruning; for (const job of jobs.values()) job.controller.abort(); await Promise.all([...jobs.values()].map(async (job) => { await job.done; await remove(job) })); jobs.clear() },
   }
 }
 export function blenderJobsPlugin(path: string): Plugin {

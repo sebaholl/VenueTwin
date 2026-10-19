@@ -79,3 +79,16 @@ describe('local Blender jobs', () => {
     } finally { await jobs.close() }
   })
 })
+
+it('expires completed model files without requiring another build', async () => {
+  let inputPath = ''
+  const jobs = createBlenderJobs(async (input, output, signal, progress) => {
+    inputPath = input
+    await successful(input, output, signal, progress)
+  }, 1000, 30)
+  try {
+    const job = await jobs.start(defaultVenue)
+    await vi.waitFor(() => expect(() => jobs.status(job.id)).toThrow('expired'))
+    await expect(readFile(inputPath)).rejects.toThrow()
+  } finally { await jobs.close() }
+})

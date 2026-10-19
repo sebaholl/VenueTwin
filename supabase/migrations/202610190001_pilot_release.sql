@@ -35,7 +35,7 @@ declare
   total_usage public.pilot_usage%rowtype;
   today date := (now() at time zone 'UTC')::date;
 begin
-  if p_kind not in ('ai', 'build') or p_units is null or p_units < 1 or p_units > 2
+  if p_kind is null or p_kind not in ('ai', 'build') or p_units is null or p_units < 1 or p_units > 2
     or (p_kind = 'build' and p_units <> 1) then return false; end if;
   -- Global lock serialises reservations across users and survives API restarts.
   select * into limits_row from public.pilot_limits where id = true for update;

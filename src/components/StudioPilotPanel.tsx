@@ -1,3 +1,4 @@
+import { pilotAvailable, hostedPilot, pilotFetch } from '../lib/pilotApi'
 import { loadPilotSession, savePilotSession, type PilotRun } from '../lib/pilotSession'
 import { pilotHandover } from '../utils/pilotHandover'
 import { downloadViewerFile } from '../utils/customerViewer'
@@ -26,6 +27,8 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   const [brief, setBrief] = useState(restored.session.brief)
   const [allowEstimates, setAllowEstimates] = useState(restored.session.allowEstimates)
   const [includeReferences, setIncludeReferences] = useState(restored.session.includeReferences)
+  const [connectionAttempt, setConnectionAttempt] = useState(0)
+  const [connectionError, setConnectionError] = useState('')
   const [ready, setReady] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [analysing, setAnalysing] = useState(false)
@@ -40,12 +43,13 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   useEffect(() => {
     mounted.current = true
     const controller = new AbortController()
-    if (import.meta.env.DEV) fetch('/api/pilot/status', { signal: controller.signal }).then(async (response) => {
-      if (!response.ok) throw new Error()
-      const result = await response.json(); setReady(result.ready === true)
-    }).catch(() => { if (!controller.signal.aborted) setReady(false) })
+    if (pilotAvailable) pilotFetch('/api/pilot/status', { signal: controller.signal }).then(async (response) => {
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Pilot connection failed.')
+      if (!controller.signal.aborted) { setReady(result.ready === true); setConnectionError('') }
+    }).catch((reason) => { if (!controller.signal.aborted) { setReady(false); setConnectionError(reason instanceof Error ? reason.message : 'Pilot connection failed.') } })
     return () => { mounted.current = false; controller.abort(); active.current?.abort() }
-  }, [])
+  }, [connectionAttempt])
   useEffect(() => {
     let message = ''
     try { savePilotSession(projectId, { version: 1, brief, allowEstimates, includeReferences, autoReview, lastApplied }) }
@@ -76,7 +80,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
     try {
       const references = await referenceContext()
       if (controller.signal.aborted) return
-      const response = await fetch('/api/pilot/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ brief: nextBrief, config: state.config, allowEstimates, references, autoReview }) })
+      const response = await pilotFetch('/api/pilot/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ brief: nextBrief, config: state.config, allowEstimates, references, autoReview }) })
       const data = await response.json()
       if (!response.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Pilot request failed.')
       const plan = parsePilotPlan(data.plan)
@@ -110,10 +114,11 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   }
   const stale = proposal !== null && proposal.plan.actions.length > 0 && proposal.base !== pilotSnapshot(config)
   return <section className="control-section studio-pilot" aria-labelledby="pilot-title">
-    <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>Local v1</small></h2>
+    <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>{hostedPilot ? 'Hosted beta' : 'Local v1'}</small></h2>
     <p>Describe your venue or an edit. Pilot proposes changes using the Studio tools; you review and apply them.</p>
-    {!import.meta.env.DEV ? <p className="pilot-status">Pilot currently runs locally with <code>npm run dev</code>. Online AI hosting is a later step.</p> : <>
-      {ready === false && <details className="pilot-setup" open><summary>Connect AI on your computer</summary><p>Add <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL=gpt-5-mini</code> to <code>.env.local</code>, then restart <code>npm run dev</code>. Use an OpenAI API key, without a VITE_ prefix. Requests use your API account.</p></details>}
+    {!pilotAvailable ? <p className="pilot-status">Pilot is not configured on this installation. Contact the operator for access.</p> : <>
+      {hostedPilot && <><p role="status">{connectionError || (ready ? 'Pilot is connected.' : 'Checking Pilot access…')}</p><button type="button" disabled={busy || analysing || building} onClick={() => { setReady(null); setConnectionError(''); setConnectionAttempt((value) => value + 1) }}>Check connection after signing in</button></>}
+      {!hostedPilot && ready === false && <details className="pilot-setup" open><summary>Connect AI on your computer</summary><p>Add <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL=gpt-5-mini</code> to <code>.env.local</code>, then restart <code>npm run dev</code>. Use an OpenAI API key, without a VITE_ prefix. Requests use your API account.</p></details>}
       <details className="pilot-options"><summary>Workflow & saved draft</summary><p>Analyse materials → review findings → describe changes → review and apply → build in Model → inspect Preview & share.</p><p>Your brief, settings and last applied proposal are saved on this device. Pending proposals are not restored after refresh; generate a fresh one. No API calls run automatically on reopening.</p><p>Handover includes the current layout, Blender blueprint, checks and last applied evidence. It can contain private reference text. Original uploads and the GLB are separate.</p><button type="button" className="button button-secondary" disabled={busy || analysing || building} onClick={() => void exportHandover()}>Download handover report</button>{lastApplied && <small>Last applied: {new Date(lastApplied.at).toLocaleString()}. The report checks whether its layout and references still match.</small>}</details>
       {saveError && <p role="alert">{saveError}</p>}
       <ReferenceAnalysisPanel projectId={projectId} disabled={busy || analysing || building || ready !== true} onBusy={setAnalysing} onChange={() => clearProposal()} />

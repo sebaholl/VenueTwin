@@ -1,3 +1,4 @@
+import { pilotAvailable, hostedPilot } from '../lib/pilotApi'
 import { LayoutChecksPanel } from './LayoutChecksPanel'
 import { customStageGeometry } from '../utils/stageGeometry'
 import { buildLocalModel, assertBuildCurrent } from '../lib/blenderJobs'
@@ -104,12 +105,12 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource, ref, compa
   }
   return <section className="control-section category-panel"><h2>Build the architecture</h2><p>Build approximate architecture from your current layout. Studio keeps the seats and obstacles interactive.</p>
     <LayoutChecksPanel config={config} />
-    {import.meta.env.DEV && <div className="local-blender-build">
+    {pilotAvailable && <div className="local-blender-build">
       <button disabled={busy || building} onClick={() => void build().catch((reason) => setError(reason instanceof Error ? reason.message : 'Build could not start.'))}>Build 3D model with Blender</button>
       {building && !busy && <button onClick={() => buildController.current?.abort()}>Cancel build</button>}
       {buildStage && <p role="status" aria-live="polite">{buildStage}</p>}
-      <small>Runs locally without AI charges. This uses the general architecture generator; it does not generate the detailed National Theatre study.</small>
-      <details><summary>Blender setup</summary><p>On macOS, the default location is <code>/Applications/Blender.app/Contents/MacOS/Blender</code>. For a different installation, set <code>BLENDER_PATH</code> in <code>.env.local</code> to the executable path and restart <code>npm run dev</code>. Keep Blender installed; you do not need to open it.</p></details>
+      <small>{hostedPilot ? 'Runs on the hosted worker using your build allowance.' : 'Runs locally without AI charges.'} This uses the general architecture generator; it does not generate the detailed National Theatre study.</small>
+      {!hostedPilot && <details><summary>Blender setup</summary><p>On macOS, the default location is <code>/Applications/Blender.app/Contents/MacOS/Blender</code>. For a different installation, set <code>BLENDER_PATH</code> in <code>.env.local</code> to the executable path and restart <code>npm run dev</code>. Keep Blender installed; you do not need to open it.</p></details>}
     </div>}
     {error && <p role="alert">{error}</p>}
     {storage && <p role="status">{storage}</p>}

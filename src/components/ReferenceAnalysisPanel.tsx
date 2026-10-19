@@ -1,3 +1,4 @@
+import { pilotFetch, hostedPilot } from '../lib/pilotApi'
 import { useEffect, useRef, useState } from 'react'
 import { projectReferences, type ReferenceAsset } from '../lib/projectReferences'
 import { fileData, loadAnalysis, saveAnalysis, sourceFor } from '../lib/referenceAnalysis'
@@ -24,7 +25,7 @@ export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }
       const input = await Promise.all(files.map(async (a) => ({ id: a.id, name: a.name, caption: a.caption, mime: a.file.type, data: await fileData(a.file) })))
       if (controller.signal.aborted) return
       setMessage('Analysing sources. Your venue stays unchanged…')
-      const response = await fetch('/api/pilot/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ files: input }) })
+      const response = await pilotFetch('/api/pilot/analyse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ files: input }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Analysis failed.')
       const next = { analysis: parseReferenceAnalysis(data.analysis, sources), sources, accepted: [] }
@@ -39,7 +40,7 @@ export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }
     try { saveAnalysis(projectId, next); setReport(next); onChange() } catch { setMessage('Review could not be saved. Check browser storage.') }
   }
   return <details className="pilot-setup"><summary>1. Analyse plans and photos</summary>
-    <p>Add and save files in the Materials tab, then return here and refresh this list. Analysis sends selected files and captions to OpenAI using your paid API account. Up to 4 files / 12 MB per request.</p>
+    <p>Add and save files in the Materials tab, then return here and refresh this list. Analysis sends selected files and captions to OpenAI {hostedPilot ? 'through the hosted Pilot service.' : 'using your paid API account.'} Up to 4 files / 12 MB per request.</p>
     <button type="button" disabled={busy || disabled} onClick={() => void refresh()}>Refresh saved files</button>
     {assets.map((a) => <label className="pilot-check" key={a.id}><input type="checkbox" disabled={busy || disabled} checked={selected.includes(a.id)} onChange={() => setSelected(selected.includes(a.id) ? selected.filter((id) => id !== a.id) : [...selected, a.id])} />{a.name}</label>)}
     <button type="button" className="button button-secondary" disabled={busy || disabled || !selected.length || selected.length > 4} onClick={() => void analyse()}>Analyse selected files</button>

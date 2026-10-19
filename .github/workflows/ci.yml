@@ -2,31 +2,69 @@ name: VenueTwin CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, release/pilot-hosted-beta]
   pull_request:
     branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:python
+      - run: npm run build
+      - run: npm run build:server
+      - run: npm audit --audit-level=high
 
-      - name: Install dependencies
-        run: npm install
+  database-isolation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: venuetwin_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test migrations, owner isolation and quota permissions
+        env:
+          PGPASSWORD: disposable-ci-only
+        run: psql -h 127.0.0.1 -U postgres -d venuetwin_test -v ON_ERROR_STOP=1 -f supabase/tests/security.sql
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm run test
-
-      - name: Build
-        run: npm run build
+  blender-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image and run real Blender export smoke
+        run: docker build --tag venuetwin-pilot:ci .
+      - name: Verify Blender with production container restrictions
+        run: >-
+          docker run --rm --read-only --tmpfs /tmp:size=512m,mode=1777
+          --cap-drop ALL --security-opt no-new-privileges
+          --memory 2g --cpus 2 --pids-limit 128
+          venuetwin-pilot:ci node scripts/smoke-blender.mjs

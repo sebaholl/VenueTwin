@@ -368,3 +368,7 @@ Layout → Room → **Doors & wall openings** now adds, edits and removes rectan
 Openings must fit fully within the wall. Overlapping apertures form a union; leftover wall slivers below Blender's 1 mm minimum are rejected. Shared wall segmentation is used in Studio and general Blender builds, including rotated rooms. No door leaves, frames or glazing are generated. The 2D editor still shows only the room outline, not opening markers; inspect holes in 3D seat view. Walls remain hidden in overview.
 
 Pilot supports `save_room_opening` (upsert by ID) and `remove_room_opening`. A room must exist first. `set_room` and manual room updates preserve existing openings; shrinking a room so an opening no longer fits is rejected. Edit/remove affected openings first. Actions remain undoable and require the existing evidence/estimate rules. Rebuild Blender after changing openings.
+
+## Hosted Pilot controlled beta
+
+The production API, hosted Studio integration and Docker deployment are described in [the release guide](docs/PRODUCTION_RELEASE.md). Configure a separate Linux API/Blender host, Supabase access and quotas, and the public frontend settings before inviting customers. CI checks frontend/server builds, TypeScript and Python tests, PostgreSQL isolation and a real containerised Blender export. Live deployment and customer acceptance remain unverified until the release guide gates pass.

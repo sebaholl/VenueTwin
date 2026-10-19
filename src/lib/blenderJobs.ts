@@ -1,3 +1,4 @@
+import { pilotFetch } from './pilotApi'
 import type { VenueConfig } from '../types/venue'
 import { blenderBlueprint } from '../utils/blenderBridge'
 import { geometrySignature } from '../utils/customerViewer'
@@ -16,7 +17,7 @@ function pause(signal: AbortSignal) {
     if (signal.aborted) abort()
   })
 }
-export async function buildLocalModel(config: VenueConfig, signal: AbortSignal, progress: (stage: string) => void, fetcher: typeof fetch = fetch) {
+export async function buildLocalModel(config: VenueConfig, signal: AbortSignal, progress: (stage: string) => void, fetcher: typeof fetch = pilotFetch) {
   let id = '', completed = false
   const cancel = async () => { if (id) await fetcher(`/api/blender/jobs/${id}`, { method: 'DELETE' }).catch(() => {}) }
   try {

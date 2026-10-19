@@ -48,6 +48,7 @@ do $$ begin
   if public.reserve_pilot_usage('11111111-1111-4111-8111-111111111111','ai',1) then raise exception 'Account quota bypass'; end if;
   if public.reserve_pilot_usage('22222222-2222-4222-8222-222222222222','ai',2) then raise exception 'Global quota bypass'; end if;
   if not public.reserve_pilot_usage('22222222-2222-4222-8222-222222222222','ai',1) then raise exception 'Remaining allowance denied'; end if;
+  if public.reserve_pilot_usage('22222222-2222-4222-8222-222222222222',null,1) then raise exception 'Null kind accepted'; end if;
   if public.reserve_pilot_usage('22222222-2222-4222-8222-222222222222','ai',-1) then raise exception 'Negative quota bypass'; end if;
 end $$;
 update public.pilot_limits set enabled=false;
