@@ -10,8 +10,8 @@ const record = (value: unknown): value is Record<string, unknown> => !!value && 
 const finite = (n: unknown, min: number, max: number): n is number => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max
 
 // Validate before generating geometry: published manifests are untrusted input.
-export function parseViewerConfig(value: unknown): VenueConfig {
-  if (!record(value) || typeof value.name !== 'string' || value.name.length > 200 || !finite(value.rows, 1, 50) || !Number.isInteger(value.rows) || !finite(value.seatsPerRow, 1, 200) || !Number.isInteger(value.seatsPerRow) || !finite(value.sectors, 1, 3) || !Number.isInteger(value.sectors) || !finite(value.rake, 0, 3) || !finite(value.curve, -5, 5) || !finite(value.stageWidth, 1, 100) || !['straight', 'fan', 'blocks'].includes(String(value.geometry)) || !record(value.rowOverrides)) throw new Error('Invalid venue geometry in the viewer project.')
+export function parseViewerConfig(value: unknown, allowEmptyDraft = false): VenueConfig {
+  if (!record(value) || typeof value.name !== 'string' || value.name.length > 200 || !finite(value.rows, allowEmptyDraft ? 0 : 1, 50) || !Number.isInteger(value.rows) || !finite(value.seatsPerRow, 1, 200) || !Number.isInteger(value.seatsPerRow) || !finite(value.sectors, 1, 3) || !Number.isInteger(value.sectors) || !finite(value.rake, 0, 3) || !finite(value.curve, -5, 5) || !finite(value.stageWidth, 1, 100) || !['straight', 'fan', 'blocks'].includes(String(value.geometry)) || !record(value.rowOverrides)) throw new Error('Invalid venue geometry in the viewer project.')
   architecturalDetailGeometry(value.architecturalDetails)
   if (value.room !== undefined) {
     const r = value.room

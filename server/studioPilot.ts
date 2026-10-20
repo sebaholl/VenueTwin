@@ -36,7 +36,7 @@ function parseRequest(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new PilotError('Invalid Pilot request.')
   const data = value as Record<string, unknown>
   if (typeof data.brief !== 'string' || !data.brief.trim() || data.brief.length > 12000 || typeof data.allowEstimates !== 'boolean' || typeof data.references !== 'string' || data.references.length > 80000) throw new PilotError('Use a brief of 1–12,000 characters and saved text references below 80,000 characters.')
-  return { brief: data.brief.trim(), config: pilotEffectiveConfig(parseViewerConfig(data.config)), allowEstimates: data.allowEstimates, references: data.references }
+  return { brief: data.brief.trim(), config: pilotEffectiveConfig(parseViewerConfig(data.config, true)), allowEstimates: data.allowEstimates, references: data.references }
 }
 export async function generatePilotPlan(input: unknown, settings: PilotSettings, fetcher: typeof fetch = fetch, signal?: AbortSignal, reviewContext?: unknown) {
   const request = parseRequest(input)

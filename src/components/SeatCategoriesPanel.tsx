@@ -13,6 +13,7 @@ export function SeatCategoriesPanel({ config, selectedSeat, onSelect, onChange }
   const override = config.rowOverrides?.[row] ?? {}
   const updateRow = (patch: typeof override) => onChange({ rowOverrides: { ...config.rowOverrides, [row]: { ...override, ...patch } } })
   const money = (value: number) => new Intl.NumberFormat(undefined, { style: 'currency', currency: config.currency ?? 'EUR' }).format(value)
+  if (config.rows === 0) return <section className="control-section"><h2>Seat categories</h2><p>Add seating manually or with Pilot before assigning rows or seats.</p></section>
   return <section className="control-section category-panel"><h2>Seat categories</h2>
     <p>Choose a row or seat below, or select a seat in 3D. Row changes clear its individual category overrides.</p>
     <label>Currency<select value={config.currency ?? 'EUR'} onChange={(e) => onChange({ currency: e.target.value as VenueConfig['currency'] })}>{['EUR', 'CZK', 'DKK', 'USD', 'GBP'].map((c) => <option key={c}>{c}</option>)}</select></label>
