@@ -8,7 +8,7 @@ COPY scripts/build-server.mjs ./scripts/build-server.mjs
 RUN npm run build:server
 
 FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends blender ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends blender python3-numpy ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app/dist-server ./dist-server
 COPY scripts/blender/build_venue.py scripts/blender/build_job.py ./scripts/blender/
