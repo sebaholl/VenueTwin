@@ -36,6 +36,7 @@ export function SeatingLevelsPanel({ config, selectedSeat, onChange }: { config:
     catch (reason) { setError(reason instanceof Error ? reason.message : 'The level change could not be applied.'); setMessage('') }
   }
   const updateRow = (patch: typeof override) => onChange({ rowOverrides: { ...config.rowOverrides, [row]: { ...override, ...patch } } })
+  if (config.rows === 0) return <section className="control-section"><h2>Seating levels</h2><p>Add seating manually or with Pilot before assigning rows or seats.</p></section>
   return <section className="control-section category-panel level-management"><h2>Seating levels</h2>
     <p className="workflow-hint">Create levels, then assign existing rows. A level does not create new seats. Base height lifts every assigned row; row rise adds to that height.</p>
     {error && <p role="alert">{error} If ticket row names collide, keep those rows on separate levels.</p>}{message && <p role="status">{message}</p>}

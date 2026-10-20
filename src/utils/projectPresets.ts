@@ -34,6 +34,11 @@ export function createProjectConfig(input: ProjectPresetInput): VenueConfig {
   }
 }
 
+// Empty seating draft; stage and spacing remain editable editor defaults.
+export function createBlankProjectConfig(input: Pick<ProjectPresetInput, 'name' | 'venueType'>): VenueConfig {
+  return { ...createProjectConfig(input), rows: 0, seatsPerRow: 10, sectors: 1, geometry: 'straight', rake: 0, curve: 0 }
+}
+
 export function venueTypeLabel(type?: VenueType) {
   return ({ cinema: 'Cinema', theatre: 'Theatre', conference: 'Conference', other: 'Other venue' } as const)[type ?? 'other']
 }

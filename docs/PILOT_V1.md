@@ -67,3 +67,7 @@ Before calling this production-ready, complete this local acceptance run:
 - No automatic proof that a photo is from an identified seat. Human comparison and better source material remain necessary.
 - Original files, local drafts and GLB storage are not automatically synchronised with the cloud project.
 - Live model behaviour, Blender execution on the user's Mac, browser appearance and phone controls require the acceptance run above. They are not established by unit tests or a successful production build.
+
+### Starting without a template
+
+In New project, enter a name, choose a venue type and optionally attach a floor plan, then select **Start blank**. The project starts with zero seats and no room, levels or obstacles. Stage and spacing values remain editable editor defaults, not measured facts. Use Pilot to propose seating, or Layout → Add first row. Empty drafts can be saved; customer preview and Blender export require seating.

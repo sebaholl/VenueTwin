@@ -98,7 +98,7 @@ export function parsePilotPlan(value: unknown): PilotPlan {
 export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates: boolean): VenueConfig {
   const plan = parsePilotPlan(value)
   if (!allowEstimates && plan.actions.some((item) => item.basis === 'estimated')) throw new Error('This plan contains estimates. Allow estimates or supply the missing measurements.')
-  let config = parseViewerConfig(base)
+  let config = parseViewerConfig(base, true)
   for (const item of plan.actions) {
     switch (item.tool) {
       case 'save_architectural_detail': config = { ...config, architecturalDetails: [...(config.architecturalDetails ?? []).filter((d) => d.id !== item.detail.id), { ...item.detail, basis: item.basis, source: item.source }] }; break
@@ -188,11 +188,11 @@ export function applyPilotPlan(base: VenueConfig, value: unknown, allowEstimates
       }
     }
     // Validate each intermediate state before any geometry is generated.
-    config = parseViewerConfig(config)
+    config = parseViewerConfig(config, true)
   }
   for (let row = 0; row < config.rows; row++) if (getRowSeats(config, row) < 1) throw new Error('Each row must contain at least one seat. Reduce the fan taper or provide explicit row counts.')
   const seats = generateSeatLayout(config)
-  if (!seats.length || seats.some((seat) => seat.position.some((n) => !Number.isFinite(n)))) throw new Error('The proposed layout has invalid seat geometry.')
+  if ((config.rows > 0 && !seats.length) || seats.some((seat) => seat.position.some((n) => !Number.isFinite(n)))) throw new Error('The proposed layout has invalid seat geometry.')
   if (plan.actions.length && plan.expectedSeatCount !== null && seats.length !== plan.expectedSeatCount) throw new Error(`Seat count check failed: requested ${plan.expectedSeatCount}, generated ${seats.length}. Nothing was changed.`)
   if (plan.actions.some((a) => a.basis === 'estimated')) config.studyNotice = [config.studyNotice, 'Pilot draft includes estimated geometry; seat views have not been validated against identified-seat photos.'].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join('\n')
   return config

@@ -73,7 +73,7 @@ export function createProductionApi(settings: ProductionSettings, dependencies: 
           try {
             if (path.endsWith('analyse')) parseAnalysisFiles(input?.files)
             else {
-              parseViewerConfig(input?.config)
+              parseViewerConfig(input?.config, true)
               if (typeof input.brief !== 'string' || !input.brief.trim() || input.brief.length > 12000 || typeof input.references !== 'string' || input.references.length > 80000 || typeof input.allowEstimates !== 'boolean' || (input.autoReview !== undefined && typeof input.autoReview !== 'boolean')) throw new Error('Invalid Pilot brief or options.')
             }
           } catch (error) { throw new HttpError(422, error instanceof Error ? error.message : 'Invalid input.') }

@@ -6,7 +6,7 @@ const warnings = (items: LayoutFinding[]) => items.filter((item) => item.severit
 const score = (items: LayoutFinding[]) => items.reduce((total, item) => total + (item.count ?? 1), 0)
 export async function generateReviewedPlan(input: unknown, settings: PilotSettings, fetcher: typeof fetch = fetch, signal?: AbortSignal) {
   const request = input as { config?: unknown; allowEstimates?: boolean }
-  const config = parseViewerConfig(request?.config)
+  const config = parseViewerConfig(request?.config, true)
   const baseline = warnings(layoutChecks(config))
   const sessionSignal = signal ? AbortSignal.any([signal, AbortSignal.timeout(125000)]) : AbortSignal.timeout(125000)
   let first: Awaited<ReturnType<typeof generatePilotPlan>> | undefined

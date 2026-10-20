@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, Building2, Check, Film, FileImage, Presentation, Theater, Upload, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { GeometryType, VenueConfig, VenueType } from '../types/venue'
-import { createProjectConfig, venueTypeLabel } from '../utils/projectPresets'
+import { createBlankProjectConfig, createProjectConfig, venueTypeLabel } from '../utils/projectPresets'
 import { estimateCapacity } from '../utils/venue'
 import { createNationalTheatreStudy } from '../utils/nationalTheatreStudy'
 import { createNationalTheatreSeatingStudy } from '../utils/nationalTheatreSeating'
@@ -41,8 +41,8 @@ export function CreateProjectWizard({ open, onClose, onCreate }: Props) {
     setVenueType(type)
     setLayout(createProjectConfig({ name, venueType: type }))
   }
-  const finish = () => {
-    onCreate(preview, floorplan)
+  const finish = (blank = false) => {
+    onCreate(blank ? createBlankProjectConfig({ name, venueType }) : preview, floorplan)
     setStep(1); setName(''); setVenueType('theatre'); setFloorplan(null)
     setLayout(createProjectConfig({ name: '', venueType: 'theatre' }))
   }
@@ -57,6 +57,7 @@ export function CreateProjectWizard({ open, onClose, onCreate }: Props) {
         <button className="button button-ghost" type="button" onClick={() => { onCreate(createNationalTheatreSeatingStudy(), null); setStep(1) }}>Open sourced stalls study · rows 1–13</button>
         <small>Separate project with official stalls numbering and estimated geometry. Rebuild the Blender model for this layout; the previous GLB has different row decks.</small>
         <label className="wizard-name">Project name<input autoFocus maxLength={120} value={name} placeholder="e.g. Esbjerg Cinema · Screen 1" onChange={(event) => setName(event.target.value)} /></label>
+        <button className="button button-ghost" type="button" onClick={() => finish(true)}>Start blank</button><small>Start with zero seats. Add rows yourself or generate them with Pilot. Stage and spacing start with editable defaults; these are not measured venue data.</small>
         <div className="venue-type-grid">{venueTypes.map(({ type, icon: Icon, description }) => <button key={type} className={venueType === type ? 'active' : ''} onClick={() => selectType(type)}><Icon /><span><b>{venueTypeLabel(type)}</b><small>{description}</small></span>{venueType === type && <Check className="venue-type-check" />}</button>)}</div>
         <label className="floorplan-picker"><input hidden type="file" accept="image/png,image/jpeg,image/webp,.pdf,application/pdf" onChange={(event) => setFloorplan(event.target.files?.[0] ?? null)} />{floorplan ? <><FileImage /><span><b>{floorplan.name}</b><small>Ready to use as the source plan</small></span><button type="button" onClick={(event) => { event.preventDefault(); setFloorplan(null) }}>Remove</button></> : <><Upload /><span><b>Add a floor plan</b><small>Optional · PNG, JPG, WebP or PDF</small></span></>}</label>
       </div> : <div className="wizard-step layout-step">
