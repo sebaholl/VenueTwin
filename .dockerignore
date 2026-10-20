@@ -1,0 +1,12 @@
+.git
+node_modules
+dist
+.env*
+deploy/*.env
+upload
+tmp
+deliverables
+
+dist-server
+coverage
+**/__pycache__

@@ -3,6 +3,8 @@ import type { VenueConfig } from '../types/venue'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, '') ?? ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
 const sessionKey = 'venuetwin-cloud-session'
+let sessionRevision = 0
+let pendingRefresh: { token: string; revision: number; promise: Promise<CloudSession> } | null = null
 
 export const isCloudConfigured = Boolean(supabaseUrl && supabaseAnonKey)
 
@@ -48,18 +50,26 @@ export function getStoredSession(): CloudSession | null {
 }
 
 export function storeSession(session: CloudSession | null) {
+  sessionRevision++
   if (session) localStorage.setItem(sessionKey, JSON.stringify(session))
   else localStorage.removeItem(sessionKey)
 }
 
 export async function refreshSession(session: CloudSession) {
   if (!isCloudConfigured) throw new Error('Supabase is not configured')
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST', headers: baseHeaders(), body: JSON.stringify({ refresh_token: session.refresh_token }),
-  })
-  const refreshed = await parseResponse<AuthResponse>(response)
-  storeSession(refreshed)
-  return refreshed
+  const revision = sessionRevision
+  if (pendingRefresh?.token === session.refresh_token && pendingRefresh.revision === revision) return pendingRefresh.promise
+  const promise = (async () => {
+    const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST', headers: baseHeaders(), body: JSON.stringify({ refresh_token: session.refresh_token }),
+    })
+    const refreshed = await parseResponse<AuthResponse>(response)
+    if (revision !== sessionRevision || getStoredSession()?.refresh_token !== session.refresh_token) throw new Error('Your session changed. Sign in again.')
+    storeSession(refreshed)
+    return refreshed
+  })()
+  pendingRefresh = { token: session.refresh_token, revision, promise }
+  try { return await promise } finally { if (pendingRefresh?.promise === promise) pendingRefresh = null }
 }
 
 export async function ensureFreshSession(session: CloudSession) {

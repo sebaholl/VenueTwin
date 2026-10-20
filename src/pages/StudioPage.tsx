@@ -1,6 +1,20 @@
-import { AlertCircle, ArrowLeft, Box, Cloud, Download, FileImage, FileUp, Map, Redo2, RotateCcw, Save, Settings2, Share2, Undo2, Upload, X } from 'lucide-react'
+import { RoomSetupPanel } from '../components/RoomSetupPanel'
+import { StudioPilotPanel } from '../components/StudioPilotPanel'
+import { StageSetupPanel } from '../components/StageSetupPanel'
+import type { ReferenceMeasurement } from '../lib/projectReferences'
+import { ProjectReferencesPanel } from '../components/ProjectReferencesPanel'
+import '../studio-workflow.css'
+import { geometrySignature } from '../utils/customerViewer'
+import { ViewReview } from '../components/ViewReview'
+import { AlertCircle, ArrowLeft, ArrowRight, ChevronDown, Box, Cloud, Download, FileUp, Map, Redo2, RotateCcw, Save, Share2, Undo2, X } from 'lucide-react'
 import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { SeatCategoriesPanel } from '../components/SeatCategoriesPanel'
+import { ObstaclePanel } from '../components/ObstaclePanel'
+import { BlenderPanel, type BlenderBuildHandle } from '../components/BlenderPanel'
+import { SeatingLevelsPanel } from '../components/SeatingLevelsPanel'
+import { CustomerPreviewButton } from '../components/CustomerPreviewButton'
+import type { Group } from 'three'
 import { Brand } from '../components/Brand'
 import { CloudPanel } from '../components/CloudPanel'
 import { CreateProjectWizard } from '../components/CreateProjectWizard'
@@ -11,7 +25,7 @@ import { VenueScene } from '../components/VenueScene'
 import { disableProjectShare, enableProjectShare, ensureFreshSession, getStoredSession, saveCloudProject, storeSession, type CloudSession } from '../lib/supabaseApi'
 import { useVenueStore } from '../store/venueStore'
 import type { GeometryType, VenueConfig } from '../types/venue'
-import { estimateCapacity, estimateSeatScore } from '../utils/venue'
+import { estimateCapacity, getRowLabel } from '../utils/venue'
 
 type RangeFieldProps = { label: string; value: number; min: number; max: number; step?: number; unit?: string; onChange: (value: number) => void; onBeginEdit: () => void; onCommitEdit: () => void }
 function RangeField({ label, value, min, max, step = 1, unit = '', onChange, onBeginEdit, onCommitEdit }: RangeFieldProps) {
@@ -24,18 +38,35 @@ function isVenueConfig(value: unknown): value is VenueConfig {
   return typeof config.name === 'string' && typeof config.rows === 'number' && typeof config.seatsPerRow === 'number' && typeof config.sectors === 'number' && typeof config.rake === 'number' && typeof config.stageWidth === 'number' && ['straight', 'fan', 'blocks'].includes(config.geometry ?? '') && typeof config.rowOverrides === 'object'
 }
 
+const workflowSteps = [
+  { title: 'Project', description: 'Start with your venue and a floor plan.' },
+  { title: 'Layout', description: 'Arrange seats, levels and sightline obstacles.' },
+  { title: 'Model', description: 'Bring in the architecture and check seat views.' },
+  { title: 'Preview & share', description: 'See the visitor experience and prepare your delivery.' },
+] as const
+
 type SyncStatus = 'local' | 'saving' | 'saved' | 'offline' | 'error'
 
 export function StudioPage() {
   const { projectId, config, selectedSeat, floorplanName, past, future, setConfig, beginEdit, commitEdit, undo, redo, loadProject, selectSeat, setFloorplanName } = useVenueStore()
-  const fileInput = useRef<HTMLInputElement>(null)
+  const blender = useRef<BlenderBuildHandle>(null)
+  const [referenceMeasures, setReferenceMeasures] = useState<{ projectId: string; items: ReferenceMeasurement[] } | null>(null)
+  const receiveMeasurements = useCallback((id: string, items: ReferenceMeasurement[]) => setReferenceMeasures({ projectId: id, items }), [])
+  const [step, setStep] = useState(0)
+  const [projectTool, setProjectTool] = useState<'materials' | 'pilot'>('materials')
+  const [layoutTool, setLayoutTool] = useState('seating')
+  const projectMenu = useRef<HTMLDetailsElement>(null)
+  const goToStep = (next: number) => { setStep(next); setView(next < 2 ? 'plan' : 'model') }
+  const menuAction = (action: () => void) => { if (projectMenu.current) projectMenu.current.open = false; action() }
   const importInput = useRef<HTMLInputElement>(null)
+  const [importedModel, setImportedModel] = useState<Group | null>(null)
+  const [modelSource, setModelSource] = useState<{ file: File; signature: string } | null>(null)
   const lastSavedSnapshot = useRef('')
   const [saveLabel, setSaveLabel] = useState('Save project')
   const [saveError, setSaveError] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('local')
   const [onlineRetry, setOnlineRetry] = useState(0)
-  const [view, setView] = useState<'plan' | 'model'>('plan')
+  const [view, setView] = useState<'plan' | 'model' | 'review'>('plan')
   const [floorplanUrl, setFloorplanUrl] = useState<string | null>(null)
   const [cloudOpen, setCloudOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
@@ -46,16 +77,14 @@ export function StudioPage() {
   const [shareError, setShareError] = useState<string | null>(null)
   const [cloudSession, setCloudSession] = useState<CloudSession | null>(() => getStoredSession())
   const capacity = useMemo(() => estimateCapacity(config), [config])
-  const seatScore = selectedSeat ? estimateSeatScore(selectedSeat, config) : null
 
-  const attachFloorplan = (file: File | null) => {
-    if (file) {
-      setFloorplanName(file.name)
-      setView('plan')
-      setFloorplanUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : null)
-    }
-  }
-  const handleFloorplan = (event: ChangeEvent<HTMLInputElement>) => attachFloorplan(event.target.files?.[0] ?? null)
+
+  const [initialPlan, setInitialPlan] = useState<{ projectId: string; file: File } | null>(null)
+  const restorePlan = useCallback((file: File | null, changed: boolean) => {
+    setFloorplanName(file?.name ?? null)
+    setFloorplanUrl(file?.type.startsWith('image/') ? URL.createObjectURL(file) : null)
+    if (changed) { setConfig({ calibration: null, planBoundary: [] }); setView('plan') }
+  }, [setFloorplanName, setConfig])
   const importProject = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -64,7 +93,7 @@ export function StudioPage() {
       const payload = JSON.parse(await file.text()) as { config?: unknown }
       if (!isVenueConfig(payload.config)) throw new Error('This file does not contain a valid VenueTwin project.')
       loadProject(crypto.randomUUID(), payload.config)
-      setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setSaveError(null)
+      setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setStep(0); setSaveError(null)
       lastSavedSnapshot.current = ''
     } catch (error) { setSaveError(error instanceof Error ? error.message : 'Project import failed.') }
   }
@@ -76,6 +105,7 @@ export function StudioPage() {
   }, [])
   useEffect(() => {
     const handleHistoryShortcut = (event: KeyboardEvent) => {
+      if (view === 'review') return
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return
       event.preventDefault()
@@ -83,7 +113,7 @@ export function StudioPage() {
     }
     window.addEventListener('keydown', handleHistoryShortcut)
     return () => window.removeEventListener('keydown', handleHistoryShortcut)
-  }, [redo, undo])
+  }, [redo, undo, view])
   const exportProjectFile = () => {
     const blob = new Blob([JSON.stringify({ version: 2, config }, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -142,8 +172,9 @@ export function StudioPage() {
   }, [cloudSession])
 
   const startNewProject = (nextConfig: VenueConfig, floorplan: File | null) => {
-    loadProject(crypto.randomUUID(), nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setSaveError(null)
-    attachFloorplan(floorplan)
+    const nextId = crypto.randomUUID()
+    setInitialPlan(floorplan ? { projectId: nextId, file: floorplan } : null)
+    loadProject(nextId, nextConfig); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setStep(0); setSaveError(null)
     lastSavedSnapshot.current = ''
     setShareToken(null); setShareError(null)
     setCreateOpen(false)
@@ -175,26 +206,66 @@ export function StudioPage() {
   const syncText = !cloudSession ? 'Local only' : ({ saving: 'Saving…', saved: 'Saved', offline: 'Offline', error: 'Sync error', local: 'Cloud connected' } as const)[syncStatus]
 
   return (
-    <div className="studio-shell">
+    <div className="studio-shell studio-workflow">
       <header className="studio-header">
-        <div className="studio-brand"><Link to="/" className="back-link"><ArrowLeft size={17} /></Link><Brand /><button className={`status-pill ${cloudSession ? `cloud-active sync-${syncStatus}` : ''}`} onClick={() => setCloudOpen(true)}><i /> {syncText}</button></div>
-        <div className="studio-actions"><button className="icon-button cloud-button" onClick={() => setCloudOpen(true)} title="Project dashboard"><Cloud /></button><button className="icon-button" onClick={undo} disabled={!past.length} title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button><button className="icon-button" onClick={redo} disabled={!future.length} title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button><button className="icon-button" onClick={() => setCreateOpen(true)} title="New project"><RotateCcw /></button><input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} /><button className="button button-ghost button-small" onClick={() => importInput.current?.click()}><FileUp size={16} /> Import</button><button className="button button-ghost button-small" onClick={() => setExportOpen(true)}><Download size={16} /> Export</button><button className="button button-ghost button-small" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Share</button><button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button></div>
+        <div className="studio-brand"><Link to="/" className="back-link" aria-label="Back to home"><ArrowLeft size={17} /></Link><Brand /><span className="studio-project-title" title={config.name}>{config.name}</span></div>
+        <div className="studio-actions">
+          <button className={`status-pill ${cloudSession ? `cloud-active sync-${syncStatus}` : ''}`} onClick={() => setCloudOpen(true)}><i /> {syncText}</button>
+          <button className="icon-button" onClick={undo} disabled={!past.length || view === 'review'} aria-label="Undo" title="Undo (Cmd/Ctrl+Z)"><Undo2 /></button>
+          <button className="icon-button" onClick={redo} disabled={!future.length || view === 'review'} aria-label="Redo" title="Redo (Cmd/Ctrl+Shift+Z)"><Redo2 /></button>
+          <details className="project-menu" ref={projectMenu}><summary>Project <ChevronDown size={14} /></summary><div className="project-menu-items">
+            <button onClick={() => menuAction(() => setCreateOpen(true))}><RotateCcw size={16} /> New project</button>
+            <button onClick={() => menuAction(() => setCloudOpen(true))}><Cloud size={16} /> Cloud projects & account</button>
+            <button onClick={() => menuAction(() => importInput.current?.click())}><FileUp size={16} /> Import project file</button>
+            <button onClick={() => menuAction(() => setExportOpen(true))}><Download size={16} /> Export project</button>
+          </div></details>
+          <input ref={importInput} hidden type="file" accept=".json,.venuetwin.json,application/json" onChange={importProject} />
+          <button className="button button-primary button-small" onClick={saveProject}><Save size={16} /> {saveLabel}</button>
+        </div>
       </header>
-      {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Cloud save failed</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
-      <main className="studio-main">
-        <aside className="control-panel">
-          <div className="panel-heading"><div><span>PROJECT</span><input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} aria-label="Project name" /></div><Settings2 /></div>
-          <section className="control-section"><h2><span>1</span> Source plan</h2><input ref={fileInput} hidden type="file" accept="image/*,.pdf" onChange={handleFloorplan} /><button className="upload-zone" onClick={() => fileInput.current?.click()}><FileImage /><b>{floorplanName ?? 'Upload floor plan'}</b><small>JPG and PNG overlay · PDF stored as source</small><span><Upload size={14} /> Choose file</span></button></section>
-          <section className="control-section"><h2><span>2</span> Venue geometry</h2><div className="segmented">{(['straight', 'fan', 'blocks'] as GeometryType[]).map((value) => <button key={value} className={config.geometry === value ? 'active' : ''} onClick={() => setConfig({ geometry: value })}>{value}</button>)}</div><RangeField label="Rows" value={config.rows} min={3} max={24} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rows) => setConfig({ rows })} /><RangeField label="Seats per row" value={config.seatsPerRow} min={5} max={30} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(seatsPerRow) => setConfig({ seatsPerRow })} /><RangeField label="Sections" value={config.sectors} min={1} max={3} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(sectors) => setConfig({ sectors })} /><RangeField label="Rake" value={config.rake} min={0.08} max={0.5} step={0.01} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rake) => setConfig({ rake })} /><RangeField label="Stage width" value={config.stageWidth} min={6} max={20} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(stageWidth) => setConfig({ stageWidth })} /></section>
-          <div className="project-stats"><div><span>Capacity</span><strong>{capacity}</strong></div><div><span>Sections</span><strong>{config.sectors}</strong></div><div><span>Selected</span><strong>{selectedSeat?.label ?? '—'}</strong></div></div>
+      <nav className="workflow-nav" aria-label="Studio workflow">{workflowSteps.map((item, index) => <button key={item.title} disabled={view === 'review'} aria-current={step === index ? 'step' : undefined} onClick={() => goToStep(index)}><span className="step-number">{index + 1}</span><span><strong>{item.title}</strong><small>{item.description}</small></span></button>)}</nav>
+      {saveError && <div className="save-error-toast" role="alert"><AlertCircle /><div><strong>Project needs attention</strong><span>{saveError}</span></div><button onClick={() => setSaveError(null)} aria-label="Dismiss save error"><X /></button></div>}
+      <main className={`studio-main ${view === 'review' ? 'review-workspace' : ''}`}>
+        <aside className="control-panel" hidden={view === 'review'} aria-label={`${workflowSteps[step].title} tools`}>
+          <div className="workflow-intro"><span>STEP {step + 1} OF 4</span><h1>{workflowSteps[step].title}</h1><p>{workflowSteps[step].description}</p></div>
+          {step === 0 && <>
+            <label className="project-name-field">Project name<input value={config.name} onFocus={beginEdit} onBlur={commitEdit} onChange={(e) => setConfig({ name: e.target.value })} /></label>
+
+            <div className="project-tool-switch" role="group" aria-label="Project tools"><button aria-pressed={projectTool === "materials"} onClick={() => setProjectTool("materials")}><span>01</span> Materials<small>Plans, photos & measurements</small></button><button aria-pressed={projectTool === "pilot"} onClick={() => setProjectTool("pilot")}><span>02</span> Pilot<small>Analyse & propose a layout</small></button></div>
+          </>}
+          <div hidden={step !== 0 || projectTool !== "pilot"}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); setStep(2); setView('model'); await blender.current.build(next) }} /></div>
+          <div hidden={step !== 0 || projectTool !== "materials"}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
+          {step === 1 && <>
+            <div className="layout-tools" aria-label="Layout tools">{[['room', 'Room'], ['stage', 'Stage'], ['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
+            {layoutTool === 'room' && <RoomSetupPanel key={projectId + JSON.stringify(config.room ? { ...config.room, openings: undefined } : undefined)} config={config} onChange={setConfig} />}
+            {layoutTool === 'stage' && <StageSetupPanel key={projectId + JSON.stringify([config.stageWidth, config.stagePosition, config.stageDepth, config.screenWidth, config.screenHeight, config.screenBottom])} config={config} measurements={referenceMeasures?.projectId === projectId ? referenceMeasures.items : []} onChange={setConfig} />}
+            {layoutTool === 'seating' && <>
+          <section className="control-section"><h2>Seating arrangement</h2><p className="workflow-hint">Select a row in the plan to edit its individual spacing and seat count.</p><div className="segmented">{(['straight', 'fan', 'blocks'] as GeometryType[]).map((value) => <button key={value} className={config.geometry === value ? 'active' : ''} onClick={() => setConfig({ geometry: value })}>{value}</button>)}</div><RangeField label="Rows" value={config.rows} min={3} max={50} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rows) => setConfig({ rows })} /><RangeField label="Seats per row" value={config.seatsPerRow} min={5} max={30} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(seatsPerRow) => setConfig({ seatsPerRow })} /><RangeField label="Sections" value={config.sectors} min={1} max={3} onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(sectors) => setConfig({ sectors })} /><RangeField label="Rake" value={config.rake} min={0.08} max={0.5} step={0.01} unit="m" onBeginEdit={beginEdit} onCommitEdit={commitEdit} onChange={(rake) => setConfig({ rake })} /></section>
+            </>}
+            {layoutTool === 'categories' && <SeatCategoriesPanel config={config} selectedSeat={selectedSeat} onSelect={selectSeat} onChange={setConfig} />}
+            {layoutTool === 'levels' && <SeatingLevelsPanel key={projectId} config={config} selectedSeat={selectedSeat} onChange={(next) => { setConfig(next); selectSeat(null) }} />}
+            {layoutTool === 'obstacles' && <ObstaclePanel config={config} onChange={setConfig} />}
+          </>}
+          <div hidden={step !== 2}>
+            <BlenderPanel ref={blender} compact={false} key={projectId} projectId={projectId} config={config} onLoaded={setImportedModel} onSource={setModelSource} />
+          </div>
+          <div hidden={step !== 2}>
+            <section className="control-section"><h2>Check the view</h2><p className="workflow-hint">Compare representative seat views with reference photos. Changes stay in a draft until you apply them.</p><button className="button button-secondary" onClick={() => setView('review')}>Review seat views <ArrowRight size={16} /></button></section>
+          </div>
+          {step === 3 && <>
+            <section className="delivery-card"><h2>1. Try the visitor experience</h2><p>Open a local preview to choose seats and look around the venue.</p><CustomerPreviewButton config={config} source={modelSource} /></section>
+            <section className="delivery-card"><h2>2. Export your project</h2><p>Download a project backup or use the available export formats.</p><button className="button button-secondary" onClick={() => setExportOpen(true)}><Download size={16} /> Export options</button></section>
+            <section className="delivery-card"><h2>3. Share when ready</h2><p>Manage the public cloud preview. Imported Blender models stay local and are not included in cloud sharing.</p><button className="button button-secondary" onClick={() => { setShareError(null); setShareOpen(true) }}><Share2 size={16} /> Sharing settings</button></section>
+          </>}
+          {step < 3 && <div className="workflow-next">{step === 0 && projectTool === "materials" ? <><button className="button button-primary" onClick={() => setProjectTool("pilot")}>Continue with Pilot <ArrowRight size={16} /></button><button className="workflow-skip" onClick={() => goToStep(1)}>Or arrange the layout manually</button></> : <button className="button button-secondary" onClick={() => goToStep(step + 1)}>Continue to {workflowSteps[step + 1].title.toLowerCase()} <ArrowRight size={16} /></button>}</div>}
         </aside>
         <section className="viewport">
-          <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>
-          {view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>VIEW QUALITY</small><strong className="score">{seatScore}%</strong></div><div><small>POSITION</small><span>Row {String.fromCharCode(65 + selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
-          <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>All edits sync with the 3D model</span></div>
+          {view !== 'review' && <div className="viewport-top"><div className="view-switch"><button className={view === 'plan' ? 'active' : ''} onClick={() => setView('plan')}><Map size={15} /> 2D plan</button><button className={view === 'model' ? 'active' : ''} onClick={() => setView('model')}><Box size={15} /> 3D model</button></div><div className="capacity-badge"><span>LIVE CAPACITY</span><strong>{capacity}</strong></div></div>}
+          {view === 'review' ? <ViewReview key={projectId} config={config} model={modelSource?.signature === geometrySignature(config) ? importedModel : null} onApply={setConfig} onClose={() => setView('model')} /> : view === 'model' ? <><div className="canvas-wrap"><VenueScene config={config} selectedSeat={selectedSeat} onSeatSelect={selectSeat} importedModel={modelSource?.signature === geometrySignature(config) ? importedModel : null} /></div>{selectedSeat && <div className="seat-inspector"><button onClick={() => selectSeat(null)}>×</button><div><small>SELECTED SEAT</small><strong>{selectedSeat.label}</strong></div><div><small>PREVIEW</small><strong className="score">Approximate</strong></div><div><small>POSITION</small><span>Row {getRowLabel(config, selectedSeat.row)} · Seat {selectedSeat.seat + 1}</span></div></div>}</> : <FloorplanEditor key={projectId + (floorplanUrl ?? '')} measurements={referenceMeasures?.projectId === projectId ? referenceMeasures.items : []} config={config} imageUrl={floorplanUrl} fileName={floorplanName} onConfigChange={setConfig} onBeginEdit={beginEdit} onCommitEdit={commitEdit} />}
+          {view !== 'review' && <div className="viewport-footer"><span><i className="legend-seat" /> Venue geometry</span><span><i className="legend-selected" /> Active selection</span><span>{modelSource ? 'Rebuild Blender architecture after geometry changes' : 'Select a seat to explore its view'}</span></div>}
         </section>
       </main>
-      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setView('plan'); setShareToken(project.share_enabled ? project.share_token ?? null : null); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
+      <CloudPanel open={cloudOpen} onClose={() => setCloudOpen(false)} session={cloudSession} currentProjectId={projectId} onSessionChange={setCloudSession} onNewProject={() => setCreateOpen(true)} onLoadProject={(project) => { loadProject(project.id, project.venue_data); setFloorplanUrl(null); setFloorplanName(null); setView('plan'); setStep(0); setShareToken(project.share_enabled ? project.share_token ?? null : null); lastSavedSnapshot.current = JSON.stringify({ projectId: project.id, config: project.venue_data }) }} />
       <CreateProjectWizard open={createOpen} onClose={() => setCreateOpen(false)} onCreate={startNewProject} />
       <ExportProjectDialog open={exportOpen} config={config} onClose={() => setExportOpen(false)} onProjectFile={exportProjectFile} />
       <ShareProjectDialog open={shareOpen} projectName={config.name} sessionAvailable={Boolean(cloudSession)} token={shareToken} busy={shareBusy} error={shareError} onClose={() => setShareOpen(false)} onEnable={() => void enableSharing()} onDisable={() => void disableSharing()} onOpenCloud={() => { setShareOpen(false); setCloudOpen(true) }} />

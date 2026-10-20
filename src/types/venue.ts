@@ -1,7 +1,18 @@
+import type { ArchitecturalDetail } from '../utils/architecturalDetails'
 export type GeometryType = 'straight' | 'fan' | 'blocks'
 export type VenueType = 'cinema' | 'theatre' | 'conference' | 'other'
 
 export type RowOverride = {
+  frontRailing?: boolean
+  ticketRow?: string
+  numberingSource?: 'nd-stalls-2025'
+  levelId?: string
+  elevation?: number
+  arcRadius?: number
+  arcDegrees?: number
+  categoryId?: string
+  seatCategories?: Record<number, string>
+  accessibleSeats?: Record<number, boolean>
   seats?: number
   offsetX?: number
   offsetY?: number
@@ -22,7 +33,16 @@ export type StagePosition = {
   rotation: number
 }
 
+export type RoomOpening = { id: string; wall: 'front' | 'back' | 'left' | 'right'; offset: number; width: number; height: number; bottom: number }
+
 export type VenueConfig = {
+  architecturalDetails?: ArchitecturalDetail[]
+  room?: { openings?: RoomOpening[]; width: number; depth: number; height: number; x: number; z: number; rotation: number; ceiling: boolean; wallColor: string; floorColor: string }
+  seatingLevels?: { id: string; name: string; elevation: number; parapetHeight?: number }[]
+  studyNotice?: string
+  obstacles?: VenueObstacle[]
+  categories?: SeatCategory[]
+  currency?: 'CZK' | 'EUR' | 'DKK' | 'USD' | 'GBP'
   name: string
   venueType?: VenueType
   rows: number
@@ -30,6 +50,10 @@ export type VenueConfig = {
   sectors: number
   rake: number
   curve: number
+  stageDepth?: number
+  screenWidth?: number
+  screenHeight?: number
+  screenBottom?: number
   stageWidth: number
   geometry: GeometryType
   rowOverrides: Record<number, RowOverride>
@@ -40,6 +64,21 @@ export type VenueConfig = {
   rowSpacing?: number
   edgeClearance?: number
   aisleWidth?: number
+}
+
+export type SeatCategory = { id: string; name: string; color: string; price?: number }
+
+export type VenueObstacle = {
+  id: string
+  name: string
+  kind: 'column' | 'wall' | 'railing'
+  x: number
+  z: number
+  elevation: number
+  width: number
+  depth: number
+  height: number
+  rotation: number
 }
 
 export type SeatRef = {

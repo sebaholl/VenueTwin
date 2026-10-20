@@ -1,0 +1,29 @@
+import { stageGeometry } from './stageGeometry'
+import type { SeatRef, VenueConfig } from '../types/venue'
+import { generateSeatLayout } from './venue'
+
+export const modelOffset: [number, number, number] = [0, -1.4, -2.8]
+export function overviewPose(config: VenueConfig) {
+  if (!config.seatingLevels?.length) return { position: [11, 11, 18] as [number, number, number], target: [0, 1.7, 2] as [number, number, number] }
+  const seats = generateSeatLayout(config)
+  const height = Math.max(6, ...seats.map((seat) => seat.position[1]))
+  const width = Math.max(12, ...seats.map((seat) => Math.abs(seat.position[0])))
+  return { position: [width * 1.7, height + 10, width * 2.8] as [number, number, number], target: [0, height / 2 - 1.4, 3] as [number, number, number] }
+}
+export function getSeatView(config: VenueConfig, selected: SeatRef | null, eyeHeight = 1.15) {
+  if (!selected) return null
+  const seat = generateSeatLayout(config).find((s) => s.row === selected.row && s.seat === selected.seat)
+  if (!seat) return null
+  const stage = config.stagePosition ?? { offsetX: 0, offsetY: 0, rotation: 0 }
+  const angle = stage.rotation * Math.PI / 180
+  const position: [number, number, number] = [seat.position[0], seat.position[1] - .25 + eyeHeight + modelOffset[1], seat.position[2] + modelOffset[2]]
+  const screen = stageGeometry(config)
+  const target: [number, number, number] = [stage.offsetX + Math.sin(angle) * screen.screenZ, screen.screenY + modelOffset[1], stage.offsetY + Math.cos(angle) * screen.screenZ + modelOffset[2]]
+  const dx = target[0] - position[0], dy = target[1] - position[1], dz = target[2] - position[2]
+  return { position, target, yaw: Math.atan2(dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) }
+}
+
+export function lookDirection(yaw: number, pitch: number): [number, number, number] {
+  const limitedPitch = Math.max(-Math.PI / 2 + .05, Math.min(Math.PI / 2 - .05, pitch))
+  return [Math.sin(yaw) * Math.cos(limitedPitch), Math.sin(limitedPitch), -Math.cos(yaw) * Math.cos(limitedPitch)]
+}
