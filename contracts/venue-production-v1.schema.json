@@ -1,0 +1,431 @@
+{
+  "$defs": {
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "scale": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "seat_inventory": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "occluders": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "materials": {
+          "$ref": "#/$defs/Evidence"
+        },
+        "lighting": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "scale",
+        "seat_inventory",
+        "occluders",
+        "materials",
+        "lighting"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "measured",
+            "documented",
+            "inferred",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "type": "string"
+          },
+          "maxItems": 20,
+          "title": "Source Ids",
+          "type": "array"
+        },
+        "uncertainty_m": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 500,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Uncertainty M"
+        }
+      },
+      "required": [
+        "status",
+        "source_ids",
+        "uncertainty_m"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "Level": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Name",
+          "type": "string"
+        },
+        "elevation_m": {
+          "maximum": 500,
+          "minimum": -500,
+          "title": "Elevation M",
+          "type": "number"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "elevation_m",
+        "evidence"
+      ],
+      "title": "Level",
+      "type": "object"
+    },
+    "Seat": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Label",
+          "type": "string"
+        },
+        "level_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Level Id",
+          "type": "string"
+        },
+        "row_label": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Row Label",
+          "type": "string"
+        },
+        "position_m": {
+          "items": {
+            "maximum": 500,
+            "minimum": -500,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Position M",
+          "type": "array"
+        },
+        "yaw_rad": {
+          "maximum": 6.283185307179586,
+          "minimum": -6.283185307179586,
+          "title": "Yaw Rad",
+          "type": "number"
+        },
+        "eye_position_m": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 500,
+                "minimum": -500,
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Eye Position M"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "level_id",
+        "row_label",
+        "position_m",
+        "yaw_rad",
+        "eye_position_m",
+        "evidence"
+      ],
+      "title": "Seat",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "survey",
+            "drawing",
+            "photo",
+            "legacy-concept"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "sha256",
+        "description"
+      ],
+      "title": "Source",
+      "type": "object"
+    },
+    "Structure": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "shell",
+            "stage",
+            "obstruction",
+            "deck",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "position_m": {
+          "items": {
+            "maximum": 500,
+            "minimum": -500,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Position M",
+          "type": "array"
+        },
+        "size_m": {
+          "items": {
+            "exclusiveMinimum": 0,
+            "maximum": 500,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Size M",
+          "type": "array"
+        },
+        "yaw_rad": {
+          "maximum": 6.283185307179586,
+          "minimum": -6.283185307179586,
+          "title": "Yaw Rad",
+          "type": "number"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "position_m",
+        "size_m",
+        "yaw_rad",
+        "evidence"
+      ],
+      "title": "Structure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "format": {
+      "const": "venuetwin-production",
+      "title": "Format",
+      "type": "string"
+    },
+    "version": {
+      "const": "1.0.0",
+      "title": "Version",
+      "type": "string"
+    },
+    "venue_id": {
+      "maxLength": 100,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_.:-]+$",
+      "title": "Venue Id",
+      "type": "string"
+    },
+    "revision": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "name": {
+      "maxLength": 500,
+      "minLength": 1,
+      "pattern": "\\S",
+      "title": "Name",
+      "type": "string"
+    },
+    "units": {
+      "const": "metres",
+      "title": "Units",
+      "type": "string"
+    },
+    "axes": {
+      "const": "right-handed-y-up",
+      "title": "Axes",
+      "type": "string"
+    },
+    "origin": {
+      "maxLength": 500,
+      "minLength": 1,
+      "pattern": "\\S",
+      "title": "Origin",
+      "type": "string"
+    },
+    "sources": {
+      "items": {
+        "$ref": "#/$defs/Source"
+      },
+      "maxItems": 100,
+      "title": "Sources",
+      "type": "array"
+    },
+    "levels": {
+      "items": {
+        "$ref": "#/$defs/Level"
+      },
+      "maxItems": 30,
+      "title": "Levels",
+      "type": "array"
+    },
+    "seats": {
+      "items": {
+        "$ref": "#/$defs/Seat"
+      },
+      "maxItems": 2000,
+      "title": "Seats",
+      "type": "array"
+    },
+    "structures": {
+      "items": {
+        "$ref": "#/$defs/Structure"
+      },
+      "maxItems": 2000,
+      "title": "Structures",
+      "type": "array"
+    },
+    "stage_target_m": {
+      "anyOf": [
+        {
+          "items": {
+            "maximum": 500,
+            "minimum": -500,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Stage Target M"
+    },
+    "stage_target_evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "coverage": {
+      "$ref": "#/$defs/Coverage"
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "venue_id",
+    "revision",
+    "name",
+    "units",
+    "axes",
+    "origin",
+    "sources",
+    "levels",
+    "seats",
+    "structures",
+    "stage_target_m",
+    "stage_target_evidence",
+    "coverage"
+  ],
+  "title": "VenueDocument",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:venuetwin:production:1.0.0"
+}
