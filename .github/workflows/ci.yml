@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, develop, release/pilot-hosted-beta]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, "codex/**"]
 
 permissions:
   contents: read
@@ -89,3 +89,24 @@ jobs:
           contracts/fixtures/fictional-venue.json /tmp/venuetwin-production-roundtrip
           --container-image venuetwin-pilot:ci --allow-unverified
       - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-production-roundtrip
+
+  managed-viewer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test scripts/test-managed-release.mjs
+      - run: npm run build:managed:demo
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: managed-browser-failures
+          path: test-results/
+          retention-days: 7

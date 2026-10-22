@@ -13,3 +13,7 @@ coverage
 
 .venv
 .pytest_cache
+
+dist-managed
+test-results
+playwright-report

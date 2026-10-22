@@ -39,3 +39,8 @@ deploy/api.env
 # Local Python planner environment
 .venv/
 .pytest_cache/
+
+# Customer release outputs and local browser tests
+dist-managed/
+test-results/
+playwright-report/
