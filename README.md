@@ -1,5 +1,9 @@
 # VenueTwin
 
+To see the existing Studio locally, run `npm run dev` and open http://localhost:5173.
+To see the new four-seat customer viewer demo, run `npm run demo` and open
+http://127.0.0.1:4174. Both commands run from this repository; press Ctrl+C to stop.
+
 Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
 
 Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).

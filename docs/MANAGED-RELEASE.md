@@ -4,6 +4,10 @@ This release provides a public, read-only venue viewer. The operator prepares th
 
 **Status: release candidate, not deployed or approved for customers.** The committed four-seat venue is fictional. Current geometry is procedural and chairs/lighting are illustrative, not photorealistic. Real-world accuracy requires measured source material and human review. Passing automated checks does not certify sightlines, accessibility or venue conditions.
 
+## Quick local preview
+
+In this repository, run `npm ci` once, then `npm run demo`. Open http://127.0.0.1:4174/venue?venue=/venues/demo/v1/venue.json. Press Ctrl+C to stop. The existing Studio still uses `npm run dev` at http://localhost:5173. No branch merge or deployment is needed for either local preview.
+
 ## Local checks (Node >=22.18, Python 3.12)
 
 ```sh
