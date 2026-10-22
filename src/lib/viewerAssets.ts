@@ -1,6 +1,6 @@
 import { assetUrl, parseViewerConfig, sha256, type ViewerSnapshot } from '../utils/customerViewer'
 
-async function limitedFetch(url: string, limit: number, signal: AbortSignal) {
+export async function limitedFetch(url: string, limit: number, signal: AbortSignal) {
   const response = await fetch(url, { signal, credentials: 'omit', redirect: 'error' })
   if (!response.ok) throw new Error(`Could not load viewer file (${response.status}).`)
   if (Number(response.headers.get('Content-Length')) > limit) { await response.body?.cancel(); throw new Error('Viewer file exceeds the size limit.') }

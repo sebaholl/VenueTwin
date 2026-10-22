@@ -1,5 +1,7 @@
 # VenueTwin
 
+Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
+
 Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).
 
 Phase 1 production contract and offline planner: [audit, local commands and roadmap](docs/PRODUCTION_PHASE1.md).
@@ -74,7 +76,7 @@ are not part of cloud saves, public previews or 2D exports.
 
 ## Run locally
 
-Requirements: Node.js 20 or newer and npm.
+Requirements: Node.js 22.18 or newer and npm.
 
 ```bash
 git clone https://github.com/sebaholl/VenueTwin.git
