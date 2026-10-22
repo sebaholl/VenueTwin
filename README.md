@@ -1,5 +1,7 @@
 # VenueTwin
 
+Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).
+
 Phase 1 production contract and offline planner: [audit, local commands and roadmap](docs/PRODUCTION_PHASE1.md).
 
 Architectural reconstruction: [source-aware detail components for Pilot and Blender](docs/ARCHITECTURAL_DETAILS.md).
