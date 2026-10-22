@@ -1,5 +1,7 @@
 # VenueTwin
 
+Phase 1 production contract and offline planner: [audit, local commands and roadmap](docs/PRODUCTION_PHASE1.md).
+
 Architectural reconstruction: [source-aware detail components for Pilot and Blender](docs/ARCHITECTURAL_DETAILS.md).
 
 Pilot local v1: [capabilities, complete workflow, acceptance checks and remaining limits](docs/PILOT_V1.md).

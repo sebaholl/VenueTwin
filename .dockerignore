@@ -10,3 +10,6 @@ deliverables
 dist-server
 coverage
 **/__pycache__
+
+.venv
+.pytest_cache

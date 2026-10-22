@@ -35,3 +35,7 @@ __pycache__/
 # Hosted API outputs and private configuration
 dist-server/
 deploy/api.env
+
+# Local Python planner environment
+.venv/
+.pytest_cache/
