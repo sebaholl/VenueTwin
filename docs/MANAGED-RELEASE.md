@@ -88,3 +88,19 @@ Before first customer access:
 - Keep the prior release for rollback; upload to a new release directory then switch atomically. Do not replace an approved version's files in place.
 
 No deployment, database migration, paid API call or cloud provisioning is part of this implementation. Photorealistic capture/texturing, survey registration and venue-wide quality acceptance remain production work beyond this procedural first viewer.
+
+## Implementation verification (2026-10-23)
+
+- `npm run lint`: passed without warnings.
+- `npm test`: 220 tests passed.
+- `npm run test:python`: 20 Blender helper tests passed.
+- `PYTHONPATH=services/planner .venv/bin/python -m pytest services/planner/tests -q`: 67 passed (one third-party Starlette/AnyIO deprecation warning).
+- `node --test scripts/test-managed-release.mjs`: 6 release gate tests passed.
+- `npm run build`, `npm run build:server`, `npm run build:managed:demo`: passed. The lazy 3D viewer chunk is approximately 942 kB / 253 kB gzip; the size warning remains. The regular build also emits Vite's native-config migration warning for existing extensionless imports.
+- `npm audit --audit-level=high`: zero reported vulnerabilities.
+- Rebuilt local Docker image with Vite 8; Blender smoke passed with network disabled, read-only filesystem and capability limits.
+- Full fictional contract → Blender → Three.js round trip passed; all four deliberate geometry/camera/identity/header corruptions were rejected.
+- Public package CLI reran verification successfully and produced exactly the public manifest and model.
+- 18 Playwright tests passed in `mcr.microsoft.com/playwright:v1.64.1-noble`, with the final test container's network disabled (loopback preview only). Desktop/mobile Chromium and WebKit passed. Desktop seat view and mobile map screenshots were visually inspected.
+
+Native macOS Playwright launch was blocked by the execution sandbox's Mach port restriction. Browser validation therefore ran inside local Docker. No actual iPhone/Android device, large real venue, Simply.com deployment, live Supabase or live OpenAI service was tested. No paid services were invoked.
