@@ -52,6 +52,8 @@ export function StudioPage() {
   const blender = useRef<BlenderBuildHandle>(null)
   const [referenceMeasures, setReferenceMeasures] = useState<{ projectId: string; items: ReferenceMeasurement[] } | null>(null)
   const receiveMeasurements = useCallback((id: string, items: ReferenceMeasurement[]) => setReferenceMeasures({ projectId: id, items }), [])
+  const [materialsRevision, setMaterialsRevision] = useState(0)
+  const materialsSaved = useCallback(() => setMaterialsRevision((revision) => revision + 1), [])
   const [step, setStep] = useState(0)
   const [layoutTool, setLayoutTool] = useState('seating')
   const projectMenu = useRef<HTMLDetailsElement>(null)
@@ -232,8 +234,8 @@ export function StudioPage() {
 
             <section className="control-section"><h2>Start with your evidence</h2><p>1. Add plans, photos and measured dimensions below. 2. Tell Pilot what venue you want to recreate. 3. Review its proposal, build the model and compare seat views with your sources.</p><p className="workflow-hint">Pilot uses only the evidence you provide and marks estimates. An accurate replica needs measured seat positions and room geometry plus a final venue review.</p></section>
           </>}
-          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} /></div>
-          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); setStep(2); setView('model'); await blender.current.build(next) }} /></div>
+          <div hidden={step !== 0}><ProjectReferencesPanel key={projectId} projectId={projectId} initialFile={initialPlan?.projectId === projectId ? initialPlan.file : undefined} onPlan={restorePlan} onMeasurements={receiveMeasurements} onSaved={materialsSaved} /></div>
+          <div hidden={step !== 0}><StudioPilotPanel key={projectId} projectId={projectId} materialsRevision={materialsRevision} config={config} onApplied={() => setView('model')} onBuild={async (next) => { if (!blender.current) throw new Error('Model tool is not ready. Build from the Model step.'); setStep(2); setView('model'); await blender.current.build(next) }} /></div>
           {step === 1 && <>
             <div className="layout-tools" aria-label="Layout tools">{[['room', 'Room'], ['stage', 'Stage'], ['seating', 'Seating'], ['levels', 'Levels'], ['categories', 'Categories'], ['obstacles', 'Obstacles']].map(([id, label]) => <button key={id} aria-pressed={layoutTool === id} onClick={() => setLayoutTool(id)}>{label}</button>)}</div>
             {layoutTool === 'room' && <RoomSetupPanel key={projectId + JSON.stringify(config.room ? { ...config.room, openings: undefined } : undefined)} config={config} onChange={setConfig} />}

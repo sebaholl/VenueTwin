@@ -352,6 +352,8 @@ For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief 
 
 Project shows **Venue references** (saved plans/photos/measurements) followed by **Pilot** (analysis, briefs and proposals) in one flow. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
 
+Saved reference changes now refresh Pilot's file list and input counts automatically. When four or fewer saved files fit the 12 MB analysis limit, they are selected for review by default; nothing is sent until **Analyse selected files** is clicked. A changed source clears an unapplied proposal. After a reviewed proposal is applied, **Apply and build 3D model** passes the exact approved layout to Blender and reports build/import failures rather than presenting them as a completed model. The layout remains editable if the build fails. The input count distinguishes measured dimensions from estimates; it does not certify seat coordinates or photo accuracy.
+
 The frontpage includes an interactive, illustrative seating diagram with three position choices and a plan/spatial toggle. It makes no seat-quality score claims. The visual uses local CSS and React, with keyboard-accessible buttons and reduced-motion support; no external images, libraries or tracking were added. Mobile styles retain the selection controls and simplify decorative labels.
 
 ### Bounded Pilot review and correction

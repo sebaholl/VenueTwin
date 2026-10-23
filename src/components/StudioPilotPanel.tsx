@@ -13,11 +13,12 @@ import { useVenueStore } from '../store/venueStore'
 import type { VenueConfig } from '../types/venue'
 import { applyPilotPlan, checkPilotBase, parsePilotPlan, pilotActionLabel, pilotSnapshot, type PilotPlan } from '../utils/studioPilot'
 import { generateSeatLayout } from '../utils/venue'
+import { pilotInputStatus } from '../utils/pilotInputs'
 
 const sample = 'Arrange this project as a straight cinema layout with 8 rows and 12 seats in every row, 2 sections, 0.65 m seat spacing, 1 m row spacing, 1 m aisle width, 0.15 m rise per row and zero curve. Set stage width to 9 m and preserve its position. Preserve other settings. Check that there are exactly 96 seats.'
 const mze = 'Use these published Kinosál Mže measurements: stage 11 m wide × 4.5 m deep; screen 9 m × 3.8 m; seating starts 2.5 m from the stage; total capacity 259 places including 6 wheelchair places. Source: https://www.mkstc.cz/kinosal-mze.html . The row arrangement, row elevations and room height have not been supplied. Apply only supported dimensions and tell me what you still need. Do not turn wheelchair places into ordinary chairs.'
 type Proposal = { plan: PilotPlan; base: string; allowEstimates: boolean; next: VenueConfig; references: string; review?: { attempts: number; outcome: string; note: string } }
-export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { projectId: string; config: VenueConfig; onApplied: () => void; onBuild?: (config: VenueConfig) => Promise<void> }) {
+export function StudioPilotPanel({ projectId, materialsRevision, config, onApplied, onBuild }: { projectId: string; materialsRevision: number; config: VenueConfig; onApplied: () => void; onBuild?: (config: VenueConfig) => Promise<void> }) {
   const [restored] = useState(() => loadPilotSession(projectId))
   const [lastApplied, setLastApplied] = useState<PilotRun | null>(restored.session.lastApplied)
   const [saveError, setSaveError] = useState(restored.error)
@@ -29,6 +30,8 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   const [includeReferences, setIncludeReferences] = useState(restored.session.includeReferences)
   const [connectionAttempt, setConnectionAttempt] = useState(0)
   const [connectionError, setConnectionError] = useState('')
+  const [inputs, setInputs] = useState<ReturnType<typeof pilotInputStatus> | null>(null)
+  const [inputError, setInputError] = useState('')
   const [ready, setReady] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [analysing, setAnalysing] = useState(false)
@@ -36,10 +39,31 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   const [notice, setNotice] = useState('')
   const [proposal, setProposal] = useState<Proposal | null>(null)
   const proposalRevision = useRef(0)
+  const previousMaterialsRevision = useRef(materialsRevision)
   const applying = useRef(false)
   const mounted = useRef(true)
   function clearProposal() { proposalRevision.current++; setProposal(null) }
   const active = useRef<AbortController | null>(null)
+  useEffect(() => {
+    if (previousMaterialsRevision.current === materialsRevision) return
+    previousMaterialsRevision.current = materialsRevision
+    proposalRevision.current++
+    setProposal(null)
+    setNotice('Saved materials changed. Pilot will use the latest sources in the next proposal.')
+  }, [materialsRevision])
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const saved = await projectReferences(projectId)
+        const accepted = await reviewedFindings(projectId, saved.assets)
+        if (cancelled) return
+        setInputs(pilotInputStatus(saved, accepted.length))
+        setInputError('')
+      } catch (reason) { if (!cancelled) setInputError(reason instanceof Error ? reason.message : 'Could not check saved materials.') }
+    })()
+    return () => { cancelled = true }
+  }, [projectId, materialsRevision])
   useEffect(() => {
     mounted.current = true
     const controller = new AbortController()
@@ -92,6 +116,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
   async function apply(buildAfter = false) {
     if (!proposal || applying.current) return
     applying.current = true
+    let layoutApplied = false
     const revision = proposalRevision.current
     try {
       if (await referenceContext() !== proposal.references) throw new Error("Saved references changed. Generate a fresh proposal.")
@@ -101,6 +126,7 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
       checkPilotBase(current.config, proposal.base)
       const next = applyPilotPlan(current.config, proposal.plan, proposal.allowEstimates)
       current.setConfig(next); current.selectSeat(null)
+      layoutApplied = true
       setLastApplied({ at: new Date().toISOString(), brief, plan: proposal.plan, snapshot: pilotSnapshot(next), references: proposal.references })
       clearProposal(); setNotice('Applied to your venue. Undo restores the previous layout. Inspect the 3D view, then rebuild Blender architecture if needed.')
       onApplied()
@@ -109,21 +135,23 @@ export function StudioPilotPanel({ projectId, config, onApplied, onBuild }: { pr
         await onBuild(next)
         if (mounted.current) setNotice("Layout applied. Check the build result below and inspect representative seat views before sharing.")
       }
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not apply this proposal.') }
+    } catch (failure) { if (layoutApplied) setNotice('The layout was applied, but the model build did not finish. Review the Model step and retry the build.'); setError(failure instanceof Error ? failure.message : 'Could not apply this proposal.') }
     finally { applying.current = false; if (mounted.current) setBuilding(false) }
   }
   const stale = proposal !== null && proposal.plan.actions.length > 0 && proposal.base !== pilotSnapshot(config)
   return <section className="control-section studio-pilot" aria-labelledby="pilot-title">
     <h2 id="pilot-title"><Sparkles size={17} /> VenueTwin Pilot <small>{hostedPilot ? 'Hosted beta' : 'Local v1'}</small></h2>
-    <p>Describe your venue or an edit. Pilot proposes changes using the Studio tools; you review and apply them.</p>
+    <p>Describe the venue once. Pilot uses your saved measurements and reviewed source findings to propose Studio changes; you review the proposal, build the model and check its seat views.</p>
+    {inputs && <div className="pilot-status" role="status"><strong>Materials ready for Pilot:</strong> {inputs.plans} plan{inputs.plans === 1 ? '' : 's'}, {inputs.photos} photo{inputs.photos === 1 ? '' : 's'}, {inputs.measured} measured dimension{inputs.measured === 1 ? '' : 's'}, {inputs.estimates} estimate{inputs.estimates === 1 ? '' : 's'}, {inputs.reviewedFindings} accepted source finding{inputs.reviewedFindings === 1 ? '' : 's'}. {inputs.missingForSourceDraft.length ? `For a source-informed draft, add ${inputs.missingForSourceDraft.join(' and ')}. A brief alone can produce only a conceptual proposal.` : 'You can request a source-informed draft.'} Seat-by-seat coordinates and owner approval still need separate checks before any accuracy claim.</div>}
+    {inputError && <p role="alert">Input check: {inputError}</p>}
     {!pilotAvailable ? <p className="pilot-status">Pilot is not configured on this installation. Contact the operator for access.</p> : <>
       {hostedPilot && <><p role="status">{connectionError || (ready ? 'Pilot is connected.' : 'Checking Pilot access…')}</p><button type="button" disabled={busy || analysing || building} onClick={() => { setReady(null); setConnectionError(''); setConnectionAttempt((value) => value + 1) }}>Check connection after signing in</button></>}
       {!hostedPilot && ready === false && <details className="pilot-setup" open><summary>Connect AI on your computer</summary><p>Add <code>OPENAI_API_KEY</code> and <code>OPENAI_MODEL=gpt-5-mini</code> to <code>.env.local</code>, then restart <code>npm run dev</code>. Use an OpenAI API key, without a VITE_ prefix. Requests use your API account.</p></details>}
       <details className="pilot-options"><summary>Workflow & saved draft</summary><p>Analyse materials → review findings → describe changes → review and apply → build in Model → inspect Preview & share.</p><p>Your brief, settings and last applied proposal are saved on this device. Pending proposals are not restored after refresh; generate a fresh one. No API calls run automatically on reopening.</p><p>Handover includes the current layout, Blender blueprint, checks and last applied evidence. It can contain private reference text. Original uploads and the GLB are separate.</p><button type="button" className="button button-secondary" disabled={busy || analysing || building} onClick={() => void exportHandover()}>Download handover report</button>{lastApplied && <small>Last applied: {new Date(lastApplied.at).toLocaleString()}. The report checks whether its layout and references still match.</small>}</details>
       {saveError && <p role="alert">{saveError}</p>}
-      <ReferenceAnalysisPanel projectId={projectId} disabled={busy || analysing || building || ready !== true} onBusy={setAnalysing} onChange={() => clearProposal()} />
+      <ReferenceAnalysisPanel projectId={projectId} materialsRevision={materialsRevision} disabled={busy || analysing || building || ready !== true} onBusy={setAnalysing} onChange={() => { clearProposal(); void projectReferences(projectId).then((saved) => reviewedFindings(projectId, saved.assets)).then((accepted) => setInputs((current) => current ? { ...current, reviewedFindings: accepted.length } : current)).catch(() => setInputError('Could not check reviewed findings.')) }} />
       <form onSubmit={(event) => { event.preventDefault(); void generate() }}>
-        <label htmlFor="pilot-brief">2. Describe the layout</label>
+        <label htmlFor="pilot-brief">2. Describe the venue and desired result</label>
         <textarea id="pilot-brief" rows={6} maxLength={12000} required value={brief} disabled={busy || analysing || building} onChange={(event) => { setBrief(event.target.value); clearProposal(); setNotice('') }} placeholder="For example: make row 3 sit 0.4 metres above its level and keep everything else." />
         <details className="pilot-options"><summary>Starting points</summary><div className="pilot-examples">{pilotSkills.map((skill) => <button key={skill.id} type="button" disabled={busy || analysing || building} onClick={() => { setBrief(skill.brief); clearProposal() }}>{skill.title}</button>)}<button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(sample); clearProposal() }}>Example layout</button><button type="button" disabled={busy || analysing || building} onClick={() => { setBrief(mze); clearProposal() }}>Mže measurements</button></div></details>
         <details className="pilot-options"><summary>Sources & estimation settings</summary><label className="pilot-check"><input type="checkbox" checked={includeReferences} disabled={busy || analysing || building} onChange={(event) => { setIncludeReferences(event.target.checked); clearProposal() }} /> Include saved notes, measurements and accepted findings</label>

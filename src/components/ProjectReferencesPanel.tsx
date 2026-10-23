@@ -7,7 +7,7 @@ function AssetPreview({ asset }: { asset: ReferenceAsset }) {
   return <>{asset.file.type.startsWith('image/') && <img src={url} alt={asset.caption || asset.name} loading="lazy" />}<a href={url} download={asset.name}>Download original</a></>
 }
 
-export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasurements }: { projectId: string; initialFile?: File; onMeasurements: (projectId: string, items: ReferenceMeasurement[]) => void; onPlan: (file: File | null, changed: boolean) => void }) {
+export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasurements, onSaved }: { projectId: string; initialFile?: File; onMeasurements: (projectId: string, items: ReferenceMeasurement[]) => void; onPlan: (file: File | null, changed: boolean) => void; onSaved?: () => void }) {
   const [data, setData] = useState<ProjectReferences>(emptyReferences)
   const [busy, setBusy] = useState(true)
   const [loaded, setLoaded] = useState(false)
@@ -26,6 +26,7 @@ export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasu
     void (async () => {
       try {
         let next = await projectReferences(projectId)
+        let initialPlanSaved = false
         if (cancelled) return
         if (initialFile && !next.assets.length) {
           const asset: ReferenceAsset = { id: crypto.randomUUID(), kind: 'plan', name: initialFile.name, file: initialFile, caption: '' }
@@ -33,9 +34,11 @@ export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasu
           // Keep wizard input available for retry if persistence fails.
           setData(next); setDirty(true); setLoaded(true)
           await projectReferences(projectId, next)
+          initialPlanSaved = true
         }
         if (cancelled) return
         onMeasurements(projectId, next.measurements)
+        if (initialPlanSaved) onSaved?.()
         appliedPlan.current = next.activePlanId
         setData(next); setLoaded(true); setDirty(false); setStatus('References saved on this device.')
         const plan = next.assets.find((asset) => asset.id === next.activePlanId)
@@ -44,7 +47,7 @@ export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasu
       finally { if (!cancelled) setBusy(false) }
     })()
     return () => { cancelled = true; alive.current = false }
-  }, [projectId, initialFile, onPlan, onMeasurements])
+  }, [projectId, initialFile, onPlan, onMeasurements, onSaved])
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => { if (dirty) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('beforeunload', warn)
@@ -57,6 +60,7 @@ export function ProjectReferencesPanel({ projectId, initialFile, onPlan, onMeasu
       await projectReferences(projectId, next)
       if (!alive.current) return
       onMeasurements(projectId, next.measurements)
+      onSaved?.()
       setDirty(false); setStatus('References saved on this device.')
       const planChanged = next.activePlanId !== appliedPlan.current
       if (planChanged) notifyPlan(next, true)
