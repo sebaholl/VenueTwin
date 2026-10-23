@@ -1,13 +1,13 @@
 # VenueTwin
 
-To see the existing Studio locally, run `npm run dev` and open http://localhost:5173.
-To see the new four-seat customer viewer demo, run `npm run demo` and open
-http://127.0.0.1:4174. Both commands run from this repository; press Ctrl+C to stop.
+Run `npm run demo` and open the local address printed by Vite. This opens the **existing VenueTwin front page and Studio**; click **Start with Pilot in Studio** to add plans, photos and measurements, describe the venue, review Pilot's proposal, and build/check the 3D model. Pilot AI requests require a separately configured API key and can incur API charges; opening the app or saving materials does not call the API. Press Ctrl+C to stop.
+
+The separate customer-only viewer is available with `npm run demo:viewer` at http://127.0.0.1:4174. It does not contain the front page or Studio. If that port is already in use, stop the earlier viewer process before starting it again.
 
 Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
 
 First real-venue pilot: [Prague National Theatre evidence and measurement intake](docs/PRAGUE_REAL_VENUE_PILOT.md). Its 263 stalls seat IDs are sourced; positions and seat views await survey data and owner review.
-The `npm run demo` preview also includes an explicitly unverified [Prague visual study](http://127.0.0.1:4174/venue?venue=/venues/prague-national-theatre-study/v1/venue.json).
+The `npm run demo:viewer` preview also includes an explicitly unverified [Prague visual study](http://127.0.0.1:4174/venue?venue=/venues/prague-national-theatre-study/v1/venue.json).
 
 Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).
 
@@ -350,7 +350,7 @@ For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief 
 
 ### Focused Studio and frontpage refresh
 
-Project now separates **Materials** (saved plans/photos/measurements) from **Pilot** (analysis, briefs and proposals). Both stay mounted when switching, preserving drafts and in-flight work. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
+Project shows **Venue references** (saved plans/photos/measurements) followed by **Pilot** (analysis, briefs and proposals) in one flow. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
 
 The frontpage includes an interactive, illustrative seating diagram with three position choices and a plan/spatial toggle. It makes no seat-quality score claims. The visual uses local CSS and React, with keyboard-accessible buttons and reduced-motion support; no external images, libraries or tracking were added. Mobile styles retain the selection controls and simplify decorative labels.
 

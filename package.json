@@ -18,7 +18,8 @@
     "postbuild": "node scripts/security-headers.mjs",
     "test:python": "python3 -m unittest discover -s scripts/blender -p \"test_*.py\"",
     "test:blender": "node scripts/smoke-blender.mjs",
-    "demo": "npm run build:managed:demo && node scripts/serve-managed.mjs",
+    "demo": "vite --host 127.0.0.1 --port 5173",
+    "demo:viewer": "npm run build:managed:demo && node scripts/serve-managed.mjs",
     "build:managed": "tsc -b && node --experimental-strip-types scripts/managed-release.mjs",
     "build:managed:demo": "tsc -b && node --experimental-strip-types scripts/managed-release.mjs --demo",
     "test:e2e": "playwright test"
