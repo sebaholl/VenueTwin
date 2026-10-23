@@ -17,7 +17,10 @@ if (!demo) {
   if (!sourceRoot) throw new Error('Supply --venues with reviewed public packages. No live build was produced.')
 }
 const packages = []
-if (demo) packages.push({ dir: resolve('tests/fixtures/production'), destination: 'demo/v1' })
+if (demo) {
+  packages.push({ dir: resolve('tests/fixtures/production'), destination: 'demo/v1', expectedQuality: 'demonstration' })
+  packages.push({ dir: resolve('venue-data/national-theatre-prague/public-study'), destination: 'prague-national-theatre-study/v1', expectedQuality: 'study' })
+}
 else {
   for (const slug of await readdir(sourceRoot, { withFileTypes: true })) {
     if (!slug.isDirectory() || !/^[a-z0-9][a-z0-9-]{0,79}$/.test(slug.name)) throw new Error('Venue folders must be simple lowercase slugs.')
@@ -34,7 +37,7 @@ for (const item of packages) {
   const manifest = parseProductionManifest(JSON.parse(await readFile(join(item.dir, 'venue.json'), 'utf8')))
   if (!demo && item.destination.split('/')[1] !== `v${manifest.revision}`) throw new Error('Directory version must match venue revision.')
   const allowed = ['format', 'version', 'venue_id', 'revision', 'name', 'quality', 'notice', 'model', 'levels', 'seats', 'target']
-  if (Object.keys(manifest).length !== allowed.length || allowed.some(k => !Object.hasOwn(manifest, k)) || manifest.format !== 'venuetwin-customer' || manifest.version !== 1 || manifest.model?.file !== 'venue.glb' || (!demo && manifest.quality !== 'reviewed')) throw new Error('Only reviewed, minimal customer manifests can enter a release.')
+  if (Object.keys(manifest).length !== allowed.length || allowed.some(k => !Object.hasOwn(manifest, k)) || manifest.format !== 'venuetwin-customer' || manifest.version !== 1 || manifest.model?.file !== 'venue.glb' || (demo ? manifest.quality !== item.expectedQuality : manifest.quality !== 'reviewed')) throw new Error('Only expected, minimal customer manifests can enter a release.')
   for (const level of manifest.levels) if (Object.keys(level).sort().join(',') !== 'id,name') throw new Error('Private level metadata is forbidden.')
   for (const seat of manifest.seats) if (Object.keys(seat).sort().join(',') !== 'eye,id,label,level_id,position,row,yaw') throw new Error('Private seat metadata is forbidden.')
   const bytes = await readFile(join(item.dir, 'venue.glb'))

@@ -1,6 +1,6 @@
 import { Box3, Group, PerspectiveCamera, Vector3 } from 'three'
 export type ProductionSeat = { id: string; label: string; row: string; level_id: string; position: [number, number, number]; eye: [number, number, number]; yaw: number }
-export type ProductionManifest = { format: 'venuetwin-customer'; version: 1; venue_id: string; revision: number; name: string; quality: 'demonstration' | 'reviewed'; notice: string; model: { file: string; sha256: string }; levels: { id: string; name: string }[]; seats: ProductionSeat[]; target: [number, number, number] }
+export type ProductionManifest = { format: 'venuetwin-customer'; version: 1; venue_id: string; revision: number; name: string; quality: 'demonstration' | 'study' | 'reviewed'; notice: string; model: { file: string; sha256: string }; levels: { id: string; name: string }[]; seats: ProductionSeat[]; target: [number, number, number] }
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
 const text = (v: unknown, max = 500): v is string => typeof v === 'string' && !!v.trim() && v.length <= max
 const id = (v: unknown): v is string => text(v, 100) && /^[A-Za-z0-9_.:-]+$/.test(v)
@@ -9,7 +9,7 @@ function keys(v: unknown, expected: string[]): v is Record<string, unknown> { re
 export function parseProductionManifest(value: unknown): ProductionManifest {
   const fail = () => { throw new Error('Invalid customer venue package.') }
   if (!keys(value, ['format', 'version', 'venue_id', 'revision', 'name', 'quality', 'notice', 'model', 'levels', 'seats', 'target'])) return fail()
-  if (value.format !== 'venuetwin-customer' || value.version !== 1 || !id(value.venue_id) || !Number.isSafeInteger(value.revision) || Number(value.revision) < 1 || !text(value.name) || !['demonstration', 'reviewed'].includes(String(value.quality)) || !text(value.notice) || !vector(value.target)) return fail()
+  if (value.format !== 'venuetwin-customer' || value.version !== 1 || !id(value.venue_id) || !Number.isSafeInteger(value.revision) || Number(value.revision) < 1 || !text(value.name) || !['demonstration', 'study', 'reviewed'].includes(String(value.quality)) || !text(value.notice) || !vector(value.target)) return fail()
   if (!keys(value.model, ['file', 'sha256']) || value.model.file !== 'venue.glb' || typeof value.model.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(value.model.sha256)) return fail()
   if (!Array.isArray(value.levels) || !value.levels.length || value.levels.length > 30 || value.levels.some(x => !keys(x, ['id', 'name']) || !id(x.id) || !text(x.name))) return fail()
   const levels = new Set(value.levels.map(x => x.id))

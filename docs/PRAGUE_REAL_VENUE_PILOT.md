@@ -5,10 +5,17 @@ This is a **research and measurement intake, not a finished customer venue**. It
 ## What has actually been established
 
 - The theatre's [official seating-plan page](https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo/planek-hlediste) links to its [official PDF](https://media.narodni-divadlo.cz/11302/1764234380-nd-gold.pdf). As checked on 23 October 2026, the stalls study covers 13 rows and 263 numbered sale seats. The two row-7 service places are excluded. This supports **identities and row membership**, not metre-scale positions.
+- The official PDF's SHA-256 on that check was `37978bed76957e3d976155b88e32389d49992995d6f0976c03175f39b863dbde`. It is recorded for source integrity; the PDF is not committed.
 - The theatre's [stage-technology page](https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo/jevistni-technologie) links to [stage/backstage plans](https://media.narodni-divadlo.cz/11302/1578406532-nd-pudorys.pdf) and a [section](https://media.narodni-divadlo.cz/11302/1578406606-nd-rez.pdf). These do not establish the auditorium seat coordinates or tier elevations needed here.
 - The [official gallery](https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo) shows the architectural appearance. Its published images do not identify exact ticket seats, camera height or lens. They remain linked references, not redistributed model textures.
 
 The source ledger is in [intake.json](../venue-data/national-theatre-prague/intake.json). The [seat survey table](../venue-data/national-theatre-prague/seat-survey.csv) carries all 263 stable IDs, with every coordinate and eye position blank. Empty fields are intentional. Nothing from the existing approximate model was copied into measurement columns.
+
+## Local visual study
+
+Run `npm run demo` and open [the unverified Prague study](http://127.0.0.1:4174/venue?venue=/venues/prague-national-theatre-study/v1/venue.json). It has 263 selectable sale-seat IDs and a first-person view from each **estimated** eye point. Every screen labels it an unverified study. It is a way to inspect the current approximation and plan measurements, not a customer venue or ticket-buying guide.
+
+The [estimated production draft](../venue-data/national-theatre-prague/unverified-production-draft.json) comes from the existing Studio National Theatre study through `scripts/prepare-prague-study.mjs`. It retains the Studio's approximate geometry, adds a clearly assumed 0.9 m seat-anchor-to-eye offset and an estimated stage target, then runs through the strict production contract and local Blender/Three.js verifier. The generated [public study package](../venue-data/national-theatre-prague/public-study/venue.json) contains only seat labels, explicit approximate coordinates and the self-contained GLB; no official PDF or photo is redistributed. The source-aware intake table remains blank and separate. The package uses quality `study` and the real customer-release builder rejects it.
 
 ## Data needed from the venue owner or surveyor
 

@@ -7,6 +7,7 @@ http://127.0.0.1:4174. Both commands run from this repository; press Ctrl+C to s
 Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
 
 First real-venue pilot: [Prague National Theatre evidence and measurement intake](docs/PRAGUE_REAL_VENUE_PILOT.md). Its 263 stalls seat IDs are sourced; positions and seat views await survey data and owner review.
+The `npm run demo` preview also includes an explicitly unverified [Prague visual study](http://127.0.0.1:4174/venue?venue=/venues/prague-national-theatre-study/v1/venue.json).
 
 Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).
 

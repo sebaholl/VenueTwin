@@ -37,8 +37,16 @@ def test_reviewed_package_exports_only_public_pair(bundle):
 
 def test_demo_explicit_and_labelled(bundle):
     source, _, output = bundle
-    with pytest.raises(ValueError, match='Choose either'): package(source, output)
+    with pytest.raises(ValueError, match='Choose exactly one'): package(source, output)
     assert package(source, output, demo=True)['quality'] == 'demonstration'
+
+
+def test_unreviewed_real_study_is_labelled_and_separate_from_customer_approval(bundle):
+    source, _, output = bundle
+    result = package(source, output, study=True)
+    assert result['quality'] == 'study'
+    assert 'UNVERIFIED' in result['notice']
+    assert result['model']['file'] == 'venue.glb'
 
 
 @pytest.mark.parametrize('field,value', [('model_sha256', '0'*64), ('geometry_checked', False), ('reviewed_on', '2999-01-01'), ('reviewer', ' ')])

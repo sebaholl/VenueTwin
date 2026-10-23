@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import pytest
 from venuetwin_planner.intake import audit
+from venuetwin_planner.build import prepare
 from conftest import ROOT
 
 SOURCE = ROOT / 'venue-data/national-theatre-prague'
@@ -22,6 +23,16 @@ def test_official_inventory_is_real_but_has_no_measured_seat_views():
     assert not result['ready_for_production_contract']
     assert 'stage_target_m' in result['missing']
     assert 'publication_rights_confirmed' in result['missing']
+
+
+def test_estimated_prague_study_cannot_enter_reviewed_pipeline():
+    document = json.loads((SOURCE / 'unverified-production-draft.json').read_text())
+    venue, _, requirements = prepare(document, allow_unverified=True)
+    assert len(venue.seats) == 263
+    assert len(requirements) > 1000
+    assert all(seat.evidence.status != 'measured' for seat in venue.seats)
+    with pytest.raises(ValueError, match='Missing verified inputs'):
+        prepare(document)
 
 
 def test_numbering_cannot_be_deleted_or_duplicated(tmp_path):

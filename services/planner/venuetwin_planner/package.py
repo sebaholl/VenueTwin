@@ -23,12 +23,18 @@ class Review(StrictModel):
     public_release_approved: Literal[True]
 
 
-def public_manifest(venue, model_hash, demo):
+def public_manifest(venue, model_hash, mode):
+    quality = {'demo': 'demonstration', 'study': 'study', 'review': 'reviewed'}[mode]
+    notices = {
+        'demo': 'Fictional demonstration. Not a real venue.',
+        'study': 'PUBLIC-SOURCE STUDY ONLY. Seat positions, eye heights, room dimensions and sightlines are estimated and UNVERIFIED. Do not use for ticket or accessibility decisions.',
+        'review': 'Operator-reviewed model. Views are approximate; people and event equipment may affect your view.',
+    }
     return {
         'format': 'venuetwin-customer', 'version': 1, 'venue_id': venue.venue_id,
         'revision': venue.revision, 'name': venue.name,
-        'quality': 'demonstration' if demo else 'reviewed',
-        'notice': 'Fictional demonstration. Not a real venue.' if demo else 'Operator-reviewed model. Views are approximate; people and event equipment may affect your view.',
+        'quality': quality,
+        'notice': notices[mode],
         'model': {'file': 'venue.glb', 'sha256': model_hash},
         'levels': [{'id': x.id, 'name': x.name} for x in venue.levels],
         'seats': [{'id': s.id, 'label': s.label, 'row': s.row_label, 'level_id': s.level_id,
@@ -37,9 +43,9 @@ def public_manifest(venue, model_hash, demo):
     }
 
 
-def package(build_dir: Path, output: Path, *, demo=False, review: Path | None = None):
-    if demo == bool(review):
-        raise ValueError('Choose either --demo or a completed --review file')
+def package(build_dir: Path, output: Path, *, demo=False, study=False, review: Path | None = None):
+    if sum((bool(demo), bool(study), bool(review))) != 1:
+        raise ValueError('Choose exactly one of --demo, --study or a completed --review file')
     manifest = json.loads((build_dir / 'manifest.json').read_bytes())
     required = {'input.json', 'packet.json', 'venue.glb', 'builder.json', 'verification.json'}
     if manifest.get('format') != 'venuetwin-build' or manifest.get('version') != 1 or set(manifest.get('files', {})) != required:
@@ -66,7 +72,7 @@ def package(build_dir: Path, output: Path, *, demo=False, review: Path | None = 
         for name in ('input.json', 'venue.glb'):
             shutil.copyfile(build_dir / name, Path(temporary) / name)
         subprocess.run(['node', str(VERIFY), temporary], check=True, timeout=60, cwd=ROOT)
-    data = public_manifest(venue, model_hash, demo)
+    data = public_manifest(venue, model_hash, 'review' if review else 'study' if study else 'demo')
     output.mkdir(parents=False, exist_ok=False)
     try:
         shutil.copyfile(build_dir / 'venue.glb', output / 'venue.glb')
@@ -83,6 +89,7 @@ def main():
     parser.add_argument('output', type=Path)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--demo', action='store_true')
+    group.add_argument('--study', action='store_true', help='Publish a clearly unverified local study; never a customer release')
     group.add_argument('--review', type=Path)
     args = parser.parse_args()
     result = package(**vars(args))
