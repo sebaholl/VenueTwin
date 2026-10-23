@@ -51,7 +51,7 @@ function ManagedViewer({ loaded, path, initialSeat }: { loaded: LoadedProduction
   }
   const fullscreen = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else if (root.current?.requestFullscreen) await root.current.requestFullscreen(); else setStatus('Full screen is unavailable in this browser.') } catch { setStatus('Full screen could not be opened.') } }
   return <div className="managed-viewer" ref={root}>
-    <header className="managed-header"><Brand /><span>{manifest.quality === 'demonstration' ? 'DEMONSTRATION' : 'VENUE PREVIEW'}</span><button onClick={() => void fullscreen()}>Full screen</button></header>
+    <header className="managed-header"><Brand /><span>{manifest.quality === 'demonstration' ? 'DEMONSTRATION' : manifest.quality === 'study' ? 'UNVERIFIED VENUE STUDY' : 'VENUE PREVIEW'}</span><button onClick={() => void fullscreen()}>Full screen</button></header>
     <main className="managed-layout">
       <aside className="managed-picker" aria-label="Choose your seat"><p className="managed-eyebrow">THE VIEW FROM YOUR SEAT</p><h1>{manifest.name}</h1><p>Find your place. Take a look around.</p>
         <label>Level<select aria-label="Choose level" value={level} onChange={e => { const next = manifest.seats.filter(s => s.level_id === e.target.value); setLevel(e.target.value); setRow(next[0].row); setSelected(null); setInside(false) }}>{manifest.levels.filter(l => manifest.seats.some(s => s.level_id === l.id)).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>

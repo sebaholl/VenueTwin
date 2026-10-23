@@ -10,12 +10,12 @@ test('real release requires configured contact and reviewed packages', () => {
   assert.notEqual(contact.status, 0); assert.match(contact.stderr, /Configure real/)
   const absent = run([]); assert.notEqual(absent.status, 0); assert.match(absent.stderr, /Supply --venues/)
 })
-for (const scenario of ['demo', 'hash', 'metadata', 'revision', 'extra-file']) test(`release rejects ${scenario}`, async () => {
+for (const scenario of ['demo', 'study', 'hash', 'metadata', 'revision', 'extra-file']) test(`release rejects ${scenario}`, async () => {
   const root = await mkdtemp(join(tmpdir(), 'vt-release-test-'))
   try {
     const dir = join(root, 'theatre', 'v1'); await mkdir(dir, { recursive: true })
     const manifest = JSON.parse(await readFile('tests/fixtures/production/venue.json', 'utf8'))
-    if (scenario !== 'demo') manifest.quality = 'reviewed'
+    if (scenario !== 'demo') manifest.quality = scenario === 'study' ? 'study' : 'reviewed'
     if (scenario === 'hash') manifest.model.sha256 = '0'.repeat(64)
     if (scenario === 'metadata') manifest.sources = ['private source']
     if (scenario === 'revision') manifest.revision = 2

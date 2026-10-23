@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { projectReferences, type ReferenceAsset } from '../lib/projectReferences'
 import { fileData, loadAnalysis, saveAnalysis, sourceFor } from '../lib/referenceAnalysis'
 import { parseReferenceAnalysis, type AnalysisRecord } from '../utils/referenceAnalysis'
-export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }: { projectId: string; disabled: boolean; onChange: () => void; onBusy: (busy: boolean) => void }) {
+export function ReferenceAnalysisPanel({ projectId, materialsRevision, disabled, onChange, onBusy }: { projectId: string; materialsRevision: number; disabled: boolean; onChange: () => void; onBusy: (busy: boolean) => void }) {
   const [assets, setAssets] = useState<ReferenceAsset[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [report, setReport] = useState<AnalysisRecord | null>(null)
@@ -11,8 +11,17 @@ export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }
   const [message, setMessage] = useState('')
   const active = useRef<AbortController | null>(null)
   useEffect(() => { try { setReport(loadAnalysis(projectId)) } catch { setMessage('Saved analysis could not be read. Please analyse again.') } return () => { active.current?.abort() } }, [projectId])
+  useEffect(() => {
+    let cancelled = false
+    void projectReferences(projectId).then((saved) => {
+      if (cancelled) return
+      setAssets(saved.assets)
+      setSelected(saved.assets.length <= 4 && saved.assets.reduce((size, asset) => size + asset.file.size, 0) <= 12 * 1024 * 1024 ? saved.assets.map((asset) => asset.id) : [])
+    }).catch(() => { if (!cancelled) setMessage('Saved files could not be loaded. Try refreshing them.') })
+    return () => { cancelled = true }
+  }, [projectId, materialsRevision])
   async function refresh() {
-    try { const saved = await projectReferences(projectId); setAssets(saved.assets); setSelected([]); setMessage('Saved files refreshed. Select the sources to analyse.') } catch (e) { setMessage(String(e)) }
+    try { const saved = await projectReferences(projectId); setAssets(saved.assets); setSelected(saved.assets.length <= 4 && saved.assets.reduce((size, asset) => size + asset.file.size, 0) <= 12 * 1024 * 1024 ? saved.assets.map((asset) => asset.id) : []); setMessage('Saved files refreshed. Review the selected sources before analysing.') } catch (e) { setMessage(String(e)) }
   }
   async function analyse() {
     const controller = new AbortController(); active.current = controller
@@ -40,7 +49,7 @@ export function ReferenceAnalysisPanel({ projectId, disabled, onChange, onBusy }
     try { saveAnalysis(projectId, next); setReport(next); onChange() } catch { setMessage('Review could not be saved. Check browser storage.') }
   }
   return <details className="pilot-setup"><summary>1. Analyse plans and photos</summary>
-    <p>Add and save files in the Materials tab, then return here and refresh this list. Analysis sends selected files and captions to OpenAI {hostedPilot ? 'through the hosted Pilot service.' : 'using your paid API account.'} Up to 4 files / 12 MB per request.</p>
+    <p>Saved files appear below automatically. Review the selection before analysis. Analysis sends selected files and captions to OpenAI {hostedPilot ? 'through the hosted Pilot service.' : 'using your paid API account.'} Up to 4 files / 12 MB per request.</p>
     <button type="button" disabled={busy || disabled} onClick={() => void refresh()}>Refresh saved files</button>
     {assets.map((a) => <label className="pilot-check" key={a.id}><input type="checkbox" disabled={busy || disabled} checked={selected.includes(a.id)} onChange={() => setSelected(selected.includes(a.id) ? selected.filter((id) => id !== a.id) : [...selected, a.id])} />{a.name}</label>)}
     <button type="button" className="button button-secondary" disabled={busy || disabled || !selected.length || selected.length > 4} onClick={() => void analyse()}>Analyse selected files</button>

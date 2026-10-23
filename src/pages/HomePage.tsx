@@ -16,9 +16,9 @@ export function HomePage() {
         <div className="hero-glow" />
         <div className="eyebrow"><Sparkles size={15} /> Spatial intelligence for venues</div>
         <h1>Every seat,<br /><em>seen before booking.</em></h1>
-        <p className="hero-copy">Turn a floor plan into an interactive 3D venue. Design layouts, understand sightlines and give every visitor confidence in their choice.</p>
+        <p className="hero-copy">Describe your venue and add plans, photos and measurements. Pilot helps turn that evidence into a 3D model you can inspect, correct and validate seat by seat.</p>
         <div className="hero-actions">
-          <Link className="button button-primary" to="/studio">Build a venue twin <ArrowRight size={18} /></Link>
+          <Link className="button button-primary" to="/studio">Start with Pilot in Studio <ArrowRight size={18} /></Link>
           <a className="text-link" href="#workflow">See how it works <ArrowRight size={16} /></a>
         </div>
         <div className="trust-row"><span>Built for</span><b>Cinemas</b><b>Theatres</b><b>Auditoriums</b><b>Live venues</b></div>
