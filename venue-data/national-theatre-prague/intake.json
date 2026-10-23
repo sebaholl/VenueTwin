@@ -1,0 +1,79 @@
+{
+  "format": "venuetwin-venue-intake",
+  "version": 1,
+  "venue_id": "prague-national-theatre",
+  "venue_name": "National Theatre Prague — historical building",
+  "auditorium_scope": "Stalls rows 1–13 only",
+  "status": "research-only; never publish as an accurate seat-view package",
+  "researched_on": "2026-10-23",
+  "official_sources": [
+    {
+      "id": "seating-plan",
+      "url": "https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo/planek-hlediste",
+      "detail_url": "https://media.narodni-divadlo.cz/11302/1764234380-nd-gold.pdf",
+      "supports": "stalls row and sale-seat identifiers; distinguishes service places",
+      "does_not_support": "metric seat coordinates, eye heights or sightlines"
+    },
+    {
+      "id": "stage-technology",
+      "url": "https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo/jevistni-technologie",
+      "detail_url": "https://media.narodni-divadlo.cz/11302/1578406532-nd-pudorys.pdf",
+      "supports": "stage/backstage technical context",
+      "does_not_support": "complete measured auditorium seating geometry"
+    },
+    {
+      "id": "official-gallery",
+      "url": "https://www.narodni-divadlo.cz/cs/sceny/narodni-divadlo",
+      "detail_url": null,
+      "supports": "architectural appearance reference",
+      "does_not_support": "seat-specific camera location, lens or image-reuse rights"
+    }
+  ],
+  "confirmed_inventory": {
+    "level": "stalls",
+    "row_counts": [
+      21,
+      22,
+      21,
+      22,
+      21,
+      22,
+      19,
+      22,
+      21,
+      20,
+      19,
+      18,
+      15
+    ],
+    "sale_seat_count": 263,
+    "source_id": "seating-plan",
+    "note": "Two row-7 service places are excluded from the sale-seat table."
+  },
+  "measurement_input": {
+    "coordinate_origin_m": null,
+    "coordinate_origin_description": null,
+    "axes": "right-handed-y-up",
+    "measured_level_elevations_m": {},
+    "room_shell_boxes": [],
+    "stage_target_m": null,
+    "occluder_boxes": [],
+    "measurement_source_files": [],
+    "photo_records": [],
+    "stage_target_source_id": null,
+    "occluder_assessment": null,
+    "material_references": [],
+    "lighting_references": []
+  },
+  "approval": {
+    "venue_owner_reviewer": null,
+    "review_date": null,
+    "geometry_approved": false,
+    "seat_views_approved": false,
+    "publication_rights_confirmed": false
+  },
+  "notes": [
+    "Official identifiers are evidence for the inventory only. All existing Studio and Blender seat positions, elevations and decoration remain estimates.",
+    "Only a source-linked measured survey and venue-owner review can upgrade this intake to a customer package."
+  ]
+}
