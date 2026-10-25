@@ -45,7 +45,10 @@ def prepare(value, allow_unverified=False):
     packet = {
         'format': 'venuetwin-build-packet', 'version': 1, 'notice': NOTICE,
         'boxes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad}
-                  for s in sorted(venue.structures, key=lambda s: s.id)],
+                  for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is None],
+        'meshes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad,
+                    'vertices': s.mesh.vertices_m, 'triangles': s.mesh.triangles}
+                   for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is not None],
         'seats': [{'id': s.id, 'position': s.position_m, 'rotation': s.yaw_rad,
                    'eye': s.eye_position_m, 'target': target,
                    'vertical_fov_deg': s.vertical_fov_deg if s.vertical_fov_deg is not None else 65.0}

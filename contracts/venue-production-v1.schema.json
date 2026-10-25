@@ -316,6 +316,17 @@
         },
         "evidence": {
           "$ref": "#/$defs/Evidence"
+        },
+        "mesh": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructureMesh"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -328,6 +339,47 @@
       ],
       "title": "Structure",
       "type": "object"
+    },
+    "StructureMesh": {
+      "additionalProperties": false,
+      "description": "Local Y-up triangle mesh; structure position/yaw place it in the venue.",
+      "properties": {
+        "vertices_m": {
+          "items": {
+            "items": {
+              "maximum": 500,
+              "minimum": -500,
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "maxItems": 4096,
+          "minItems": 4,
+          "title": "Vertices M",
+          "type": "array"
+        },
+        "triangles": {
+          "items": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "maxItems": 8192,
+          "minItems": 4,
+          "title": "Triangles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "vertices_m",
+        "triangles"
+      ],
+      "title": "StructureMesh",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -338,7 +390,10 @@
       "type": "string"
     },
     "version": {
-      "const": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ],
       "title": "Version",
       "type": "string"
     },
@@ -456,5 +511,5 @@
   "title": "VenueDocument",
   "type": "object",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:venuetwin:production:1.0.0"
+  "$id": "urn:venuetwin:production:1.x"
 }

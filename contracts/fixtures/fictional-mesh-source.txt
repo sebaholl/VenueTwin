@@ -1,0 +1,1 @@
+Fictional test geometry only. The four local vertices and four triangle faces form a tetrahedron with a two-metre bounding box. This is not a survey or a real auditorium.

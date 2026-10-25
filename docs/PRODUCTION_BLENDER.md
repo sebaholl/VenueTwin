@@ -8,14 +8,14 @@ The explicit Python CLI validates a production v1 document and checks missing in
 
 The dedicated Blender worker exports:
 
-- Every structure as an exact box with its declared centre, dimensions and yaw.
+- Every box structure with its declared centre, dimensions and yaw. Production contract 1.1.0 also accepts a source-linked, locally bounded triangle mesh for a structure; this allows a measured auditorium shell, balcony or obstruction to keep its actual shape instead of becoming a box. The mesh must supply explicit vertices and non-degenerate triangle indices. Contract 1.0.0 remains box-only.
 - A non-rendering anchor for each stable seat ID, preserving position and yaw.
 - A perspective camera at each explicit eye position, aimed at the explicit stage target. The illustrative lens is 65 degrees vertical; it is not camera calibration.
 - Stable IDs in glTF `extras` (not truncated object names), and `venueTwinStatus=draft-unverified` on every exported object.
 
 Y-up contract coordinates convert to Blender Z-up as `(x, -z, y)` and back to Y-up during GLB export. No legacy viewer model offset is applied. Materials are deliberately a single neutral draft material; there are no guessed seat meshes or lighting assets.
 
-Before accepting an output, the CLI loads the **actual GLB through Three.js** and compares structure vertices, seat positions/yaw, camera positions/aim/roll and lens against the validated input. The positional tolerance is 0.0001 m (a numerical export tolerance, not a claim about survey accuracy). Direction vectors use a 0.0001 tolerance. Unexpected meshes/cameras, duplicate IDs, external buffers/images and mismatched transforms fail verification. Network requests are blocked in the verifier.
+Before accepting an output, the CLI loads the **actual GLB through Three.js** and compares box vertices or custom mesh triangle topology, seat positions/yaw, camera positions/aim/roll and lens against the validated input. The positional tolerance is 0.0001 m (a numerical export tolerance, not a claim about survey accuracy). Direction vectors use a 0.0001 tolerance. Unexpected meshes/cameras, duplicate IDs, external buffers/images and mismatched transforms fail verification. Network requests are blocked in the verifier. This proves digital geometry round-trip only; it does not prove that input mesh vertices came from a real survey.
 
 ## Files and guarantees
 

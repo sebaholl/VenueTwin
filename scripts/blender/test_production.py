@@ -18,6 +18,14 @@ class ProductionPacketTests(unittest.TestCase):
         original = copy.deepcopy(self.packet)
         self.assertEqual(validate(self.packet), original)
 
+    def test_custom_triangle_mesh_is_validated_before_blender(self):
+        self.packet['meshes'] = [{'id': 'shell', 'position': [0, 0, 0], 'rotation': 0, 'size': [2, 2, 2],
+                                  'vertices': [[-1, -1, -1], [1, -1, -1], [0, 1, -1], [0, 0, 1]],
+                                  'triangles': [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]}]
+        self.assertEqual(validate(self.packet), self.packet)
+        self.packet['meshes'][0]['triangles'][0] = [0, 0, 2]
+        with self.assertRaises(ValueError): validate(self.packet)
+
     def test_bad_inputs_fail_before_blender_import(self):
         for case in ['version', 'boolean', 'nan', 'duplicate', 'empty', 'camera', 'size', 'fov']:
             with self.subTest(case=case):

@@ -40,6 +40,19 @@ def test_mapping_preserves_coordinates_ids_and_input(fictional):
     assert encoded(prepare(fictional, True)[1]) == encoded(packet)
 
 
+def test_mesh_packet_keeps_exact_triangles_and_stable_identity(fictional):
+    structure = fictional['structures'][0]
+    structure['size_m'] = [2, 2, 2]
+    structure['mesh'] = {'vertices_m': [[-1, -1, -1], [1, -1, -1], [0, 1, -1], [0, 0, 1]],
+                         'triangles': [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]}
+    fictional['version'] = '1.1.0'
+    _, packet, _ = prepare(fictional, True)
+    assert structure['id'] not in [box['id'] for box in packet['boxes']]
+    mesh = next(mesh for mesh in packet['meshes'] if mesh['id'] == structure['id'])
+    assert mesh['vertices'] == structure['mesh']['vertices_m']
+    assert mesh['triangles'] == structure['mesh']['triangles']
+
+
 @pytest.mark.parametrize('case', ['eye', 'target', 'structures', 'seats', 'coincident', 'tiny', 'invalid', 'vertical'])
 def test_draft_flag_never_invents_or_repairs_geometry(fictional, case):
     if case == 'eye': fictional['seats'][0]['eye_position_m'] = None

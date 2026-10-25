@@ -27,6 +27,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:python
+      - run: node scripts/test-production-mesh.mjs
       - run: node scripts/test-photo-alignment.mjs
       - uses: actions/setup-python@v5
         with:
@@ -90,6 +91,12 @@ jobs:
           contracts/fixtures/fictional-venue.json /tmp/venuetwin-production-roundtrip
           --container-image venuetwin-pilot:ci --allow-unverified
       - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-production-roundtrip
+      - name: Verify measured triangle mesh through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-mesh-venue.json /tmp/venuetwin-mesh-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-mesh-roundtrip
 
   managed-viewer:
     runs-on: ubuntu-latest

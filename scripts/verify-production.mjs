@@ -50,6 +50,46 @@ for (const structure of source.structures) {
   assert.ok(mesh?.isMesh, `Missing structure ${structure.id}`)
   const centre = new Vector3(...structure.position_m)
   const rotation = new Matrix4().makeRotationY(structure.yaw_rad)
+  if (structure.mesh) {
+    const expected = structure.mesh.vertices_m.map(vertex => new Vector3(...vertex).applyMatrix4(rotation).add(centre))
+    const bucket = new Map()
+    const key = point => point.toArray().map(value => Math.round(value * 1000)).join(',')
+    for (let i = 0; i < expected.length; i++) {
+      const name = key(expected[i])
+      bucket.set(name, [...(bucket.get(name) ?? []), i])
+    }
+    const attribute = mesh.geometry.getAttribute('position'), index = mesh.geometry.index
+    const actual = Array.from({ length: attribute.count }, (_, i) => new Vector3().fromBufferAttribute(attribute, i).applyMatrix4(mesh.matrixWorld))
+    const mapped = actual.map(point => {
+      const rounded = point.toArray().map(value => Math.round(value * 1000))
+      let nearest = -1, error = Infinity
+      for (const x of [-1, 0, 1]) for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) {
+        const candidates = bucket.get([rounded[0] + x, rounded[1] + y, rounded[2] + z].join(',')) ?? []
+        for (const candidate of candidates) if (point.distanceTo(expected[candidate]) < error) {
+          nearest = candidate; error = point.distanceTo(expected[candidate])
+        }
+      }
+      assert.ok(nearest >= 0 && error <= tolerance, `Unexpected vertex ${structure.id}`)
+      maxError = Math.max(maxError, error)
+      return nearest
+    })
+    const canonical = face => [...face].sort((a, b) => a - b).join(',')
+    const faces = new Map()
+    for (const face of structure.mesh.triangles) {
+      const name = canonical(face)
+      faces.set(name, (faces.get(name) ?? 0) + 1)
+    }
+    const count = index ? index.count : attribute.count
+    assert.equal(count, structure.mesh.triangles.length * 3, `Mesh triangle count ${structure.id}`)
+    for (let i = 0; i < count; i += 3) {
+      const face = [0, 1, 2].map(offset => mapped[index ? index.getX(i + offset) : i + offset])
+      const name = canonical(face), left = faces.get(name) ?? 0
+      assert.ok(left > 0, `Unexpected triangle ${structure.id}`)
+      faces.set(name, left - 1)
+    }
+    assert.ok([...faces.values()].every(count => count === 0), `Missing triangle ${structure.id}`)
+    continue
+  }
   const expected = []
   for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
     expected.push(new Vector3(x * structure.size_m[0] / 2, y * structure.size_m[1] / 2, z * structure.size_m[2] / 2).applyMatrix4(rotation).add(centre))

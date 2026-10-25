@@ -64,6 +64,29 @@ class Seat(StrictModel):
         return self
 
 
+class StructureMesh(StrictModel):
+    """Local Y-up triangle mesh; structure position/yaw place it in the venue."""
+    vertices_m: Annotated[list[Vector], Field(min_length=4, max_length=4096)]
+    triangles: Annotated[list[list[Annotated[int, Field(strict=True, ge=0)]]], Field(min_length=4, max_length=8192)]
+
+    @model_validator(mode='after')
+    def valid_triangles(self):
+        if len({tuple(vertex) for vertex in self.vertices_m}) != len(self.vertices_m):
+            raise ValueError('Duplicate mesh vertex')
+        for triangle in self.triangles:
+            if len(triangle) != 3 or len(set(triangle)) != 3 or max(triangle) >= len(self.vertices_m):
+                raise ValueError('Mesh triangles require three distinct, existing vertices')
+            a, b, c = (self.vertices_m[i] for i in triangle)
+            u = [b[i] - a[i] for i in range(3)]
+            v = [c[i] - a[i] for i in range(3)]
+            cross = (u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0])
+            if sum(x*x for x in cross) < 1e-12:
+                raise ValueError('Degenerate mesh triangle')
+        if len({tuple(sorted(face)) for face in self.triangles}) != len(self.triangles):
+            raise ValueError('Duplicate mesh triangle')
+        return self
+
+
 class Structure(StrictModel):
     id: Identifier
     kind: Literal['shell', 'stage', 'obstruction', 'deck', 'other']
@@ -71,6 +94,17 @@ class Structure(StrictModel):
     size_m: Size
     yaw_rad: Angle
     evidence: Evidence
+    mesh: StructureMesh | None = None
+
+    @model_validator(mode='after')
+    def mesh_bounds(self):
+        if self.mesh is not None:
+            for axis in range(3):
+                values = [vertex[axis] for vertex in self.mesh.vertices_m]
+                half = self.size_m[axis] / 2
+                if abs(min(values) + half) > 1e-4 or abs(max(values) - half) > 1e-4:
+                    raise ValueError('Mesh local bounds must match structure size and centre')
+        return self
 
 
 class Coverage(StrictModel):
@@ -83,7 +117,7 @@ class Coverage(StrictModel):
 
 class VenueDocument(StrictModel):
     format: Literal['venuetwin-production']
-    version: Literal['1.0.0']
+    version: Literal['1.0.0', '1.1.0']
     venue_id: Identifier
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     name: Text
@@ -100,6 +134,8 @@ class VenueDocument(StrictModel):
 
     @model_validator(mode='after')
     def references(self):
+        if self.version == '1.0.0' and any(structure.mesh is not None for structure in self.structures):
+            raise ValueError('Measured meshes require production contract 1.1.0')
         for name in ('sources', 'levels', 'seats', 'structures'):
             values = getattr(self, name)
             if len({item.id for item in values}) != len(values):

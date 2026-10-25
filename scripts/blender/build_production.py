@@ -14,9 +14,12 @@ def vector(value, positive=False):
 def validate(packet):
     if not isinstance(packet, dict) or packet.get('format') != 'venuetwin-build-packet' or type(packet.get('version')) is not int or packet['version'] != 1:
         raise ValueError('Unsupported build packet')
-    for group in ('boxes', 'seats'):
-        items = packet.get(group)
-        if not isinstance(items, list) or not 1 <= len(items) <= 2000:
+    meshes = packet.get('meshes', [])
+    if not isinstance(meshes, list) or len(meshes) > 2000 or not 1 <= len(packet.get('boxes', [])) + len(meshes) <= 2000:
+        raise ValueError('Invalid mesh count')
+    for group in ('boxes', 'seats', 'meshes'):
+        items = meshes if group == 'meshes' else packet.get(group)
+        if not isinstance(items, list) or (group == 'seats' and not 1 <= len(items) <= 2000) or len(items) > 2000:
             raise ValueError('Invalid object count')
         ids = set()
         for item in items:
@@ -25,14 +28,40 @@ def validate(packet):
             ids.add(item['id'])
             if not vector(item.get('position')) or type(item.get('rotation')) not in (float, int) or not math.isfinite(item['rotation']) or abs(item['rotation']) > math.tau:
                 raise ValueError('Invalid transform')
-            if group == 'boxes' and not vector(item.get('size'), True):
+            if group in ('boxes', 'meshes') and not vector(item.get('size'), True):
                 raise ValueError('Invalid box dimensions')
+            if group == 'meshes':
+                vertices, triangles = item.get('vertices'), item.get('triangles')
+                if not isinstance(vertices, list) or not 4 <= len(vertices) <= 4096 or any(not vector(vertex) for vertex in vertices):
+                    raise ValueError('Invalid mesh vertices')
+                if len({tuple(vertex) for vertex in vertices}) != len(vertices):
+                    raise ValueError('Duplicate mesh vertex')
+                if not isinstance(triangles, list) or not 4 <= len(triangles) <= 8192:
+                    raise ValueError('Invalid mesh triangles')
+                for face in triangles:
+                    if not isinstance(face, list) or len(face) != 3 or any(type(i) is not int or i < 0 or i >= len(vertices) for i in face) or len(set(face)) != 3:
+                        raise ValueError('Invalid mesh triangle')
+                    a, b, c = (vertices[i] for i in face)
+                    u = [b[i] - a[i] for i in range(3)]
+                    v = [c[i] - a[i] for i in range(3)]
+                    cross = (u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0])
+                    if sum(x*x for x in cross) < 1e-12:
+                        raise ValueError('Degenerate mesh triangle')
+                if len({tuple(sorted(face)) for face in triangles}) != len(triangles):
+                    raise ValueError('Duplicate mesh triangle')
+                for axis in range(3):
+                    values = [vertex[axis] for vertex in vertices]
+                    half = item['size'][axis] / 2
+                    if abs(min(values) + half) > 1e-4 or abs(max(values) - half) > 1e-4:
+                        raise ValueError('Mesh bounds do not match size')
             if group == 'seats':
                 if not vector(item.get('eye')) or not vector(item.get('target')) or sum((a-b)**2 for a, b in zip(item['eye'], item['target'])) < 1e-8:
                     raise ValueError('Invalid seat camera')
                 fov = item.get('vertical_fov_deg')
                 if type(fov) not in (int, float) or not math.isfinite(fov) or not 10 <= fov <= 120:
                     raise ValueError('Invalid vertical camera FOV')
+    if len({item['id'] for item in packet['boxes'] + meshes}) != len(packet['boxes']) + len(meshes):
+        raise ValueError('Duplicate structure ID')
     return packet
 
 
@@ -66,6 +95,18 @@ def build(directory):
         obj['venueTwinStructureId'] = box['id']
         obj['venueTwinStatus'] = 'draft-unverified'
         obj.data.materials.append(material)
+        created.append(obj)
+    for index, item in enumerate(packet.get('meshes', [])):
+        mesh = bpy.data.meshes.new(f'MeasuredMesh_{index:04d}')
+        mesh.from_pydata([to_blender(vertex) for vertex in item['vertices']], [], item['triangles'])
+        mesh.update()
+        obj = bpy.data.objects.new(f'StructureMesh_{index:04d}', mesh)
+        obj.location = to_blender(item['position'])
+        obj.rotation_euler[2] = item['rotation']
+        obj['venueTwinStructureId'] = item['id']
+        obj['venueTwinStatus'] = 'draft-unverified'
+        mesh.materials.append(material)
+        bpy.context.scene.collection.objects.link(obj)
         created.append(obj)
     for index, seat in enumerate(packet['seats']):
         anchor = bpy.data.objects.new(f'Seat_{index:04d}', None)
