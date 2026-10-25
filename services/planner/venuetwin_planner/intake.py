@@ -51,10 +51,12 @@ def audit(root: Path):
     missing = []
     if measured != len(EXPECTED): missing.append(f'measured_seat_positions_and_eyes: {measured}/{len(EXPECTED)}')
     for key in ('coordinate_origin_m', 'coordinate_origin_description', 'measured_level_elevations_m',
-                'room_shell_boxes', 'stage_target_m', 'stage_target_source_id',
+                'stage_target_m', 'stage_target_source_id',
                 'occluder_assessment', 'measurement_source_files', 'photo_records',
                 'material_references', 'lighting_references'):
         if not geometry.get(key): missing.append(key)
+    if not geometry.get('room_shell_boxes') and not geometry.get('room_shell_meshes'):
+        missing.append('room_shell_boxes_or_meshes')
     for key in ('venue_owner_reviewer', 'review_date', 'geometry_approved',
                 'seat_views_approved', 'publication_rights_confirmed'):
         if not approval.get(key): missing.append(key)

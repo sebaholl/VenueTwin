@@ -70,6 +70,16 @@ def test_complete_synthetic_survey_compiles_without_guessing(tmp_path):
     assert venue.seats[0].vertical_fov_deg == 52.5
     assert venue.seats[0].camera_source_id == 'photo'
     assert not prepare(venue.model_dump())[2]
+    g['room_shell_boxes'] = []
+    g['room_shell_meshes'] = [{'id': 'surveyed-shell', 'position_m': [0, 2, 0], 'size_m': [2, 2, 2],
+                               'yaw_rad': 0, 'source_id': 'survey', 'uncertainty_m': 0.01,
+                               'mesh': {'vertices_m': [[-1, -1, -1], [1, -1, -1], [0, 1, -1], [0, 0, 1]],
+                                        'triangles': [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]}}]
+    (root / 'intake.json').write_text(json.dumps(data))
+    mesh_venue = compile_intake(root)
+    assert mesh_venue.version == '1.1.0'
+    assert mesh_venue.structures[0].mesh.triangles == g['room_shell_meshes'][0]['mesh']['triangles']
+    assert not prepare(mesh_venue.model_dump())[2]
     g['measurement_source_files'][0]['file'] = '../outside.txt'
     (root / 'intake.json').write_text(json.dumps(data))
     with pytest.raises(ValueError, match='Unsafe source path'):

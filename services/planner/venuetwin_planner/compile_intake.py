@@ -62,13 +62,19 @@ def compile_intake(root: Path) -> VenueDocument:
              for row in rows]
     structures = []
     for key, kind in (('room_shell_boxes', 'shell'), ('occluder_boxes', 'obstruction')):
-        for box in geometry[key]:
+        for box in geometry.get(key, []):
             structures.append({'id': box['id'], 'kind': kind, 'position_m': box['position_m'],
                                'size_m': box['size_m'], 'yaw_rad': box['yaw_rad'],
                                'evidence': evidence(box['source_id'], box['uncertainty_m'])})
+    for key, kind in (('room_shell_meshes', 'shell'), ('occluder_meshes', 'obstruction')):
+        for item in geometry.get(key, []):
+            structures.append({'id': item['id'], 'kind': kind, 'position_m': item['position_m'],
+                               'size_m': item['size_m'], 'yaw_rad': item['yaw_rad'],
+                               'mesh': item['mesh'],
+                               'evidence': evidence(item['source_id'], item['uncertainty_m'])})
     survey = geometry['measurement_source_files'][0]['id']
     occluders = geometry['occluder_assessment']
-    value = {'format': 'venuetwin-production', 'version': '1.0.0',
+    value = {'format': 'venuetwin-production', 'version': '1.1.0' if any(s.get('mesh') for s in structures) else '1.0.0',
              'venue_id': data['venue_id'], 'revision': 1, 'name': data['venue_name'],
              'units': 'metres', 'axes': geometry['axes'],
              'origin': f"{geometry['coordinate_origin_description']} ({geometry['coordinate_origin_m']} m)",
