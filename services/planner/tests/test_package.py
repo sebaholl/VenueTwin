@@ -31,7 +31,9 @@ def test_reviewed_package_exports_only_public_pair(bundle):
     assert result['quality'] == 'reviewed'
     assert sorted(p.name for p in output.iterdir()) == ['venue.glb', 'venue.json']
     assert not {'sources', 'coverage', 'evidence', 'reviewer'} & result.keys()
-    assert all(set(s) == {'id', 'label', 'row', 'level_id', 'position', 'eye', 'yaw'} for s in result['seats'])
+    assert result['version'] == 2
+    assert all(set(s) == {'id', 'label', 'row', 'level_id', 'position', 'eye', 'yaw', 'vertical_fov_deg'} for s in result['seats'])
+    assert all(s['vertical_fov_deg'] == 65.0 for s in result['seats'])
     assert before == {p.name: p.read_bytes() for p in source.iterdir()}
 
 

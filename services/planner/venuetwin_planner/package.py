@@ -31,14 +31,15 @@ def public_manifest(venue, model_hash, mode):
         'review': 'Operator-reviewed model. Views are approximate; people and event equipment may affect your view.',
     }
     return {
-        'format': 'venuetwin-customer', 'version': 1, 'venue_id': venue.venue_id,
+        'format': 'venuetwin-customer', 'version': 2, 'venue_id': venue.venue_id,
         'revision': venue.revision, 'name': venue.name,
         'quality': quality,
         'notice': notices[mode],
         'model': {'file': 'venue.glb', 'sha256': model_hash},
         'levels': [{'id': x.id, 'name': x.name} for x in venue.levels],
         'seats': [{'id': s.id, 'label': s.label, 'row': s.row_label, 'level_id': s.level_id,
-                   'position': s.position_m, 'eye': s.eye_position_m, 'yaw': s.yaw_rad} for s in venue.seats],
+                   'position': s.position_m, 'eye': s.eye_position_m, 'yaw': s.yaw_rad,
+                   'vertical_fov_deg': s.vertical_fov_deg if s.vertical_fov_deg is not None else 65.0} for s in venue.seats],
         'target': venue.stage_target_m,
     }
 

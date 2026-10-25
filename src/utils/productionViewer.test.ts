@@ -9,7 +9,7 @@ describe('customer production contract', () => {
     expect(parseProductionManifest(fixture)).toEqual(fixture)
     expect(JSON.stringify(fixture)).not.toContain('source_ids')
   })
-  it.each(['unknown', 'coercion', 'camera', 'level', 'duplicate', 'url', 'missing'])('rejects %s instead of generating fallback geometry', kind => {
+  it.each(['unknown', 'coercion', 'camera', 'level', 'duplicate', 'url', 'missing', 'lens', 'old-version'])('rejects %s instead of generating fallback geometry', kind => {
     const value = structuredClone(fixture) as unknown as Record<string, unknown>
     const seats = value.seats as Record<string, unknown>[]
     if (kind === 'unknown') value.privateNotes = 'secret'
@@ -19,6 +19,8 @@ describe('customer production contract', () => {
     if (kind === 'duplicate') seats.push(seats[0])
     if (kind === 'url') value.model = { file: 'https://evil.test/model.glb', sha256: 'a'.repeat(64) }
     if (kind === 'missing') delete seats[0].eye
+    if (kind === 'lens') seats[0].vertical_fov_deg = '65'
+    if (kind === 'old-version') value.version = 1
     expect(() => parseProductionManifest(value)).toThrow()
   })
   it('preserves stable seat IDs and versioned venue paths in shared links', () => {
@@ -33,6 +35,13 @@ describe('customer production contract', () => {
     const { cameras } = productionCameras(scene, manifest)
     expect(cameras.size).toBe(4)
     cameras.get('a1')!.position.x += 1
+    expect(() => productionCameras(scene, manifest)).toThrow('do not match')
+  })
+  it('rejects a lens that differs from the approved seat view', async () => {
+    const bytes = readFileSync('tests/fixtures/production/venue.glb')
+    const { scene } = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '')
+    const manifest = parseProductionManifest(fixture)
+    manifest.seats[0].vertical_fov_deg = 50
     expect(() => productionCameras(scene, manifest)).toThrow('do not match')
   })
 })
