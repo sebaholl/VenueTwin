@@ -1,12 +1,13 @@
 import { ArrowUpRight, Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Brand } from './Brand'
 
 export function SiteLayout() {
   const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
   return (
-    <div className="site-shell">
+    <div className={pathname === '/about' ? 'site-shell site-shell-dark' : 'site-shell'}>
       <header className="site-header">
         <Brand />
         <button className="menu-button" onClick={() => setOpen((value) => !value)} aria-label="Toggle menu">

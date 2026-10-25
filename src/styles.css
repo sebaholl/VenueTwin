@@ -36,6 +36,11 @@
 .venue-scene-canvas { width: 100%; height: 100%; }
 .seat-view-active .venue-scene-canvas { touch-action: none; cursor: grab; }
 .seat-view-active .venue-scene-canvas:active { cursor: grabbing; }
+.site-shell-dark .site-header { color: #f2f7f5; border-bottom-color: rgba(255,255,255,.14); }
+.site-shell-dark .site-header .menu-button { color: #f2f7f5; }
+@media (max-width: 900px) {
+  .site-shell-dark .site-nav.is-open { color: var(--ink); }
+}
 .venue-scene-canvas:focus-visible { outline: 2px solid #5be2c3; outline-offset: -3px; }
 .seat-view-toolbar { position: absolute; z-index: 3; top: 58px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: none; }
 .seat-view-toolbar button, .seat-view-toolbar label { pointer-events: auto; background: #102435; color: #eff7fa; border: 1px solid #456174; border-radius: 8px; padding: 9px 12px; font-size: 12px; }
