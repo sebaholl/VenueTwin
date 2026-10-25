@@ -35,4 +35,18 @@ PYTHONPATH=services/planner python3 -m venuetwin_planner.intake venue-data/natio
 
 It currently exits with status 1 and reports **0/263 measured seats**, missing room/stage/obstruction measurements, photo calibration, source files, material/lighting references and owner approval. Invalid or duplicate seat IDs, malformed coordinates and unsupported measurement claims fail. Filling fields will only make the intake structurally complete; it never proves the measurements are true. The production v1 contract and its Blender/Three.js verification must still run, and a venue owner must compare the output with reality before any reviewed customer package can be created.
 
+## Survey-to-Blender handoff
+
+Once the survey and approvals are complete, compile the intake into Blender's production contract with:
+
+```sh
+PYTHONPATH=services/planner .venv/bin/python -m venuetwin_planner.compile_intake venue-data/national-theatre-prague measured-venue.json
+```
+
+This command currently **fails intentionally** for Prague because measured fields and approvals are missing. It never calls OpenAI or Blender. The output file must not already exist. Pass its resulting JSON to the existing local production builder; its manifest still requires human review and does not certify 1:1 accuracy.
+
+The compiler expects each `measurement_source_files` entry to contain `id`, `kind` (`survey` or `drawing`), `file` (a local path beneath the intake directory), and `description`. Each `photo_records` entry needs `id`, `file`, and `description`; the photo file is hashed as reference evidence, not used as geometry. Only local source files are accepted, and their SHA-256 is recorded in the contract. `measured_level_elevations_m` maps level IDs to `{name, elevation_m, source_id, uncertainty_m}`. Each `room_shell_boxes` and `occluder_boxes` entry has `{id, position_m, size_m, yaw_rad, source_id, uncertainty_m}`. `occluder_assessment` records `{source_id, uncertainty_m}` even if no occluder exists. Stage, overall scale, and seat-inventory uncertainty fields are `stage_target_uncertainty_m`, `scale_uncertainty_m`, and `seat_inventory_uncertainty_m`; all are positive metres. `material_references` and `lighting_references` list local photo source IDs.
+
+The production contract retains measured seat and seated-eye positions exactly. The Blender builder exports a GLB, and the Three.js verifier checks coordinates and camera positions after import. It cannot independently prove the survey or photorealistic likeness. Calibrated camera lenses, photo alignment, textured meshes, and venue-owner visual sign-off are still needed before claiming 1:1 results.
+
 The current scope is stalls only. Boxes, balconies, galleries, service positions and standing places are outside this intake and cannot be shown as accurately covered. If the first customer venue is another auditorium, use this as an intake pattern and do not reuse the Prague identifiers.
