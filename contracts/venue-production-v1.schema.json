@@ -179,6 +179,35 @@
         },
         "evidence": {
           "$ref": "#/$defs/Evidence"
+        },
+        "vertical_fov_deg": {
+          "anyOf": [
+            {
+              "maximum": 120,
+              "minimum": 10,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vertical Fov Deg"
+        },
+        "camera_source_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Camera Source Id"
         }
       },
       "required": [

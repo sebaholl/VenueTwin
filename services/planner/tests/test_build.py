@@ -33,6 +33,7 @@ def test_mapping_preserves_coordinates_ids_and_input(fictional):
         assert result['eye'] == seat['eye_position_m']
         assert result['rotation'] == seat['yaw_rad']
         assert result['target'] == fictional['stage_target_m']
+        assert result['vertical_fov_deg'] == 65.0
     assert fictional == original
     fictional['seats'].reverse()
     fictional['structures'].reverse()
@@ -144,6 +145,18 @@ def test_verified_input_does_not_require_draft_override(complete):
     assert requirements == []
     # Even complete source declarations are not independent venue certification.
     assert 'DRAFT ONLY' in packet['notice']
+
+
+def test_calibrated_camera_is_preserved_and_source_checked(complete):
+    complete['sources'].append({'id': 'seat-photo', 'kind': 'photo', 'sha256': 'a' * 64,
+                                'description': 'Synthetic reference photo'})
+    complete['seats'][0]['vertical_fov_deg'] = 52.5
+    complete['seats'][0]['camera_source_id'] = 'seat-photo'
+    _, packet, _ = prepare(complete)
+    assert packet['seats'][0]['vertical_fov_deg'] == 52.5
+    complete['seats'][0]['camera_source_id'] = 'legacy-config'
+    with pytest.raises(ValidationError, match='photo source'):
+        prepare(complete)
 
 
 def test_source_budget_precedes_launch(tmp_path, monkeypatch):

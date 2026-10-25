@@ -54,6 +54,14 @@ class Seat(StrictModel):
     yaw_rad: Angle
     eye_position_m: Vector | None  # No eye-height default.
     evidence: Evidence
+    vertical_fov_deg: Annotated[float, Field(ge=10, le=120, allow_inf_nan=False)] | None = None
+    camera_source_id: Identifier | None = None
+
+    @model_validator(mode='after')
+    def camera_calibration(self):
+        if (self.vertical_fov_deg is None) != (self.camera_source_id is None):
+            raise ValueError('Calibrated FOV requires a photo source and vice versa')
+        return self
 
 
 class Structure(StrictModel):
@@ -108,6 +116,9 @@ class VenueDocument(StrictModel):
         evidence += [getattr(self.coverage, k) for k in type(self.coverage).model_fields]
         if any(source not in sources for item in evidence for source in item.source_ids):
             raise ValueError('Unknown evidence source')
+        photo_sources = {s.id for s in self.sources if s.kind == 'photo'}
+        if any(seat.camera_source_id is not None and seat.camera_source_id not in photo_sources for seat in self.seats):
+            raise ValueError('Camera calibration requires a photo source')
         measured_sources = {s.id for s in self.sources if s.kind in ('survey', 'drawing')}
         if any(item.status == 'measured' and not measured_sources.intersection(item.source_ids) for item in evidence):
             raise ValueError('Measured evidence requires a survey or dimensioned drawing source')

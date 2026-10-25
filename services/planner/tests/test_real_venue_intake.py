@@ -60,11 +60,15 @@ def test_complete_synthetic_survey_compiles_without_guessing(tmp_path):
                    position_z_m=str(index // 21), eye_x_m=str((index % 21) - 10),
                    eye_y_m='1.2', eye_z_m=str(index // 21), yaw_rad='0',
                    source_id='survey', uncertainty_m='0.01', review_status='measured')
+    g['camera_calibrations'] = {rows[0]['seat_id']: {'vertical_fov_deg': 52.5, 'photo_source_id': 'photo'}}
+    (root / 'intake.json').write_text(json.dumps(data))
     with (root / 'seat-survey.csv').open('w', newline='') as stream:
         writer = csv.DictWriter(stream, fieldnames=fields); writer.writeheader(); writer.writerows(rows)
     venue = compile_intake(root)
     assert len(venue.seats) == 263
     assert venue.seats[0].eye_position_m[1] == 1.2
+    assert venue.seats[0].vertical_fov_deg == 52.5
+    assert venue.seats[0].camera_source_id == 'photo'
     assert not prepare(venue.model_dump())[2]
     g['measurement_source_files'][0]['file'] = '../outside.txt'
     (root / 'intake.json').write_text(json.dumps(data))

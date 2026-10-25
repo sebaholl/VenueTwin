@@ -30,7 +30,7 @@ The referenced ChatGPT discussion exposed only placeholder assistant messages; t
 
 ## Contract semantics
 
-`format=venuetwin-production`, `version=1.0.0`; unsupported versions fail, with no automatic migration. Unknown keys fail at every model boundary. Fields are required even when their value may explicitly be null. Numeric strings, booleans as numbers, NaN/Infinity, invalid vector lengths, oversized collections, duplicate IDs and dangling references fail.
+`format=venuetwin-production`, `version=1.0.0`; unsupported versions fail, with no automatic migration. Unknown keys fail at every model boundary. Core geometry fields are required even when their value may explicitly be null. Optional per-seat `vertical_fov_deg` and `camera_source_id` must appear together when a reference photo calibrates the lens; older drafts omit them and retain an illustrative 65° lens. Numeric strings, booleans as numbers, NaN/Infinity, invalid vector lengths, oversized collections, duplicate IDs and dangling references fail.
 
 - Metres, right-handed Y-up; positions precede the viewer-only model offset. `origin` must describe the frame. Positive yaw rotates about +Y in radians. A box position is its centre, and dimensions are local X/Y/Z extents.
 - A seat's `position_m` is its geometry anchor, not its eye or floor. `eye_position_m` is an explicit absolute position in the same frame. The stage viewing target also requires its own evidence.

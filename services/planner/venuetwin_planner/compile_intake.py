@@ -48,12 +48,17 @@ def compile_intake(root: Path) -> VenueDocument:
               for key, value in sorted(geometry['measured_level_elevations_m'].items())]
     with (root / 'seat-survey.csv').open(newline='') as stream:
         rows = list(csv.DictReader(stream))
+    calibrations = geometry.get('camera_calibrations', {})
+    if set(calibrations) - {row['seat_id'] for row in rows}:
+        raise ValueError('Camera calibration references an unknown seat')
     seats = [{'id': row['seat_id'], 'label': row['seat_label'], 'level_id': row['level_id'],
               'row_label': row['row_label'],
               'position_m': [float(row[f'position_{axis}_m']) for axis in 'xyz'],
               'eye_position_m': [float(row[f'eye_{axis}_m']) for axis in 'xyz'],
               'yaw_rad': float(row['yaw_rad']),
-              'evidence': evidence(row['source_id'], float(row['uncertainty_m']))}
+              'evidence': evidence(row['source_id'], float(row['uncertainty_m'])),
+              'vertical_fov_deg': calibrations[row['seat_id']]['vertical_fov_deg'] if row['seat_id'] in calibrations else None,
+              'camera_source_id': calibrations[row['seat_id']]['photo_source_id'] if row['seat_id'] in calibrations else None}
              for row in rows]
     structures = []
     for key, kind in (('room_shell_boxes', 'shell'), ('occluder_boxes', 'obstruction')):

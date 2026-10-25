@@ -70,7 +70,7 @@ for (const seat of source.seats) {
   const expectedRight = direction.clone().cross(new Vector3(0, 1, 0)).normalize()
   const actualRight = new Vector3(1, 0, 0).transformDirection(camera.matrixWorld)
   close(actualRight, expectedRight, `Camera roll ${seat.id}`)
-  assert.ok(Math.abs(camera.fov - 65) < .0001, `Camera FOV ${camera.fov}`)
+  assert.ok(Math.abs(camera.fov - (seat.vertical_fov_deg ?? 65)) < .0001, `Camera FOV ${camera.fov}`)
 }
 const report = { format: 'venuetwin-roundtrip', version: 1, three_revision: REVISION, structures: groups.structures.size,
   seats: groups.seats.size, cameras: groups.cameras.size, position_tolerance_m: tolerance, direction_vector_tolerance: tolerance,

@@ -27,6 +27,7 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:python
+      - run: node scripts/test-photo-alignment.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

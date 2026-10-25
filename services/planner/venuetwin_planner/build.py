@@ -47,7 +47,8 @@ def prepare(value, allow_unverified=False):
         'boxes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad}
                   for s in sorted(venue.structures, key=lambda s: s.id)],
         'seats': [{'id': s.id, 'position': s.position_m, 'rotation': s.yaw_rad,
-                   'eye': s.eye_position_m, 'target': target}
+                   'eye': s.eye_position_m, 'target': target,
+                   'vertical_fov_deg': s.vertical_fov_deg if s.vertical_fov_deg is not None else 65.0}
                   for s in sorted(venue.seats, key=lambda s: s.id)],
     }
     return venue, packet, requirements

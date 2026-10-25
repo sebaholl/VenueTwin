@@ -30,6 +30,9 @@ def validate(packet):
             if group == 'seats':
                 if not vector(item.get('eye')) or not vector(item.get('target')) or sum((a-b)**2 for a, b in zip(item['eye'], item['target'])) < 1e-8:
                     raise ValueError('Invalid seat camera')
+                fov = item.get('vertical_fov_deg')
+                if type(fov) not in (int, float) or not math.isfinite(fov) or not 10 <= fov <= 120:
+                    raise ValueError('Invalid vertical camera FOV')
     return packet
 
 
@@ -74,10 +77,10 @@ def build(directory):
         created.append(anchor)
         camera_data = bpy.data.cameras.new(f'Eye_{index:04d}')
         camera_data.type = 'PERSP'
-        # Explicit illustrative lens policy; not claimed as a calibrated camera.
+        # Supplied calibrated FOV when available; otherwise explicitly illustrative.
         camera_data.sensor_fit = 'VERTICAL'
         camera_data.sensor_height = 24
-        camera_data.lens = 24 / (2 * math.tan(math.radians(65) / 2))
+        camera_data.lens = 24 / (2 * math.tan(math.radians(seat['vertical_fov_deg']) / 2))
         camera_data.clip_start = .05
         camera_data.clip_end = 2000
         camera = bpy.data.objects.new(f'Camera_{index:04d}', camera_data)
@@ -98,7 +101,7 @@ def build(directory):
                               export_yup=True, export_animations=False, export_cameras=True,
                               export_lights=False, export_extras=True)
     (directory / 'builder.json').write_text(json.dumps({'blender_version': bpy.app.version_string,
-        'lens_policy': 'illustrative-65deg-vertical', 'draft': True}, sort_keys=True) + '\n')
+        'lens_policy': 'per-seat-explicit-or-illustrative-65deg-vertical', 'draft': True}, sort_keys=True) + '\n')
 
 
 if __name__ == '__main__':
