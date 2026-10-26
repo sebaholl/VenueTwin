@@ -18,7 +18,7 @@ export function HomePage() {
         <h1>Every seat,<br /><em>seen before booking.</em></h1>
         <p className="hero-copy">Give Pilot a brief, plans, photos and measurements. It prepares a source-aware proposal for your approval, then Studio builds a model you can inspect seat by seat.</p>
         <div className="hero-actions">
-          <Link className="button button-primary" to="/studio">Start with Pilot in Studio <ArrowRight size={18} /></Link>
+          <Link className="button button-primary" to="/studio">Explore the interactive demo <ArrowRight size={18} /></Link>
           <a className="text-link" href="#workflow">See how it works <ArrowRight size={16} /></a>
         </div>
         <div className="trust-row"><span>Built for</span><b>Cinemas</b><b>Theatres</b><b>Auditoriums</b><b>Live venues</b></div>
@@ -49,7 +49,7 @@ export function HomePage() {
       </section>
 
       <section className="section audience-section">
-        <div className="audience-copy"><div className="section-kicker">One model, several decisions</div><h2>Designed for the people who shape the venue.</h2><p>Use the same spatial source for internal planning, stakeholder presentations and a future customer-facing seat preview.</p><Link className="button button-dark" to="/studio">Explore the studio <ArrowRight size={18} /></Link></div>
+        <div className="audience-copy"><div className="section-kicker">One model, several decisions</div><h2>Designed for the people who shape the venue.</h2><p>Use the same spatial source for internal planning, stakeholder presentations and a future customer-facing seat preview.</p><Link className="button button-dark" to="/studio">Explore the demo <ArrowRight size={18} /></Link></div>
         <div className="audience-list">
           <article><span>01</span><div><h3>Venue operators</h3><p>Review capacity, sections and accessibility in context.</p></div></article>
           <article><span>02</span><div><h3>Commercial teams</h3><p>Connect seat quality to pricing and revenue potential.</p></div></article>
@@ -57,7 +57,7 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="cta-section"><div><span>YOUR NEXT VENUE STARTS HERE</span><h2>Build the view<br />before the doors open.</h2><Link className="button button-primary" to="/studio">Open VenueTwin Studio <ArrowRight size={18} /></Link></div></section>
+      <section className="cta-section"><div><span>YOUR NEXT VENUE STARTS HERE</span><h2>Build the view<br />before the doors open.</h2><Link className="button button-primary" to="/studio">See VenueTwin in action <ArrowRight size={18} /></Link></div></section>
     </>
   )
 }

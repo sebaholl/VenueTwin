@@ -10,6 +10,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 const ProductionViewerPage = lazy(() => import('./pages/ProductionViewerPage').then(module => ({ default: module.ProductionViewerPage })))
 
 const StudioPage = lazy(() => import('./pages/StudioPage').then((module) => ({ default: module.StudioPage })))
+const StudioDemoPage = lazy(() => import('./pages/StudioDemoPage').then((module) => ({ default: module.StudioDemoPage })))
 const SharedProjectPage = lazy(() => import('./pages/SharedProjectPage').then((module) => ({ default: module.SharedProjectPage })))
 const CustomerViewerPage = lazy(() => import('./pages/CustomerViewerPage').then((module) => ({ default: module.CustomerViewerPage })))
 
@@ -21,7 +22,8 @@ export default function App() {
         <Route path="about" element={<AboutPage />} />
         <Route path="service" element={<ServicePage />} />
       </Route>
-      <Route path="studio" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><StudioPage /></Suspense></AppErrorBoundary>} />
+      <Route path="studio" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><StudioDemoPage /></Suspense></AppErrorBoundary>} />
+      <Route path="studio/workspace" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><StudioPage /></Suspense></AppErrorBoundary>} />
       <Route path="share/:token" element={<AppErrorBoundary><Suspense fallback={<div className="route-loader"><span /></div>}><SharedProjectPage /></Suspense></AppErrorBoundary>} />
       <Route path="venue" element={<AppErrorBoundary title="This venue could not be displayed." actionLabel="Reload venue"><Suspense fallback={<div className="route-loader"><span /></div>}><ProductionViewerPage /></Suspense></AppErrorBoundary>} />
       <Route path="viewer" element={<AppErrorBoundary title="This venue preview could not be rendered." actionLabel="Reload preview"><Suspense fallback={<div className="route-loader"><span /></div>}><CustomerViewerPage /></Suspense></AppErrorBoundary>} />

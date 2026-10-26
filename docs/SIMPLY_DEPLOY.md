@@ -47,7 +47,7 @@ dist/
   assets/
 ```
 
-The `.htaccess` file makes direct visits to `/studio` and `/share/:token` work, prevents directory listings, preserves Let's Encrypt validation, and adds conservative browser security headers.
+The `.htaccess` file makes direct visits to `/studio`, `/studio/workspace` and `/share/:token` work, prevents directory listings, preserves Let's Encrypt validation, and adds conservative browser security headers. `/studio` is the customer demonstration; `/studio/workspace` is the editing workspace. The second URL is not protected by the path alone.
 
 ## 3. Upload to Simply.com
 
@@ -77,6 +77,7 @@ Test these URLs in a private browser window:
 - `https://venuetwin.online/`
 - `https://venuetwin.online/studio`
 - refresh while on `/studio`
+- `https://venuetwin.online/studio/workspace` (operator workspace; protect it before public deployment)
 - create an account or sign in
 - open and save a cloud project
 - enable a public preview

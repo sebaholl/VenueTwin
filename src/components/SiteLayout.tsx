@@ -18,7 +18,7 @@ export function SiteLayout() {
           <a href="/#workflow" onClick={() => setOpen(false)}>How it works</a>
           <NavLink to="/about" onClick={() => setOpen(false)}>About</NavLink>
           <Link className="button button-dark button-small" to="/studio" onClick={() => setOpen(false)}>
-            Open studio <ArrowUpRight size={16} />
+            See the demo <ArrowUpRight size={16} />
           </Link>
         </nav>
       </header>
@@ -26,7 +26,7 @@ export function SiteLayout() {
       <footer className="footer">
         <Brand />
         <p>Make every seat a confident choice.</p>
-        <div><Link to="/studio">Studio</Link><Link to="/about">About</Link><Link to="/service">Service & support</Link></div>
+        <div><Link to="/studio">Interactive demo</Link><Link to="/about">About</Link><Link to="/service">Service & support</Link></div>
         <small>© {new Date().getFullYear()} VenueTwin. Product prototype.</small>
       </footer>
     </div>

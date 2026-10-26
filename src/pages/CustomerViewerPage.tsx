@@ -40,7 +40,7 @@ export function CustomerViewerPage() {
     })()
     return () => { abort.abort(); if (model) disposeLocalModel(model) }
   }, [venue, attempt])
-  if (error) return <main className="customer-empty"><Brand /><h1>Unable to open this venue</h1><p role="alert">{error}</p>{!venue && <Link to="/studio">Return to Studio</Link>}<button onClick={() => setAttempt((value) => value + 1)}>Try again</button></main>
+  if (error) return <main className="customer-empty"><Brand /><h1>Unable to open this venue</h1><p role="alert">{error}</p>{!venue && <Link to="/studio/workspace">Return to Studio workspace</Link>}<button onClick={() => setAttempt((value) => value + 1)}>Try again</button></main>
   if (!loaded) return <main className="customer-empty" aria-live="polite"><Brand /><div className="viewer-spinner" /><h1>Opening the auditorium</h1><p>{loadingStage}</p></main>
   return <CustomerViewer key={search} {...loaded} local={!venue} manifest={venue} initialSeatId={new URLSearchParams(search).get('seat')} />
 }
@@ -89,7 +89,7 @@ function CustomerViewer({ snapshot, model, local, manifest, initialSeatId }: Loa
     } catch { setStatus('Full screen could not be opened. You can still use the viewer below.') }
   }
   return <div className="customer-viewer" ref={root}>
-    {local && <div className="customer-local-note"><span>LOCAL PREVIEW · This link works only in this browser.</span><Link to="/studio" target="_blank" rel="noreferrer">Open Studio ↗</Link></div>}
+    {local && <div className="customer-local-note"><span>LOCAL PREVIEW · This link works only in this browser.</span><Link to="/studio/workspace" target="_blank" rel="noreferrer">Open Studio workspace ↗</Link></div>}
     <header className="customer-header"><div><Brand /><span className="customer-eyebrow">THE VIEW FROM YOUR SEAT</span></div><button className="viewer-icon-button" onClick={() => void fullscreen()} aria-label="Toggle full screen"><Maximize size={18} /></button></header>
     <main className="customer-layout">
       <aside ref={picker} tabIndex={-1} className="customer-picker" aria-label="Choose your seat">
