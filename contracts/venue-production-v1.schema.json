@@ -327,6 +327,21 @@
             }
           ],
           "default": null
+        },
+        "material_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Material Id"
         }
       },
       "required": [
@@ -380,6 +395,61 @@
       ],
       "title": "StructureMesh",
       "type": "object"
+    },
+    "SurfaceMaterial": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Name",
+          "type": "string"
+        },
+        "base_color_linear": {
+          "items": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Base Color Linear",
+          "type": "array"
+        },
+        "roughness": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Roughness",
+          "type": "number"
+        },
+        "metallic": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Metallic",
+          "type": "number"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "base_color_linear",
+        "roughness",
+        "metallic",
+        "evidence"
+      ],
+      "title": "SurfaceMaterial",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -392,7 +462,8 @@
     "version": {
       "enum": [
         "1.0.0",
-        "1.1.0"
+        "1.1.0",
+        "1.2.0"
       ],
       "title": "Version",
       "type": "string"
@@ -464,6 +535,15 @@
       },
       "maxItems": 2000,
       "title": "Structures",
+      "type": "array"
+    },
+    "materials": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SurfaceMaterial"
+      },
+      "maxItems": 100,
+      "title": "Materials",
       "type": "array"
     },
     "stage_target_m": {

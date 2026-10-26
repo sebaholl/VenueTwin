@@ -65,20 +65,26 @@ def compile_intake(root: Path) -> VenueDocument:
         for box in geometry.get(key, []):
             structures.append({'id': box['id'], 'kind': kind, 'position_m': box['position_m'],
                                'size_m': box['size_m'], 'yaw_rad': box['yaw_rad'],
+                               'material_id': box.get('material_id'),
                                'evidence': evidence(box['source_id'], box['uncertainty_m'])})
     for key, kind in (('room_shell_meshes', 'shell'), ('occluder_meshes', 'obstruction')):
         for item in geometry.get(key, []):
             structures.append({'id': item['id'], 'kind': kind, 'position_m': item['position_m'],
                                'size_m': item['size_m'], 'yaw_rad': item['yaw_rad'],
-                               'mesh': item['mesh'],
+                               'mesh': item['mesh'], 'material_id': item.get('material_id'),
                                'evidence': evidence(item['source_id'], item['uncertainty_m'])})
+    materials = [{'id': item['id'], 'name': item['name'], 'base_color_linear': item['base_color_linear'],
+                  'roughness': item['roughness'], 'metallic': item['metallic'],
+                  'evidence': evidence(item['photo_source_id'], None, 'documented')}
+                 for item in geometry.get('surface_materials', [])]
     survey = geometry['measurement_source_files'][0]['id']
     occluders = geometry['occluder_assessment']
-    value = {'format': 'venuetwin-production', 'version': '1.1.0' if any(s.get('mesh') for s in structures) else '1.0.0',
+    version = '1.2.0' if materials or any(s.get('material_id') for s in structures) else '1.1.0' if any(s.get('mesh') for s in structures) else '1.0.0'
+    value = {'format': 'venuetwin-production', 'version': version,
              'venue_id': data['venue_id'], 'revision': 1, 'name': data['venue_name'],
              'units': 'metres', 'axes': geometry['axes'],
              'origin': f"{geometry['coordinate_origin_description']} ({geometry['coordinate_origin_m']} m)",
-             'sources': sources, 'levels': levels, 'seats': seats, 'structures': structures,
+             'sources': sources, 'levels': levels, 'seats': seats, 'structures': structures, 'materials': materials,
              'stage_target_m': geometry['stage_target_m'],
              'stage_target_evidence': evidence(geometry['stage_target_source_id'], geometry['stage_target_uncertainty_m']),
              'coverage': {'scale': evidence(survey, geometry['scale_uncertainty_m']),

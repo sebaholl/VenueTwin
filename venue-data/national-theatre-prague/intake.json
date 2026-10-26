@@ -61,6 +61,7 @@
     "stage_target_m": null,
     "occluder_boxes": [],
     "occluder_meshes": [],
+    "surface_materials": [],
     "measurement_source_files": [],
     "photo_records": [],
     "stage_target_source_id": null,

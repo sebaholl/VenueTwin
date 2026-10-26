@@ -80,6 +80,15 @@ def test_complete_synthetic_survey_compiles_without_guessing(tmp_path):
     assert mesh_venue.version == '1.1.0'
     assert mesh_venue.structures[0].mesh.triangles == g['room_shell_meshes'][0]['mesh']['triangles']
     assert not prepare(mesh_venue.model_dump())[2]
+    g['surface_materials'] = [{'id': 'wood', 'name': 'Synthetic visual sample',
+                               'base_color_linear': [0.4, 0.2, 0.1], 'roughness': 0.35,
+                               'metallic': 0.0, 'photo_source_id': 'photo'}]
+    g['room_shell_meshes'][0]['material_id'] = 'wood'
+    (root / 'intake.json').write_text(json.dumps(data))
+    material_venue = compile_intake(root)
+    assert material_venue.version == '1.2.0'
+    assert material_venue.structures[0].material_id == 'wood'
+    assert not prepare(material_venue.model_dump())[2]
     g['measurement_source_files'][0]['file'] = '../outside.txt'
     (root / 'intake.json').write_text(json.dumps(data))
     with pytest.raises(ValueError, match='Unsafe source path'):

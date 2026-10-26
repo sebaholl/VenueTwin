@@ -17,15 +17,18 @@ const triangles = [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]
 const input = {
   stage_target_m: [0, 1, -3],
   structures: [{ id: 'measured-shell', position_m: [0, 0, 0], size_m: [2, 2, 2], yaw_rad: 0,
-    mesh: { vertices_m: vertices, triangles } }],
+    material_id: 'reference-finish', mesh: { vertices_m: vertices, triangles } }],
+  materials: [{ id: 'reference-finish', base_color_linear: [.4, .2, .1], roughness: .35, metallic: .15 }],
   seats: [{ id: 'a1', position_m: [0, .25, 2], yaw_rad: 0, eye_position_m: [0, 1.15, 2] }],
 }
 const scene = new Scene(), geometry = new BufferGeometry()
 geometry.setAttribute('position', new BufferAttribute(new Float32Array(vertices.flat()), 3))
 geometry.setIndex(triangles.flat())
 geometry.computeVertexNormals()
-const shell = new Mesh(geometry, new MeshStandardMaterial())
-shell.userData = { venueTwinStructureId: 'measured-shell', venueTwinStatus: 'draft-unverified' }
+const surface = new MeshStandardMaterial({ roughness: .35, metalness: .15 })
+surface.color.setRGB(.4, .2, .1)
+const shell = new Mesh(geometry, surface)
+shell.userData = { venueTwinStructureId: 'measured-shell', venueTwinMaterialId: 'reference-finish', venueTwinStatus: 'draft-unverified' }
 scene.add(shell)
 const anchor = new Object3D()
 anchor.position.set(0, .25, 2)
@@ -50,5 +53,11 @@ try {
   const invalid = verify()
   assert.equal(invalid.status, 1, 'Changed triangle topology must be rejected')
   assert.match(invalid.stderr, /AssertionError/)
-  console.log('Measured mesh triangles survive GLB import and changed topology is rejected.')
+  const changedMaterial = structuredClone(input)
+  changedMaterial.materials[0].roughness = .9
+  await writeFile(join(directory, 'input.json'), JSON.stringify(changedMaterial))
+  const invalidMaterial = verify()
+  assert.equal(invalidMaterial.status, 1, 'Changed surface must be rejected')
+  assert.match(invalidMaterial.stderr, /AssertionError/)
+  console.log('Mesh triangles and source-linked PBR values survive GLB import; changed topology and appearance are rejected.')
 } finally { await rm(directory, { recursive: true, force: true }) }

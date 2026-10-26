@@ -44,10 +44,15 @@ def prepare(value, allow_unverified=False):
         raise ValueError('This builder supports box dimensions of at least 0.001 m')
     packet = {
         'format': 'venuetwin-build-packet', 'version': 1, 'notice': NOTICE,
-        'boxes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad}
+        'materials': [{'id': m.id, 'base_color_linear': m.base_color_linear,
+                       'roughness': m.roughness, 'metallic': m.metallic}
+                      for m in sorted(venue.materials, key=lambda m: m.id)],
+        'boxes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad,
+                   'material_id': s.material_id}
                   for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is None],
         'meshes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad,
-                    'vertices': s.mesh.vertices_m, 'triangles': s.mesh.triangles}
+                    'vertices': s.mesh.vertices_m, 'triangles': s.mesh.triangles,
+                    'material_id': s.material_id}
                    for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is not None],
         'seats': [{'id': s.id, 'position': s.position_m, 'rotation': s.yaw_rad,
                    'eye': s.eye_position_m, 'target': target,

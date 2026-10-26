@@ -15,6 +15,19 @@ def validate(packet):
     if not isinstance(packet, dict) or packet.get('format') != 'venuetwin-build-packet' or type(packet.get('version')) is not int or packet['version'] != 1:
         raise ValueError('Unsupported build packet')
     meshes = packet.get('meshes', [])
+    materials = packet.get('materials', [])
+    if not isinstance(materials, list) or len(materials) > 100:
+        raise ValueError('Invalid material count')
+    material_ids = set()
+    for item in materials:
+        if not isinstance(item, dict) or not isinstance(item.get('id'), str) or not 1 <= len(item['id']) <= 100 or item['id'] in material_ids:
+            raise ValueError('Invalid material ID')
+        material_ids.add(item['id'])
+        color = item.get('base_color_linear')
+        if not isinstance(color, list) or len(color) != 3 or any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1 for value in color):
+            raise ValueError('Invalid material color')
+        if any(type(item.get(key)) not in (int, float) or not math.isfinite(item[key]) or not 0 <= item[key] <= 1 for key in ('roughness', 'metallic')):
+            raise ValueError('Invalid material surface')
     if not isinstance(meshes, list) or len(meshes) > 2000 or not 1 <= len(packet.get('boxes', [])) + len(meshes) <= 2000:
         raise ValueError('Invalid mesh count')
     for group in ('boxes', 'seats', 'meshes'):
@@ -28,6 +41,8 @@ def validate(packet):
             ids.add(item['id'])
             if not vector(item.get('position')) or type(item.get('rotation')) not in (float, int) or not math.isfinite(item['rotation']) or abs(item['rotation']) > math.tau:
                 raise ValueError('Invalid transform')
+            if group in ('boxes', 'meshes') and item.get('material_id') is not None and item['material_id'] not in material_ids:
+                raise ValueError('Unknown structure material')
             if group in ('boxes', 'meshes') and not vector(item.get('size'), True):
                 raise ValueError('Invalid box dimensions')
             if group == 'meshes':
@@ -81,11 +96,17 @@ def build(directory):
     import bpy
     from mathutils import Vector
     created = []
-    material = bpy.data.materials.new('Unverified neutral draft material')
-    material.use_nodes = True
-    shader = material.node_tree.nodes.get('Principled BSDF')
-    shader.inputs['Base Color'].default_value = (.18, .24, .3, 1)
-    shader.inputs['Roughness'].default_value = .8
+    def pbr(name, color, roughness, metallic):
+        material = bpy.data.materials.new(name)
+        material.use_nodes = True
+        shader = material.node_tree.nodes.get('Principled BSDF')
+        shader.inputs['Base Color'].default_value = (*color, 1)
+        shader.inputs['Roughness'].default_value = roughness
+        shader.inputs['Metallic'].default_value = metallic
+        return material
+    neutral = pbr('Unverified neutral draft material', (.18, .24, .3), .8, 0)
+    palette = {item['id']: pbr('VT_' + item['id'], item['base_color_linear'], item['roughness'], item['metallic'])
+               for item in packet.get('materials', [])}
     for index, box in enumerate(packet['boxes']):
         bpy.ops.mesh.primitive_cube_add(size=1, location=to_blender(box['position']))
         obj = bpy.context.object
@@ -94,7 +115,9 @@ def build(directory):
         obj.rotation_euler[2] = box['rotation']
         obj['venueTwinStructureId'] = box['id']
         obj['venueTwinStatus'] = 'draft-unverified'
-        obj.data.materials.append(material)
+        if box.get('material_id'):
+            obj['venueTwinMaterialId'] = box['material_id']
+        obj.data.materials.append(palette.get(box.get('material_id'), neutral))
         created.append(obj)
     for index, item in enumerate(packet.get('meshes', [])):
         mesh = bpy.data.meshes.new(f'MeasuredMesh_{index:04d}')
@@ -105,7 +128,9 @@ def build(directory):
         obj.rotation_euler[2] = item['rotation']
         obj['venueTwinStructureId'] = item['id']
         obj['venueTwinStatus'] = 'draft-unverified'
-        mesh.materials.append(material)
+        if item.get('material_id'):
+            obj['venueTwinMaterialId'] = item['material_id']
+        mesh.materials.append(palette.get(item.get('material_id'), neutral))
         bpy.context.scene.collection.objects.link(obj)
         created.append(obj)
     for index, seat in enumerate(packet['seats']):

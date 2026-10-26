@@ -53,6 +53,18 @@ def test_mesh_packet_keeps_exact_triangles_and_stable_identity(fictional):
     assert mesh['triangles'] == structure['mesh']['triangles']
 
 
+def test_material_packet_preserves_explicit_pbr_values(fictional):
+    fictional['version'] = '1.2.0'
+    fictional['materials'] = [{'id': 'trim', 'name': 'Fictional trim', 'base_color_linear': [0.4, 0.2, 0.1],
+                               'roughness': 0.35, 'metallic': 0.15,
+                               'evidence': {'status': 'inferred', 'source_ids': ['fictional-drawing'], 'uncertainty_m': None}}]
+    fictional['structures'][0]['material_id'] = 'trim'
+    _, packet, missing = prepare(fictional, True)
+    assert packet['materials'][0] == {'id': 'trim', 'base_color_linear': [0.4, 0.2, 0.1], 'roughness': 0.35, 'metallic': 0.15}
+    assert next(box for box in packet['boxes'] if box['id'] == fictional['structures'][0]['id'])['material_id'] == 'trim'
+    assert '/materials/trim/evidence' in [item['path'] for item in missing]
+
+
 @pytest.mark.parametrize('case', ['eye', 'target', 'structures', 'seats', 'coincident', 'tiny', 'invalid', 'vertical'])
 def test_draft_flag_never_invents_or_repairs_geometry(fictional, case):
     if case == 'eye': fictional['seats'][0]['eye_position_m'] = None

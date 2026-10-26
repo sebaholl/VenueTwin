@@ -97,6 +97,12 @@ jobs:
           contracts/fixtures/fictional-mesh-venue.json /tmp/venuetwin-mesh-roundtrip
           --container-image venuetwin-pilot:ci --allow-unverified
       - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-mesh-roundtrip
+      - name: Verify source-linked PBR material through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-material-venue.json /tmp/venuetwin-material-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-material-roundtrip
 
   managed-viewer:
     runs-on: ubuntu-latest

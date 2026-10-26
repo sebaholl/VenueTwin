@@ -89,6 +89,33 @@ def test_fictional_mesh_fixture_keeps_authored_source_hash():
     assert missing_inputs(venue)
 
 
+def test_surface_material_requires_version_and_photo_evidence(complete):
+    complete['materials'] = [{'id': 'wood', 'name': 'Reference wood', 'base_color_linear': [0.4, 0.2, 0.1],
+                              'roughness': 0.55, 'metallic': 0.0,
+                              'evidence': {'status': 'documented', 'source_ids': ['legacy-config'], 'uncertainty_m': None}}]
+    complete['structures'][0]['material_id'] = 'wood'
+    with pytest.raises(ValidationError, match='1.2.0'):
+        VenueDocument.model_validate(complete)
+    complete['version'] = '1.2.0'
+    with pytest.raises(ValidationError, match='photo source'):
+        VenueDocument.model_validate(complete)
+    complete['sources'].append({'id': 'photo', 'kind': 'photo', 'sha256': 'a' * 64, 'description': 'Synthetic test swatch'})
+    complete['materials'][0]['evidence']['source_ids'] = ['photo']
+    venue = VenueDocument.model_validate(complete)
+    assert venue.structures[0].material_id == 'wood'
+    assert missing_inputs(venue) == []
+    complete['materials'][0]['roughness'] = 1.01
+    with pytest.raises(ValidationError):
+        VenueDocument.model_validate(complete)
+
+
+def test_fictional_material_fixture_stays_unverified():
+    fixture = json.loads((ROOT / 'contracts/fixtures/fictional-material-venue.json').read_text())
+    venue = VenueDocument.model_validate(fixture)
+    assert venue.materials[0].evidence.status == 'inferred'
+    assert '/materials/fictional-trim/evidence' in [item.path for item in missing_inputs(venue)]
+
+
 def test_legacy_concept_cannot_be_promoted_to_measurement(complete):
     complete['sources'][0]['kind'] = 'legacy-concept'
     with pytest.raises(ValidationError):

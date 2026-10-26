@@ -9,6 +9,7 @@ Positive = Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)]
 Angle = Annotated[float, Field(ge=-6.283185307179586, le=6.283185307179586, allow_inf_nan=False)]
 Vector = Annotated[list[Coordinate], Field(min_length=3, max_length=3)]
 Size = Annotated[list[Positive], Field(min_length=3, max_length=3)]
+Unit = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
 
 
 class StrictModel(BaseModel):
@@ -87,6 +88,15 @@ class StructureMesh(StrictModel):
         return self
 
 
+class SurfaceMaterial(StrictModel):
+    id: Identifier
+    name: Text
+    base_color_linear: Annotated[list[Unit], Field(min_length=3, max_length=3)]
+    roughness: Unit
+    metallic: Unit
+    evidence: Evidence
+
+
 class Structure(StrictModel):
     id: Identifier
     kind: Literal['shell', 'stage', 'obstruction', 'deck', 'other']
@@ -95,6 +105,7 @@ class Structure(StrictModel):
     yaw_rad: Angle
     evidence: Evidence
     mesh: StructureMesh | None = None
+    material_id: Identifier | None = None
 
     @model_validator(mode='after')
     def mesh_bounds(self):
@@ -117,7 +128,7 @@ class Coverage(StrictModel):
 
 class VenueDocument(StrictModel):
     format: Literal['venuetwin-production']
-    version: Literal['1.0.0', '1.1.0']
+    version: Literal['1.0.0', '1.1.0', '1.2.0']
     venue_id: Identifier
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     name: Text
@@ -128,6 +139,7 @@ class VenueDocument(StrictModel):
     levels: Annotated[list[Level], Field(max_length=30)]
     seats: Annotated[list[Seat], Field(max_length=2000)]
     structures: Annotated[list[Structure], Field(max_length=2000)]
+    materials: Annotated[list[SurfaceMaterial], Field(max_length=100)] = []
     stage_target_m: Vector | None
     stage_target_evidence: Evidence
     coverage: Coverage
@@ -136,23 +148,32 @@ class VenueDocument(StrictModel):
     def references(self):
         if self.version == '1.0.0' and any(structure.mesh is not None for structure in self.structures):
             raise ValueError('Measured meshes require production contract 1.1.0')
+        if self.version != '1.2.0' and (self.materials or any(structure.material_id is not None for structure in self.structures)):
+            raise ValueError('Surface materials require production contract 1.2.0')
         for name in ('sources', 'levels', 'seats', 'structures'):
             values = getattr(self, name)
             if len({item.id for item in values}) != len(values):
                 raise ValueError(f'Duplicate {name} ID')
         levels = {item.id for item in self.levels}
         sources = {item.id for item in self.sources}
+        materials = {item.id for item in self.materials}
+        if len(materials) != len(self.materials):
+            raise ValueError('Duplicate material ID')
+        if any(item.material_id is not None and item.material_id not in materials for item in self.structures):
+            raise ValueError('Unknown structure material')
         labels = [(s.level_id, s.row_label, s.label) for s in self.seats]
         if len(set(labels)) != len(labels):
             raise ValueError('Duplicate seat label within a level and row')
         if any(s.level_id not in levels for s in self.seats):
             raise ValueError('Unknown seat level')
-        evidence = [x.evidence for x in [*self.levels, *self.seats, *self.structures]]
+        evidence = [x.evidence for x in [*self.levels, *self.seats, *self.structures, *self.materials]]
         evidence.append(self.stage_target_evidence)
         evidence += [getattr(self.coverage, k) for k in type(self.coverage).model_fields]
         if any(source not in sources for item in evidence for source in item.source_ids):
             raise ValueError('Unknown evidence source')
         photo_sources = {s.id for s in self.sources if s.kind == 'photo'}
+        if any(material.evidence.status == 'documented' and not photo_sources.intersection(material.evidence.source_ids) for material in self.materials):
+            raise ValueError('Documented surface material requires a photo source')
         if any(seat.camera_source_id is not None and seat.camera_source_id not in photo_sources for seat in self.seats):
             raise ValueError('Camera calibration requires a photo source')
         measured_sources = {s.id for s in self.sources if s.kind in ('survey', 'drawing')}
@@ -197,4 +218,7 @@ def missing_inputs(venue: VenueDocument) -> list[Requirement]:
             measured(f'/{name}/{item.id}/evidence', item.evidence)
             if isinstance(item, Seat) and item.eye_position_m is None:
                 add(f'/seats/{item.id}/eye_position_m', 'missing', 'Supply a measured seated-eye position.')
+    for material in sorted(venue.materials, key=lambda item: item.id):
+        if material.evidence.status not in ('documented', 'measured'):
+            add(f'/materials/{material.id}/evidence', 'evidence_required', 'Supply a source-linked appearance reference.')
     return sorted(found, key=lambda item: (item.path, item.code))

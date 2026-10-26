@@ -48,6 +48,18 @@ assert.equal(groups.cameras.size, source.seats.length)
 for (const structure of source.structures) {
   const mesh = groups.structures.get(structure.id)
   assert.ok(mesh?.isMesh, `Missing structure ${structure.id}`)
+  assert.equal(mesh.userData.venueTwinMaterialId ?? null, structure.material_id ?? null, `Material identity ${structure.id}`)
+  const surface = structure.material_id ? source.materials?.find(item => item.id === structure.material_id) : null
+  if (structure.material_id) assert.ok(surface, `Missing material ${structure.material_id}`)
+  const expectedColor = surface?.base_color_linear ?? [.18, .24, .3]
+  const expectedRoughness = surface?.roughness ?? .8, expectedMetallic = surface?.metallic ?? 0
+  const material = mesh.material
+  assert.ok(!Array.isArray(material) && material?.isMeshStandardMaterial && !material.map && !material.normalMap, `Unexpected material ${structure.id}`)
+  for (const [index, component] of ['r', 'g', 'b'].entries()) {
+    assert.ok(Math.abs(material.color[component] - expectedColor[index]) < .001, `Material color ${structure.id}`)
+  }
+  assert.ok(Math.abs(material.roughness - expectedRoughness) < .0001, `Material roughness ${structure.id}`)
+  assert.ok(Math.abs(material.metalness - expectedMetallic) < .0001, `Material metallic ${structure.id}`)
   const centre = new Vector3(...structure.position_m)
   const rotation = new Matrix4().makeRotationY(structure.yaw_rad)
   if (structure.mesh) {

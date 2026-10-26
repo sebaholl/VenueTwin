@@ -26,6 +26,16 @@ class ProductionPacketTests(unittest.TestCase):
         self.packet['meshes'][0]['triangles'][0] = [0, 0, 2]
         with self.assertRaises(ValueError): validate(self.packet)
 
+    def test_pbr_material_assignment_is_validated_before_blender(self):
+        self.packet['materials'] = [{'id': 'wood', 'base_color_linear': [.4, .2, .1], 'roughness': .35, 'metallic': .15}]
+        self.packet['boxes'][0]['material_id'] = 'wood'
+        self.assertEqual(validate(self.packet), self.packet)
+        self.packet['materials'][0]['roughness'] = float('nan')
+        with self.assertRaises(ValueError): validate(self.packet)
+        self.packet['materials'][0]['roughness'] = .35
+        self.packet['boxes'][0]['material_id'] = 'missing'
+        with self.assertRaises(ValueError): validate(self.packet)
+
     def test_bad_inputs_fail_before_blender_import(self):
         for case in ['version', 'boolean', 'nan', 'duplicate', 'empty', 'camera', 'size', 'fov']:
             with self.subTest(case=case):
