@@ -14,14 +14,14 @@ Checked 26 October 2026. This is a survey of prominent official venue sites, not
 
 The official Reduta ZIP downloaded on 26 October 2026 had SHA-256 `0042b8a2d158b962adc3b458155d105864c693964bb4e6bc8b79cd08f8f1a7cd`. The plan PDF hash was `829325adbfa9dfaaa422f175bd1380482ddb8be09d6f2fbf0e06590e2d77f44f`, and the section PDF hash was `07bb2fb9b36635f98a6935846d06da292aa4b4c3cfabe3cb9ffd15b1ae3ffe4e`. Those hashes document the exact files inspected, not their accuracy or licensing.
 
-Download the SketchUp ZIP from the official link above and extract `reduta.skp` outside the repository. Then from the VenueTwin checkout:
+From the VenueTwin checkout:
 
 ```bash
 npm ci
-npm run reduta:prepare -- /absolute/path/to/reduta.skp
+npm run reduta:prepare
 npm run dev
 ```
 
-Open `http://127.0.0.1:5173/reduta-preview.html`. The importer writes a GLB and source hash report into ignored `public/venues/reduta-study/v1/`. It makes no API call and performs no Blender render. It does not add the model to a managed customer release. The preview intentionally labels its status and never creates seat views from invented coordinates.
+Open the `/reduta-preview.html` page at the local address printed by Vite (often `http://127.0.0.1:5173/reduta-preview.html`). The importer downloads the free official ZIP, checks its known hash, and writes a GLB and source hash report into ignored `public/venues/reduta-study/v1/`. You can alternatively pass a local `reduta.skp` path as an argument. It makes no paid API call and performs no Blender render. It does not add the model to a managed customer release. The preview intentionally labels its status and never creates seat views from invented coordinates.
 
 The inspected official SKP produced 55 GLB primitives and an approximately 16.3 × 18.8 × 39.2 metre axis-aligned bounding box. These are import diagnostics, not audited dimensions of the auditorium. The section shows stepped audience geometry and the plan depicts some front chairs; neither gives a complete, stable 286-seat 3D inventory. A 1:1 customer claim therefore cannot be validated from these files alone. Photos supplied later can inform materials and comparison only if their viewpoints and usage rights are known; they cannot turn missing seat coordinates into measurements.
