@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { Vector3, Matrix4, REVISION } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { inspectEmbeddedTextures } from './embedded-textures.mjs'
 
 const directory = resolve(process.argv[2] ?? '')
 const source = JSON.parse(await readFile(resolve(directory, 'input.json'), 'utf8'))
@@ -16,11 +17,9 @@ assert.equal(bytes.readUInt32LE(0), 0x46546c67)
 assert.equal(bytes.readUInt32LE(4), 2)
 assert.equal(bytes.readUInt32LE(8), bytes.length)
 assert.equal(bytes.readUInt32LE(16), 0x4e4f534a)
-const json = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString())
-assert.ok(!json.images?.length && !json.buffers?.some(buffer => buffer.uri), 'External resources are forbidden')
-assert.ok(!json.extensionsRequired?.length, 'Unexpected glTF extensions')
+const { parseBytes, textureCount } = inspectEmbeddedTextures(bytes, source)
 globalThis.fetch = async () => { throw new Error('Network forbidden in production verification') }
-const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '')
+const gltf = await new GLTFLoader().parseAsync(parseBytes.buffer.slice(parseBytes.byteOffset, parseBytes.byteOffset + parseBytes.byteLength), '')
 gltf.scene.updateMatrixWorld(true)
 const groups = { structures: new Map(), seats: new Map(), cameras: new Map() }
 gltf.scene.traverse(object => {
@@ -48,8 +47,72 @@ assert.equal(groups.cameras.size, source.seats.length)
 for (const structure of source.structures) {
   const mesh = groups.structures.get(structure.id)
   assert.ok(mesh?.isMesh, `Missing structure ${structure.id}`)
+  assert.equal(mesh.userData.venueTwinMaterialId ?? null, structure.material_id ?? null, `Material identity ${structure.id}`)
+  const surface = structure.material_id ? source.materials?.find(item => item.id === structure.material_id) : null
+  if (structure.material_id) assert.ok(surface, `Missing material ${structure.material_id}`)
+  const expectedColor = surface?.base_color_linear ?? [.18, .24, .3]
+  const expectedRoughness = surface?.roughness ?? .8, expectedMetallic = surface?.metallic ?? 0
+  const material = mesh.material
+  assert.ok(!Array.isArray(material) && material?.isMeshStandardMaterial && !material.map && !material.normalMap, `Unexpected material ${structure.id}`)
+  if (!surface?.base_color_texture_source_id) for (const [index, component] of ['r', 'g', 'b'].entries()) {
+    assert.ok(Math.abs(material.color[component] - expectedColor[index]) < .001, `Material color ${structure.id}`)
+  }
+  assert.ok(Math.abs(material.roughness - expectedRoughness) < .0001, `Material roughness ${structure.id}`)
+  assert.ok(Math.abs(material.metalness - expectedMetallic) < .0001, `Material metallic ${structure.id}`)
   const centre = new Vector3(...structure.position_m)
   const rotation = new Matrix4().makeRotationY(structure.yaw_rad)
+  if (structure.mesh) {
+    const expected = structure.mesh.vertices_m.map(vertex => new Vector3(...vertex).applyMatrix4(rotation).add(centre))
+    const bucket = new Map()
+    const key = point => point.toArray().map(value => Math.round(value * 1000)).join(',')
+    for (let i = 0; i < expected.length; i++) {
+      const name = key(expected[i])
+      bucket.set(name, [...(bucket.get(name) ?? []), i])
+    }
+    const attribute = mesh.geometry.getAttribute('position'), index = mesh.geometry.index
+    const uv = mesh.geometry.getAttribute('uv')
+    assert.equal(Boolean(uv), Boolean(structure.mesh.triangle_uv), `UV presence ${structure.id}`)
+    if (uv) assert.equal(uv.count, attribute.count, `UV vertex count ${structure.id}`)
+    const actual = Array.from({ length: attribute.count }, (_, i) => new Vector3().fromBufferAttribute(attribute, i).applyMatrix4(mesh.matrixWorld))
+    const mapped = actual.map(point => {
+      const rounded = point.toArray().map(value => Math.round(value * 1000))
+      let nearest = -1, error = Infinity
+      for (const x of [-1, 0, 1]) for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) {
+        const candidates = bucket.get([rounded[0] + x, rounded[1] + y, rounded[2] + z].join(',')) ?? []
+        for (const candidate of candidates) if (point.distanceTo(expected[candidate]) < error) {
+          nearest = candidate; error = point.distanceTo(expected[candidate])
+        }
+      }
+      assert.ok(nearest >= 0 && error <= tolerance, `Unexpected vertex ${structure.id}`)
+      maxError = Math.max(maxError, error)
+      return nearest
+    })
+    const canonical = face => [...face].sort((a, b) => a - b).join(',')
+    const faces = new Map()
+    for (const face of structure.mesh.triangles) {
+      const name = canonical(face)
+      faces.set(name, (faces.get(name) ?? 0) + 1)
+    }
+    const faceUv = new Map(structure.mesh.triangle_uv?.map((corners, faceIndex) =>
+      [canonical(structure.mesh.triangles[faceIndex]), new Map(structure.mesh.triangles[faceIndex].map((vertex, corner) => [vertex, corners[corner]]))]) ?? [])
+    const count = index ? index.count : attribute.count
+    assert.equal(count, structure.mesh.triangles.length * 3, `Mesh triangle count ${structure.id}`)
+    for (let i = 0; i < count; i += 3) {
+      const indices = [0, 1, 2].map(offset => index ? index.getX(i + offset) : i + offset)
+      const face = indices.map(vertex => mapped[vertex])
+      const name = canonical(face), left = faces.get(name) ?? 0
+      assert.ok(left > 0, `Unexpected triangle ${structure.id}`)
+      if (uv) for (let corner = 0; corner < 3; corner++) {
+        const expected = faceUv.get(name)?.get(face[corner])
+        assert.ok(expected && Math.abs(uv.getX(indices[corner]) - expected[0]) < tolerance &&
+          Math.abs(uv.getY(indices[corner]) - (1 - expected[1])) < tolerance,
+        `UV mismatch ${structure.id} triangle ${i / 3} corner ${corner}`)
+      }
+      faces.set(name, left - 1)
+    }
+    assert.ok([...faces.values()].every(count => count === 0), `Missing triangle ${structure.id}`)
+    continue
+  }
   const expected = []
   for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) {
     expected.push(new Vector3(x * structure.size_m[0] / 2, y * structure.size_m[1] / 2, z * structure.size_m[2] / 2).applyMatrix4(rotation).add(centre))
@@ -70,11 +133,11 @@ for (const seat of source.seats) {
   const expectedRight = direction.clone().cross(new Vector3(0, 1, 0)).normalize()
   const actualRight = new Vector3(1, 0, 0).transformDirection(camera.matrixWorld)
   close(actualRight, expectedRight, `Camera roll ${seat.id}`)
-  assert.ok(Math.abs(camera.fov - 65) < .0001, `Camera FOV ${camera.fov}`)
+  assert.ok(Math.abs(camera.fov - (seat.vertical_fov_deg ?? 65)) < .0001, `Camera FOV ${camera.fov}`)
 }
 const report = { format: 'venuetwin-roundtrip', version: 1, three_revision: REVISION, structures: groups.structures.size,
   seats: groups.seats.size, cameras: groups.cameras.size, position_tolerance_m: tolerance, direction_vector_tolerance: tolerance,
-  maximum_numeric_error: maxError, glb_sha256: createHash('sha256').update(bytes).digest('hex'),
+  maximum_numeric_error: maxError, embedded_textures: textureCount, glb_sha256: createHash('sha256').update(bytes).digest('hex'),
   note: 'Numeric coordinate round-trip only; not a venue accuracy or sightline certification.' }
 await writeFile(resolve(directory, 'verification.json'), JSON.stringify(report, null, 2) + '\n')
 console.log(`Production GLB verified: ${report.structures} structures, ${report.seats} seats, ${report.cameras} cameras.`)

@@ -10,7 +10,7 @@ from conftest import ROOT
 def test_schema_drift_and_cross_language_fixture(draft):
     schema = json.loads((ROOT / 'contracts/venue-production-v1.schema.json').read_text())
     expected = VenueDocument.model_json_schema()
-    expected.update({'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': 'urn:venuetwin:production:1.0.0'})
+    expected.update({'$schema': 'https://json-schema.org/draft/2020-12/schema', '$id': 'urn:venuetwin:production:1.x'})
     assert schema == expected
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema).validate(draft)
@@ -61,6 +61,59 @@ def test_requirements_are_stable_and_do_not_mutate(draft):
 
 def test_complete_inputs_are_ready_for_review_only(complete):
     assert missing_inputs(VenueDocument.model_validate(complete)) == []
+
+
+def test_measured_triangle_mesh_requires_v1_1_and_preserves_evidence(complete):
+    structure = complete['structures'][0]
+    structure['size_m'] = [2, 2, 2]
+    structure['mesh'] = {'vertices_m': [[-1, -1, -1], [1, -1, -1], [0, 1, -1], [0, 0, 1]],
+                         'triangles': [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]}
+    with pytest.raises(ValidationError, match='1.1.0'):
+        VenueDocument.model_validate(complete)
+    complete['version'] = '1.1.0'
+    parsed = VenueDocument.model_validate(complete)
+    assert missing_inputs(parsed) == []
+    assert parsed.structures[0].mesh.triangles == structure['mesh']['triangles']
+    structure['mesh']['triangles'][0] = [0, 0, 2]
+    with pytest.raises(ValidationError, match='triangle'):
+        VenueDocument.model_validate(complete)
+
+
+def test_fictional_mesh_fixture_keeps_authored_source_hash():
+    import hashlib
+    source = (ROOT / 'contracts/fixtures/fictional-mesh-source.txt').read_bytes()
+    fixture = json.loads((ROOT / 'contracts/fixtures/fictional-mesh-venue.json').read_text())
+    assert fixture['sources'][-1]['sha256'] == hashlib.sha256(source).hexdigest()
+    venue = VenueDocument.model_validate(fixture)
+    assert venue.structures[0].mesh is not None
+    assert missing_inputs(venue)
+
+
+def test_surface_material_requires_version_and_photo_evidence(complete):
+    complete['materials'] = [{'id': 'wood', 'name': 'Reference wood', 'base_color_linear': [0.4, 0.2, 0.1],
+                              'roughness': 0.55, 'metallic': 0.0,
+                              'evidence': {'status': 'documented', 'source_ids': ['legacy-config'], 'uncertainty_m': None}}]
+    complete['structures'][0]['material_id'] = 'wood'
+    with pytest.raises(ValidationError, match='1.2.0'):
+        VenueDocument.model_validate(complete)
+    complete['version'] = '1.2.0'
+    with pytest.raises(ValidationError, match='photo source'):
+        VenueDocument.model_validate(complete)
+    complete['sources'].append({'id': 'photo', 'kind': 'photo', 'sha256': 'a' * 64, 'description': 'Synthetic test swatch'})
+    complete['materials'][0]['evidence']['source_ids'] = ['photo']
+    venue = VenueDocument.model_validate(complete)
+    assert venue.structures[0].material_id == 'wood'
+    assert missing_inputs(venue) == []
+    complete['materials'][0]['roughness'] = 1.01
+    with pytest.raises(ValidationError):
+        VenueDocument.model_validate(complete)
+
+
+def test_fictional_material_fixture_stays_unverified():
+    fixture = json.loads((ROOT / 'contracts/fixtures/fictional-material-venue.json').read_text())
+    venue = VenueDocument.model_validate(fixture)
+    assert venue.materials[0].evidence.status == 'inferred'
+    assert '/materials/fictional-trim/evidence' in [item.path for item in missing_inputs(venue)]
 
 
 def test_legacy_concept_cannot_be_promoted_to_measurement(complete):

@@ -41,8 +41,14 @@ function ManagedViewer({ loaded, path, initialSeat }: { loaded: LoadedProduction
   const [status, setStatus] = useState(initialSeat && !first ? 'That seat is not available in this venue version. Choose another seat.' : '')
   const [fallbackLink, setFallbackLink] = useState('')
   const root = useRef<HTMLDivElement>(null)
+  const stage = useRef<HTMLElement>(null)
   const onReady = useCallback(() => setReady(true), []), onFailure = useCallback(() => { setFailed(true); setMap(true); setStatus('The 3D view was interrupted. The seat map remains available.') }, [])
   const pick = (seat: ProductionSeat) => { setSelected(seat); setLevel(seat.level_id); setRow(seat.row) }
+  const toggleSeatView = () => {
+    setMap(false)
+    if (!inside && window.matchMedia('(max-width: 850px)').matches) stage.current?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+    setInside(!inside)
+  }
   const share = async () => {
     if (!selected) return
     const link = productionSeatLink(location.origin, path, selected.id)
@@ -51,20 +57,20 @@ function ManagedViewer({ loaded, path, initialSeat }: { loaded: LoadedProduction
   }
   const fullscreen = async () => { try { if (document.fullscreenElement) await document.exitFullscreen(); else if (root.current?.requestFullscreen) await root.current.requestFullscreen(); else setStatus('Full screen is unavailable in this browser.') } catch { setStatus('Full screen could not be opened.') } }
   return <div className="managed-viewer" ref={root}>
-    <header className="managed-header"><Brand /><span>{manifest.quality === 'demonstration' ? 'DEMONSTRATION' : 'VENUE PREVIEW'}</span><button onClick={() => void fullscreen()}>Full screen</button></header>
+    <header className="managed-header"><Brand /><span>{manifest.quality === 'demonstration' ? 'DEMONSTRATION' : manifest.quality === 'study' ? 'UNVERIFIED VENUE STUDY' : 'VENUE PREVIEW'}</span><button onClick={() => void fullscreen()}>Full screen</button></header>
     <main className="managed-layout">
       <aside className="managed-picker" aria-label="Choose your seat"><p className="managed-eyebrow">THE VIEW FROM YOUR SEAT</p><h1>{manifest.name}</h1><p>Find your place. Take a look around.</p>
         <label>Level<select aria-label="Choose level" value={level} onChange={e => { const next = manifest.seats.filter(s => s.level_id === e.target.value); setLevel(e.target.value); setRow(next[0].row); setSelected(null); setInside(false) }}>{manifest.levels.filter(l => manifest.seats.some(s => s.level_id === l.id)).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
         <label>Row<select aria-label="Choose row" value={row} onChange={e => { setRow(e.target.value); setSelected(null); setInside(false) }}>{rows.map(r => <option key={r} value={r}>{r}</option>)}</select></label>
         <div className="managed-seats" aria-label={`Seats in row ${row}`}>{rowSeats.map(s => <button key={s.id} aria-label={`Select seat ${s.label}`} aria-pressed={selected?.id === s.id} onClick={() => pick(s)}>{s.label}</button>)}</div>
         <div className="managed-selection" aria-live="polite">{selected ? <><small>SELECTED SEAT</small><strong>{selected.label}</strong><span>{manifest.levels.find(l => l.id === selected.level_id)?.name} · Row {selected.row}</span></> : <p>Choose a seat from the list or the model.</p>}</div>
-        <button className="managed-primary" disabled={!selected || failed} onClick={() => { setMap(false); setInside(!inside) }}>{inside ? 'Back to overview' : 'View from this seat'}</button>
+        <button className="managed-primary" disabled={!selected || failed} onClick={toggleSeatView}>{inside ? 'Back to overview' : 'View from this seat'}</button>
         <button disabled={!selected} onClick={() => void share()}>Copy seat link</button>
         {fallbackLink && <label>Seat link<input readOnly value={fallbackLink} onFocus={e => e.target.select()} /></label>}
         <p className="managed-meta">{manifest.seats.length} seats · Version {manifest.revision}<br />No booking or live availability.</p>
         <Link to="/service">Service & support</Link>
       </aside>
-      <section className="managed-stage" aria-label="Venue preview"><div className="managed-stage-header"><div><p className="managed-eyebrow">{inside && !map ? 'SEAT PERSPECTIVE' : 'EXPLORE THE VENUE'}</p><h2>{inside && selected && !map ? `Seat ${selected.label}` : 'Auditorium'}</h2></div><div className="managed-tabs"><button aria-pressed={!map} disabled={failed} onClick={() => setMap(false)}>3D view</button><button aria-pressed={map} onClick={() => setMap(true)}>Seat map</button></div></div>
+      <section className="managed-stage" ref={stage} aria-label="Venue preview"><div className="managed-stage-header"><div><p className="managed-eyebrow">{inside && !map ? 'SEAT PERSPECTIVE' : 'EXPLORE THE VENUE'}</p><h2>{inside && selected && !map ? `Seat ${selected.label}` : 'Auditorium'}</h2></div><div className="managed-tabs"><button aria-pressed={!map} disabled={failed} onClick={() => setMap(false)}>3D view</button><button aria-pressed={map} onClick={() => setMap(true)}>Seat map</button></div></div>
         <div className="managed-canvas">{map ? <SeatMap seats={seats} target={manifest.target} selected={selected?.id} onSelect={pick} /> : <SceneBoundary onMap={() => setMap(true)}><ProductionScene loaded={loaded} selected={selected} inside={inside} onSelect={pick} onExit={() => setInside(false)} onReady={onReady} onFailure={onFailure} />{!ready && <p className="managed-loading" role="status">Preparing 3D… You can switch to the seat map.</p>}</SceneBoundary>}</div>
         <div className="managed-hint">{map ? 'Select a seat on the map or use the numbered buttons.' : inside ? 'Drag or use arrow keys to look around. Escape returns to overview.' : 'Drag to rotate. Pinch or scroll to zoom.'}<span data-testid="scene-status">{ready ? '3D ready' : 'Seat map available'}</span></div>
         <p className="managed-notice">{manifest.notice} Chair shapes and lighting are illustrative. This is not a certified sightline or accessibility assessment.</p>

@@ -82,13 +82,15 @@ export function BlenderPanel({ projectId, config, onLoaded, onSource, ref, compa
     setBuilding(true); setBuildStage('Preparing layout'); setError('')
     try {
       const result = await buildLocalModel(snapshot, controller.signal, setBuildStage)
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted) throw new Error('Build cancelled. Existing model kept.')
       assertBuildCurrent(snapshot, latestConfig.current)
       if (await attach(result.file, result.signature, controller.signal, snapshot)) setBuildStage('Model built and imported')
-      else setBuildStage('Model was not imported')
+      else throw new Error('The model was built but could not be imported. Check the model panel before sharing.')
     } catch (reason) {
-      if (controller.signal.aborted) setBuildStage('Build cancelled. Existing model kept.')
-      else { setBuildStage('Build failed'); setError(reason instanceof Error ? reason.message : 'Build failed.') }
+      const message = reason instanceof Error ? reason.message : 'Build failed.'
+      setBuildStage(controller.signal.aborted ? 'Build cancelled. Existing model kept.' : 'Build failed')
+      if (!controller.signal.aborted) setError(message)
+      throw new Error(controller.signal.aborted ? 'Build cancelled. Existing model kept.' : message)
     } finally { if (buildController.current === controller) { buildController.current = null; setBuilding(false) } }
   }
   useImperativeHandle(ref, () => ({ build }))

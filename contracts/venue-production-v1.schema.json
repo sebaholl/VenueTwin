@@ -179,6 +179,35 @@
         },
         "evidence": {
           "$ref": "#/$defs/Evidence"
+        },
+        "vertical_fov_deg": {
+          "anyOf": [
+            {
+              "maximum": 120,
+              "minimum": 10,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vertical Fov Deg"
+        },
+        "camera_source_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Camera Source Id"
         }
       },
       "required": [
@@ -287,6 +316,32 @@
         },
         "evidence": {
           "$ref": "#/$defs/Evidence"
+        },
+        "mesh": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/StructureMesh"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "material_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Material Id"
         }
       },
       "required": [
@@ -299,6 +354,143 @@
       ],
       "title": "Structure",
       "type": "object"
+    },
+    "StructureMesh": {
+      "additionalProperties": false,
+      "description": "Local Y-up triangle mesh; structure position/yaw place it in the venue.",
+      "properties": {
+        "vertices_m": {
+          "items": {
+            "items": {
+              "maximum": 500,
+              "minimum": -500,
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          },
+          "maxItems": 4096,
+          "minItems": 4,
+          "title": "Vertices M",
+          "type": "array"
+        },
+        "triangles": {
+          "items": {
+            "items": {
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "maxItems": 8192,
+          "minItems": 4,
+          "title": "Triangles",
+          "type": "array"
+        },
+        "triangle_uv": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "items": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              "maxItems": 8192,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Triangle Uv"
+        }
+      },
+      "required": [
+        "vertices_m",
+        "triangles"
+      ],
+      "title": "StructureMesh",
+      "type": "object"
+    },
+    "SurfaceMaterial": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_.:-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 500,
+          "minLength": 1,
+          "pattern": "\\S",
+          "title": "Name",
+          "type": "string"
+        },
+        "base_color_linear": {
+          "items": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Base Color Linear",
+          "type": "array"
+        },
+        "roughness": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Roughness",
+          "type": "number"
+        },
+        "metallic": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Metallic",
+          "type": "number"
+        },
+        "base_color_texture_source_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Color Texture Source Id"
+        },
+        "evidence": {
+          "$ref": "#/$defs/Evidence"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "base_color_linear",
+        "roughness",
+        "metallic",
+        "evidence"
+      ],
+      "title": "SurfaceMaterial",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -309,7 +501,12 @@
       "type": "string"
     },
     "version": {
-      "const": "1.0.0",
+      "enum": [
+        "1.0.0",
+        "1.1.0",
+        "1.2.0",
+        "1.3.0"
+      ],
       "title": "Version",
       "type": "string"
     },
@@ -382,6 +579,15 @@
       "title": "Structures",
       "type": "array"
     },
+    "materials": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/SurfaceMaterial"
+      },
+      "maxItems": 100,
+      "title": "Materials",
+      "type": "array"
+    },
     "stage_target_m": {
       "anyOf": [
         {
@@ -427,5 +633,5 @@
   "title": "VenueDocument",
   "type": "object",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:venuetwin:production:1.0.0"
+  "$id": "urn:venuetwin:production:1.x"
 }

@@ -1,0 +1,376 @@
+{
+  "format": "venuetwin-production",
+  "version": "1.2.0",
+  "venue_id": "fictional-four-seat",
+  "revision": 1,
+  "name": "FICTIONAL four-seat draft \u2014 not a real venue",
+  "units": "metres",
+  "axes": "right-handed-y-up",
+  "origin": "Authored test frame; centre of front seating row at floor level.",
+  "sources": [
+    {
+      "id": "fictional-drawing",
+      "kind": "drawing",
+      "sha256": "e6f550f0c3ad53028e781649fcb1d1b825a3434bd617e0c4d873e197576702bf",
+      "description": "Fictional four-seat test venue. All dimensions and eye positions are authored test values, not measurements of a real venue. Neutral material and 65-degree lens are illustrative."
+    },
+    {
+      "id": "fictional-mesh",
+      "kind": "drawing",
+      "sha256": "c59dc4cc546ecb4d25de0846041309f134a99b8a929f29a1bd3606244711b398",
+      "description": "Authored fictional tetrahedron topology and local bounds; not a measured venue."
+    }
+  ],
+  "levels": [
+    {
+      "id": "main",
+      "name": "Main",
+      "elevation_m": 0,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "raised",
+      "name": "Raised",
+      "elevation_m": 0.6,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    }
+  ],
+  "seats": [
+    {
+      "id": "a1",
+      "label": "A1",
+      "level_id": "main",
+      "row_label": "A",
+      "position_m": [
+        -1,
+        0.25,
+        0
+      ],
+      "yaw_rad": 0.1,
+      "eye_position_m": [
+        -1,
+        1.15,
+        0
+      ],
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "a2",
+      "label": "A2",
+      "level_id": "main",
+      "row_label": "A",
+      "position_m": [
+        1,
+        0.25,
+        0
+      ],
+      "yaw_rad": -0.1,
+      "eye_position_m": [
+        1,
+        1.15,
+        0
+      ],
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "b1",
+      "label": "B1",
+      "level_id": "raised",
+      "row_label": "B",
+      "position_m": [
+        -1,
+        0.85,
+        3
+      ],
+      "yaw_rad": 0.15,
+      "eye_position_m": [
+        -1,
+        1.75,
+        3
+      ],
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "b2",
+      "label": "B2",
+      "level_id": "raised",
+      "row_label": "B",
+      "position_m": [
+        1,
+        0.85,
+        3
+      ],
+      "yaw_rad": -0.15,
+      "eye_position_m": [
+        1,
+        1.75,
+        3
+      ],
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    }
+  ],
+  "structures": [
+    {
+      "id": "floor",
+      "kind": "shell",
+      "position_m": [
+        0,
+        -0.1,
+        1
+      ],
+      "size_m": [
+        2,
+        2,
+        2
+      ],
+      "yaw_rad": 0,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-mesh"
+        ],
+        "uncertainty_m": null
+      },
+      "mesh": {
+        "vertices_m": [
+          [
+            -1,
+            -1,
+            -1
+          ],
+          [
+            1,
+            -1,
+            -1
+          ],
+          [
+            0,
+            1,
+            -1
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ],
+        "triangles": [
+          [
+            0,
+            1,
+            2
+          ],
+          [
+            0,
+            3,
+            1
+          ],
+          [
+            1,
+            3,
+            2
+          ],
+          [
+            2,
+            3,
+            0
+          ]
+        ]
+      },
+      "material_id": "fictional-trim"
+    },
+    {
+      "id": "left-wall",
+      "kind": "shell",
+      "position_m": [
+        -4,
+        1.5,
+        1
+      ],
+      "size_m": [
+        0.2,
+        3,
+        10
+      ],
+      "yaw_rad": 0,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "stage",
+      "kind": "stage",
+      "position_m": [
+        0,
+        0.3,
+        -3
+      ],
+      "size_m": [
+        5,
+        0.6,
+        2
+      ],
+      "yaw_rad": 0,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "rotated-column",
+      "kind": "obstruction",
+      "position_m": [
+        1,
+        1.2,
+        -0.5
+      ],
+      "size_m": [
+        0.4,
+        2.4,
+        0.6
+      ],
+      "yaw_rad": 0.6,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    },
+    {
+      "id": "raised-deck",
+      "kind": "deck",
+      "position_m": [
+        0,
+        0.3,
+        3
+      ],
+      "size_m": [
+        5,
+        0.6,
+        2
+      ],
+      "yaw_rad": 0,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    }
+  ],
+  "stage_target_m": [
+    0,
+    1.5,
+    -3
+  ],
+  "stage_target_evidence": {
+    "status": "inferred",
+    "source_ids": [
+      "fictional-drawing"
+    ],
+    "uncertainty_m": null
+  },
+  "coverage": {
+    "scale": {
+      "status": "inferred",
+      "source_ids": [
+        "fictional-drawing"
+      ],
+      "uncertainty_m": null
+    },
+    "seat_inventory": {
+      "status": "inferred",
+      "source_ids": [
+        "fictional-drawing"
+      ],
+      "uncertainty_m": null
+    },
+    "occluders": {
+      "status": "inferred",
+      "source_ids": [
+        "fictional-drawing"
+      ],
+      "uncertainty_m": null
+    },
+    "materials": {
+      "status": "inferred",
+      "source_ids": [
+        "fictional-drawing"
+      ],
+      "uncertainty_m": null
+    },
+    "lighting": {
+      "status": "inferred",
+      "source_ids": [
+        "fictional-drawing"
+      ],
+      "uncertainty_m": null
+    }
+  },
+  "materials": [
+    {
+      "id": "fictional-trim",
+      "name": "Fictional sample finish",
+      "base_color_linear": [
+        0.4,
+        0.2,
+        0.1
+      ],
+      "roughness": 0.35,
+      "metallic": 0.15,
+      "evidence": {
+        "status": "inferred",
+        "source_ids": [
+          "fictional-drawing"
+        ],
+        "uncertainty_m": null
+      }
+    }
+  ]
+}

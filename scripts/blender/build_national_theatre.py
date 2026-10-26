@@ -24,6 +24,9 @@ MATERIALS = {
     'ceiling': ('#aca992', .9, 0), 'panel': ('#455a58', .88, 0),
     'black': ('#14131a', .95, 0), 'lamp': ('#ffe8b5', .2, .1),
 }
+SHOWCASE_TEXTURES = {'plaster': 'painted_plaster_wall', 'velvet': 'velour_velvet',
+                     'carpet': 'velour_velvet', 'wood': 'dark_wood'}
+SHOWCASE_TILE_METRES = {'plaster': 2.0, 'velvet': .75, 'carpet': 1.5, 'wood': 1.5}
 
 
 def finite(value, low, high):
@@ -34,8 +37,10 @@ def validate(data):
     if not isinstance(data, dict) or data.get('format') != 'venuetwin-blender' or data.get('version') != 1 or data.get('axes') != 'three-y-up' or data.get('units') != 'metres':
         raise ValueError('Choose the detailed theatre JSON exported from Studio.')
     detail = data.get('detail', {})
-    if not isinstance(detail, dict) or detail.get('profile') != 'nd-photo-study-v1':
+    if not isinstance(detail, dict) or detail.get('profile') not in ('nd-photo-study-v1', 'original-showcase-v1'):
         raise ValueError('Use Export detailed theatre JSON, not the basic export.')
+    if detail.get('profile') == 'original-showcase-v1' and (not isinstance(detail.get('dedication'), str) or len(detail['dedication']) > 60):
+        raise ValueError('The original showcase needs a short dedication.')
     rows = detail.get('rows')
     if not isinstance(rows, list) or not 1 <= len(rows) <= 50:
         raise ValueError('Expected 1–50 rows.')
@@ -270,7 +275,8 @@ def make_geometry(data):
                 a=side*(span-.06)
                 for dr in [0,.14]:
                     g.tube('Gallery columns','gold',[radial(r+.04+dr,a,y+.85,cz),radial(r+.04+dr,a,y+2.7,cz)],.06,10)
-    # Stage and architectural proscenium; painted curtain left as a blank panel.
+    # Stage and architectural proscenium. The fictional showcase has an open
+    # stage set; the photo-informed study keeps its deliberately blank curtain.
     w=detail['stageWidth']; portal_h=min(11.2,top-3); z=-3.25
     # Close the front of the hall around the portal, including the upper wall.
     for side in [-1,1]:
@@ -281,11 +287,49 @@ def make_geometry(data):
         for y in [1.1,3.4,6.6,9.8,13]:
             g.box('Front wall','gold',(side*(w/2+wing/2),y,z-.4),(wing,.08,.12))
     g.box('Front wall','plaster',(0,(portal_h+top)/2,z-.65),(w,top-portal_h,.3))
-    g.box('Stage','wood',(0,-.01,-2.8),(w,.44,3.6))
-    g.box('Curtain','velvet',(0,portal_h/2,z-.22),(w-.5,portal_h-.45,.12))
-    for i in range(90):
-        x=-(w-.55)/2+(w-.55)*i/89
-        g.ellipsoid('Curtain folds','velvet',(x,portal_h/2,z-.12),(.065,(portal_h-.55)/2,.075),8,12)
+    if detail['profile']=='original-showcase-v1':
+        g.box('Stage','wood',(0,-.01,-3.5),(w,.44,5.2))
+        g.box('Stage set','panel',(0,portal_h/2,-6.1),(w-.6,portal_h-.5,.12))
+        g.box('Stage set','gold',(0,portal_h-.5,-5.98),(w-.7,.12,.16))
+        g.box('Stage set','wood',(0,.16,-5.45),(w-2,.18,1.05))
+        # Original scenic interior: an inset doorway, panelled wall and practical
+        # lights, all specified in scene metres rather than painted into a photo.
+        g.box('Stage set','black',(0,2.55,-5.99),(3.2,4.8,.035))
+        g.box('Stage set','wood',(0,2.45,-5.965),(2.9,4.55,.04))
+        for x in [-1.58,1.58]:
+            g.box('Stage set','gold',(x,2.55,-5.91),(.09,5.05,.09))
+        g.box('Stage set','gold',(0,5.02,-5.91),(3.35,.1,.1))
+        g.box('Stage set','gold',(0,.16,-5.91),(3.35,.14,.14))
+        for side in [-1,1]:
+            for x in [2.25,3.48,4.68]:
+                g.box('Stage set','plaster',(side*x,2.55,-5.95),(1.05,4.65,.06))
+                for edge in [-.49,.49]:
+                    g.box('Stage set','gold',(side*x+edge,2.55,-5.9),(.035,4.7,.06))
+                for height in [.27,4.86]:
+                    g.box('Stage set','gold',(side*x,height,-5.9),(1.05,.045,.07))
+            g.box('Stage furniture','wood',(side*3.5,.52,-4.25),(1.1,.09,.48))
+            for dx in [-.45,.45]:
+                g.box('Stage furniture','wood',(side*3.5+dx,.25,-4.25),(.065,.49,.43))
+            g.box('Stage set','gold',(side*3.2,3.38,-5.79),(.2,.38,.11))
+            g.ellipsoid('Stage set','lamp',(side*3.2,3.57,-5.78),(.1,.14,.1),8,6)
+        for x in [-4.6,-3.45,-2.3,-1.15,0,1.15,2.3,3.45,4.6]:
+            g.box('Stage footlights','black',(x,.09,-1.05),(.23,.13,.23))
+            g.ellipsoid('Stage footlights','lamp',(x,.17,-1.05),(.075,.04,.075),8,6)
+        for side in [-1,1]:
+            x=side*(w/2-1.05)
+            g.box('Curtain','velvet',(x,portal_h/2,z-.22),(1.9,portal_h-.45,.12))
+            for i in range(18):
+                dx=(i-8.5)*.1
+                g.ellipsoid('Curtain folds','velvet',(x+dx,portal_h/2,z-.12),(.06,(portal_h-.55)/2,.075),8,12)
+            for height in [.62,portal_h-1.1]:
+                g.box('Stage set','plaster',(side*(w/2-2.2),height,-5.9),(.55,.32,.4))
+            g.box('Stage set','gold',(side*(w/2-2.2),portal_h/2,-5.85),(.16,portal_h-2,.14))
+    else:
+        g.box('Stage','wood',(0,-.01,-2.8),(w,.44,3.6))
+        g.box('Curtain','velvet',(0,portal_h/2,z-.22),(w-.5,portal_h-.45,.12))
+        for i in range(90):
+            x=-(w-.55)/2+(w-.55)*i/89
+            g.ellipsoid('Curtain folds','velvet',(x,portal_h/2,z-.12),(.065,(portal_h-.55)/2,.075),8,12)
     for side in [-1,1]:
         for offset,width,depth,mat in [(0,.52,.55,'plaster'),(.35,.11,.64,'gold'),(-.32,.12,.67,'gold'),(.55,.24,.35,'plaster')]:
             x=side*(w/2+offset)
@@ -368,11 +412,19 @@ def make_geometry(data):
             p=(radius*math.cos(a),cy+dy,centre_z+radius*math.sin(a))
             g.tube('Chandelier','gold',[(0,cy+.55,centre_z),p],.018,6)
             g.ellipsoid('Chandelier','lamp',(p[0],p[1]-.16,p[2]),(.055,.17,.055),8,6)
-    # Detailed seats in .blend only; web uses the exact same exported transforms.
+    # The original showcase shares chair dimensions with the interactive viewer.
+    chair_spec = None
+    if detail['profile']=='original-showcase-v1':
+        chair_path = Path(__file__).resolve().parents[2] / 'venue-data' / 'lantern-opera-house' / 'chair-spec.json'
+        chair_spec = json.loads(chair_path.read_text())['parts']
     for seat in data['seats'] + data.get('serviceSeats', []):
         x,y,z=seat['position']; a=seat['rotation']
         def point(dx,dy,dz):
             return (x+dx*math.cos(a)+dz*math.sin(a),y+dy,z-dx*math.sin(a)+dz*math.cos(a))
+        if chair_spec:
+            for part in chair_spec:
+                g.box('Seats',part['material'],point(*part['centre']),tuple(part['size']),a)
+            continue
         for mat,centre,size in [('wood',point(0,.35,.16),(.5,.68,.1)),('velvet',point(0,.36,.095),(.43,.57,.105)),('velvet',point(0,.16,-.065),(.44,.13,.43))]:
             g.box('Seats',mat,centre,size,a)
         for side in [-1,1]:
@@ -393,8 +445,9 @@ def build(filepath, render=False):
     if bpy.context.mode != 'OBJECT':
         raise ValueError('Switch to Object Mode before running.')
     suffix=uuid4().hex[:8]; stem=path.with_name(path.stem+'-detailed-'+suffix)
-    scene=bpy.data.scenes.new('National Theatre photo study '+suffix)
-    scene['provenance']='Photo-informed estimated geometry. Interpreted ornament; no mural reproductions or official seat mapping.'
+    showcase=data['detail']['profile']=='original-showcase-v1'
+    scene=bpy.data.scenes.new(('Original theatre showcase ' if showcase else 'National Theatre photo study ')+suffix)
+    scene['provenance']='Original fictional demonstration geometry; no real-venue measurements or approval.' if showcase else 'Photo-informed estimated geometry. Interpreted ornament; no mural reproductions or official seat mapping.'
     scene.unit_settings.system='METRIC'
     previous=bpy.context.window.scene
     bpy.context.window.scene=scene
@@ -408,12 +461,33 @@ def build(filepath, render=False):
             shader.inputs['Base Color'].default_value=rgba
             shader.inputs['Roughness'].default_value=rough
             shader.inputs['Metallic'].default_value=metal
+            if showcase and name in SHOWCASE_TEXTURES:
+                asset=SHOWCASE_TEXTURES[name]
+                for suffix in ('diff','nor_gl'):
+                    image_path=path.parent/'materials'/f'{asset}_{suffix}_1k.jpg'
+                    if not image_path.is_file(): raise ValueError(f'Missing showcase texture: {image_path}')
+                    image=bpy.data.images.load(str(image_path),check_existing=True)
+                    image.pack()
+                    texture=m.node_tree.nodes.new('ShaderNodeTexImage')
+                    texture.image=image
+                    texture.extension='REPEAT'
+                    if suffix=='diff':
+                        shader.inputs['Base Color'].default_value=(1,1,1,1)
+                        m.node_tree.links.new(texture.outputs['Color'],shader.inputs['Base Color'])
+                    else:
+                        image.colorspace_settings.name='Non-Color'
+                        normal=m.node_tree.nodes.new('ShaderNodeNormalMap')
+                        normal.inputs['Strength'].default_value=.45
+                        m.node_tree.links.new(texture.outputs['Color'],normal.inputs['Color'])
+                        m.node_tree.links.new(normal.outputs['Normal'],shader.inputs['Normal'])
             if name=='lamp':
-                shader.inputs['Emission Color'].default_value=rgba
-                shader.inputs['Emission Strength'].default_value=2.5
+                emission=shader.inputs.get('Emission Color') or shader.inputs.get('Emission')
+                if emission: emission.default_value=rgba
+                strength=shader.inputs.get('Emission Strength')
+                if strength: strength.default_value=2.5
             m.diffuse_color=rgba; mats[name]=m
         root=bpy.data.objects.new('VT_ND_DETAIL_ROOT',None); scene.collection.objects.link(root)
-        root['venueTwinDetail']='nd-photo-study-v1'
+        root['venueTwinDetail']=data['detail']['profile']
         root['estimated']=True
         export_objects=[root]
         for (group,mat),(vertices,faces) in geometry.parts.items():
@@ -422,6 +496,17 @@ def build(filepath, render=False):
             mesh.update()
             bm=bmesh.new(); bm.from_mesh(mesh)
             bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(mesh); bm.free()
+            if showcase:
+                uv=mesh.uv_layers.new(name='Venue metres')
+                tile=SHOWCASE_TILE_METRES.get(mat,1)
+                for polygon in mesh.polygons:
+                    normal=polygon.normal
+                    axis=max(range(3),key=lambda j:round(abs(normal[j]),6))
+                    for loop_index in polygon.loop_indices:
+                        bx,by,bz=mesh.vertices[mesh.loops[loop_index].vertex_index].co
+                        # Blender coordinates are (x,-z,y) from the Y-up blueprint.
+                        u,v=((bx,-by) if axis==2 else (bx,bz) if axis==1 else (-by,bz))
+                        uv.data[loop_index].uv=(u/tile,v/tile)
             obj=bpy.data.objects.new(group+' '+mat,mesh); scene.collection.objects.link(obj)
             obj.data.materials.append(mats[mat]); obj.parent=root
             if group=='Seats':
@@ -429,7 +514,7 @@ def build(filepath, render=False):
             obj['venueTwinShell']=group in ('Shell','Ceiling')
             if group!='Seats': export_objects.append(obj)
         # Text is geometry in both Blender and GLB; no external fonts.
-        curve=bpy.data.curves.new('Dedication','FONT'); curve.body='NÁROD SOBĚ'; curve.align_x='CENTER'; curve.size=.5; curve.extrude=.006
+        curve=bpy.data.curves.new('Dedication','FONT'); curve.body=data['detail']['dedication'] if showcase else 'NÁROD SOBĚ'; curve.align_x='CENTER'; curve.size=.5; curve.extrude=.006
         text=bpy.data.objects.new('Proscenium dedication',curve); scene.collection.objects.link(text)
         text.location=(0,2.91,meta['portal_height']+.42); text.rotation_euler=(PI/2,0,0); text.data.materials.append(mats['gilt_light']); text.parent=root
         bpy.context.view_layer.objects.active=text; text.select_set(True); bpy.ops.object.convert(target='MESH'); export_objects.append(bpy.context.object)
@@ -446,10 +531,11 @@ def build(filepath, render=False):
         scene.world=bpy.data.worlds.new('Warm theatre world'); scene.world.use_nodes=True
         scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.12,.1,.075,1)
         scene.world.node_tree.nodes['Background'].inputs[1].default_value=.3
-        scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=24
-        scene.cycles.use_denoising=True
+        scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=64
+        # The local Blender 3.4 container lacks an OIDN device entirely.
+        scene.cycles.use_denoising=bpy.app.version >= (4, 0, 0)
         scene.render.resolution_x=1440; scene.render.resolution_y=1000; scene.render.resolution_percentage=100
-        scene.view_settings.view_transform='AgX'
+        scene.view_settings.view_transform='AgX' if 'AgX' in [item.identifier for item in scene.view_settings.bl_rna.properties['view_transform'].enum_items] else 'Filmic'
         bpy.ops.object.select_all(action='DESELECT')
         for obj in export_objects: obj.select_set(True)
         bpy.context.view_layer.objects.active=root

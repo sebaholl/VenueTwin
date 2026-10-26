@@ -33,10 +33,36 @@ def test_mapping_preserves_coordinates_ids_and_input(fictional):
         assert result['eye'] == seat['eye_position_m']
         assert result['rotation'] == seat['yaw_rad']
         assert result['target'] == fictional['stage_target_m']
+        assert result['vertical_fov_deg'] == 65.0
     assert fictional == original
     fictional['seats'].reverse()
     fictional['structures'].reverse()
     assert encoded(prepare(fictional, True)[1]) == encoded(packet)
+
+
+def test_mesh_packet_keeps_exact_triangles_and_stable_identity(fictional):
+    structure = fictional['structures'][0]
+    structure['size_m'] = [2, 2, 2]
+    structure['mesh'] = {'vertices_m': [[-1, -1, -1], [1, -1, -1], [0, 1, -1], [0, 0, 1]],
+                         'triangles': [[0, 1, 2], [0, 3, 1], [1, 3, 2], [2, 3, 0]]}
+    fictional['version'] = '1.1.0'
+    _, packet, _ = prepare(fictional, True)
+    assert structure['id'] not in [box['id'] for box in packet['boxes']]
+    mesh = next(mesh for mesh in packet['meshes'] if mesh['id'] == structure['id'])
+    assert mesh['vertices'] == structure['mesh']['vertices_m']
+    assert mesh['triangles'] == structure['mesh']['triangles']
+
+
+def test_material_packet_preserves_explicit_pbr_values(fictional):
+    fictional['version'] = '1.2.0'
+    fictional['materials'] = [{'id': 'trim', 'name': 'Fictional trim', 'base_color_linear': [0.4, 0.2, 0.1],
+                               'roughness': 0.35, 'metallic': 0.15,
+                               'evidence': {'status': 'inferred', 'source_ids': ['fictional-drawing'], 'uncertainty_m': None}}]
+    fictional['structures'][0]['material_id'] = 'trim'
+    _, packet, missing = prepare(fictional, True)
+    assert packet['materials'][0] == {'id': 'trim', 'base_color_linear': [0.4, 0.2, 0.1], 'roughness': 0.35, 'metallic': 0.15}
+    assert next(box for box in packet['boxes'] if box['id'] == fictional['structures'][0]['id'])['material_id'] == 'trim'
+    assert '/materials/trim/evidence' in [item['path'] for item in missing]
 
 
 @pytest.mark.parametrize('case', ['eye', 'target', 'structures', 'seats', 'coincident', 'tiny', 'invalid', 'vertical'])
@@ -144,6 +170,18 @@ def test_verified_input_does_not_require_draft_override(complete):
     assert requirements == []
     # Even complete source declarations are not independent venue certification.
     assert 'DRAFT ONLY' in packet['notice']
+
+
+def test_calibrated_camera_is_preserved_and_source_checked(complete):
+    complete['sources'].append({'id': 'seat-photo', 'kind': 'photo', 'sha256': 'a' * 64,
+                                'description': 'Synthetic reference photo'})
+    complete['seats'][0]['vertical_fov_deg'] = 52.5
+    complete['seats'][0]['camera_source_id'] = 'seat-photo'
+    _, packet, _ = prepare(complete)
+    assert packet['seats'][0]['vertical_fov_deg'] == 52.5
+    complete['seats'][0]['camera_source_id'] = 'legacy-config'
+    with pytest.raises(ValidationError, match='photo source'):
+        prepare(complete)
 
 
 def test_source_budget_precedes_launch(tmp_path, monkeypatch):

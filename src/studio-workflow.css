@@ -68,7 +68,7 @@
   .studio-workflow .review-workspace .viewport { height: auto; min-height: 70dvh; }
   .studio-workflow .view-review { height: auto; padding: 16px; }
   .studio-workflow .viewport-footer > span:last-child { display: none; }
-  .project-menu-items { right: auto; left: 0; }
+  .project-menu-items { right: 0; left: auto; width: min(240px, calc(100vw - 24px)); }
 }
 
 .workflow-nav button:disabled { cursor: default; opacity: .55; }
@@ -155,6 +155,14 @@
 .studio-workflow :is(button,summary,input,textarea,select):focus-visible { outline: 2px solid #74e7c9; outline-offset: 3px; }
 @media (max-width:1100px) { .studio-workflow .studio-main { grid-template-columns: 330px minmax(0,1fr); }.studio-workflow .control-panel { padding: 20px; } }
 .studio-workflow .review-workspace { grid-template-columns: minmax(0,1fr); }
+.row-scroll-hint { display: none; }
+@media (max-width: 1100px) {
+  .studio-workflow .row-scroll-hint { display: block; padding: 8px 2px 4px; color: #9fb8c4; font-size: 10px; }
+}
+@media (min-width: 1101px) {
+  .studio-workflow .row-editor-v2 { flex-wrap: wrap; overflow: visible; align-content: center; }
+  .studio-workflow .row-editor-v2 .row-actions { margin-left: 0; }
+}
 @media (max-width:680px) { .studio-workflow .control-panel { padding: 20px 16px; }.workflow-intro h1 { font-size: 24px; }.project-tool-switch button { min-height: 90px; }.studio-workflow .viewport { min-height: 420px; }.studio-workflow .workflow-nav { position: sticky; top: 0; z-index: 9; } }
 @media (prefers-reduced-motion:reduce) { .studio-workflow *, .studio-workflow *::before, .studio-workflow *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 .room-openings { border-top: 1px solid #29424f; padding: 16px 0; margin-top: 12px; }

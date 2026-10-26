@@ -27,6 +27,11 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run test:python
+      - run: npm run showcase:build
+      - run: npm run showcase:verify
+      - run: git diff --exit-code -- venue-data/lantern-opera-house/blender-blueprint.json venue-data/lantern-opera-house/public-demo/
+      - run: node scripts/test-production-mesh.mjs
+      - run: node scripts/test-photo-alignment.mjs
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -73,6 +78,13 @@ jobs:
           --cap-drop ALL --security-opt no-new-privileges
           --memory 2g --cpus 2 --pids-limit 128
           venuetwin-pilot:ci node scripts/smoke-blender.mjs
+      - name: Open the original showcase in offline Blender
+        run: >-
+          docker run --rm --network none --read-only --tmpfs /tmp:size=512m,mode=1777
+          --cap-drop ALL --security-opt no-new-privileges --memory 2g --cpus 2 --pids-limit 128
+          -v "$PWD":/work:ro -w /work venuetwin-pilot:ci
+          blender --background venue-data/lantern-opera-house/lantern-showcase.blend
+          --python-expr "import bpy; assert any(o.get('venueTwinDetail') == 'original-showcase-v1' for o in bpy.data.objects); assert sum(bool(i.packed_file) for i in bpy.data.images) == 6"
 
       - uses: actions/setup-node@v4
         with:
@@ -89,6 +101,25 @@ jobs:
           contracts/fixtures/fictional-venue.json /tmp/venuetwin-production-roundtrip
           --container-image venuetwin-pilot:ci --allow-unverified
       - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-production-roundtrip
+      - name: Verify measured triangle mesh through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-mesh-venue.json /tmp/venuetwin-mesh-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-mesh-roundtrip
+      - name: Verify source-linked PBR material through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-material-venue.json /tmp/venuetwin-material-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-material-roundtrip
+      - name: Verify source-linked PNG and UVs through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-texture-venue.json /tmp/venuetwin-texture-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+          --assets contracts/fixtures/textures
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-texture-roundtrip
 
   managed-viewer:
     runs-on: ubuntu-latest

@@ -1,5 +1,11 @@
 # Validated local production-to-Blender draft pipeline
 
+## Source-linked appearance in contract 1.3.0
+
+The offline builder now accepts an explicit `triangle_uv` value for each custom-mesh triangle and a `base_color_texture_source_id` on a material. The referenced source must be a `photo` record in that material's evidence. Put a local 8-bit RGB/RGBA PNG in an assets directory under its SHA-256 filename (`<sha256>.png`) and pass `--assets /absolute/path/to/assets`. The builder accepts at most 2048 × 2048 pixels, 4 MiB per PNG and 16 MiB in total. It checks PNG structure and the source hash before Blender starts; the exported GLB must embed the same bytes. Neither the builder nor the verifier fetches an image URL. Textured structures must have explicit mesh UVs; no automatic photo projection or texture generation is implied.
+
+The fictional fixture `contracts/fixtures/fictional-texture-venue.json` and `contracts/fixtures/textures/` exercise the complete local path. Its two-pixel pattern is synthetic test data, not a venue photo. Build it with the ordinary command plus `--assets contracts/fixtures/textures`. The Three.js round-trip verifier checks embedded PNG identity and every exported triangle UV against the contract while checking geometry and cameras; the managed release build accepts self-contained GLBs and publishes the original bytes. Before using real venue photos, the operator must obtain usage rights, map them onto measured geometry, and visually compare the rendered seat views with calibrated reference images and the venue owner. None of those checks has happened for the Prague study.
+
 This extends the Phase 1 branch in PR #52. It does not replace the existing Studio exporter, alter saved projects, expose an HTTP build route, change Supabase, or enable paid providers. The separate draft PR should be reviewed after Phase 1; retarget it to main once that dependency lands.
 
 ## What works
@@ -8,14 +14,14 @@ The explicit Python CLI validates a production v1 document and checks missing in
 
 The dedicated Blender worker exports:
 
-- Every structure as an exact box with its declared centre, dimensions and yaw.
+- Every box structure with its declared centre, dimensions and yaw. Production contract 1.1.0 also accepts a source-linked, locally bounded triangle mesh for a structure; this allows a measured auditorium shell, balcony or obstruction to keep its actual shape instead of becoming a box. The mesh must supply explicit vertices and non-degenerate triangle indices. Contract 1.0.0 remains box-only.
 - A non-rendering anchor for each stable seat ID, preserving position and yaw.
 - A perspective camera at each explicit eye position, aimed at the explicit stage target. The illustrative lens is 65 degrees vertical; it is not camera calibration.
 - Stable IDs in glTF `extras` (not truncated object names), and `venueTwinStatus=draft-unverified` on every exported object.
 
-Y-up contract coordinates convert to Blender Z-up as `(x, -z, y)` and back to Y-up during GLB export. No legacy viewer model offset is applied. Materials are deliberately a single neutral draft material; there are no guessed seat meshes or lighting assets.
+Y-up contract coordinates convert to Blender Z-up as `(x, -z, y)` and back to Y-up during GLB export. No legacy viewer model offset is applied. Unassigned structures keep a neutral draft material. Production contract 1.2.0 also accepts a bounded, source-linked PBR palette (linear base colour, roughness and metallic factor) with explicit structure assignments. Blender exports those values and the Three.js verifier checks the imported material and assignment. This is a reviewed appearance estimate, not a photo texture or photorealistic reconstruction. There are no guessed seat meshes or lighting assets.
 
-Before accepting an output, the CLI loads the **actual GLB through Three.js** and compares structure vertices, seat positions/yaw, camera positions/aim/roll and lens against the validated input. The positional tolerance is 0.0001 m (a numerical export tolerance, not a claim about survey accuracy). Direction vectors use a 0.0001 tolerance. Unexpected meshes/cameras, duplicate IDs, external buffers/images and mismatched transforms fail verification. Network requests are blocked in the verifier.
+Before accepting an output, the CLI loads the **actual GLB through Three.js** and compares box vertices or custom mesh triangle topology, seat positions/yaw, camera positions/aim/roll and lens against the validated input. The positional tolerance is 0.0001 m (a numerical export tolerance, not a claim about survey accuracy). Direction vectors use a 0.0001 tolerance. Unexpected meshes/cameras, duplicate IDs, external buffers/images and mismatched transforms fail verification. Network requests are blocked in the verifier. This proves digital geometry round-trip only; it does not prove that input mesh vertices came from a real survey.
 
 ## Files and guarantees
 

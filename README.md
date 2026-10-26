@@ -1,10 +1,15 @@
 # VenueTwin
 
-To see the existing Studio locally, run `npm run dev` and open http://localhost:5173.
-To see the new four-seat customer viewer demo, run `npm run demo` and open
-http://127.0.0.1:4174. Both commands run from this repository; press Ctrl+C to stop.
+Run `npm run demo` and open the local address printed by Vite. This opens the **existing VenueTwin front page and Studio**; click **Start with Pilot in Studio** to add plans, photos and measurements, describe the venue, review Pilot's proposal, and build/check the 3D model. Pilot AI requests require a separately configured API key and can incur API charges; opening the app or saving materials does not call the API. Press Ctrl+C to stop.
+
+The separate customer-only viewer is available with `npm run demo:viewer` at http://127.0.0.1:4174. It does not contain the front page or Studio. If that port is already in use, run `PORT=4175 npm run demo:viewer` and open http://127.0.0.1:4175.
+
+The viewer now includes [Lantern Opera House](docs/ORIGINAL_SHOWCASE.md), an original 225-seat, multi-level interactive demonstration built from one offline blueprint for Blender and Three.js. Its measurements are authored fiction; it is not a surveyed 1:1 real-venue replica or a photorealistic render.
 
 Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
+
+First real-venue pilot: [Prague National Theatre evidence and measurement intake](docs/PRAGUE_REAL_VENUE_PILOT.md). Its 263 stalls seat IDs are sourced; positions and seat views await survey data and owner review.
+The `npm run demo:viewer` preview also includes an explicitly unverified [Prague visual study](http://127.0.0.1:4174/venue?venue=/venues/prague-national-theatre-study/v1/venue.json).
 
 Validated local Blender pipeline: [draft build commands and verification](docs/PRODUCTION_BLENDER.md).
 
@@ -171,7 +176,7 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 npm run demo:host
 ```
 
-Open **http://127.0.0.1:4174**. The Lantern is an original fictional demonstration theatre, not a reconstruction of the National Theatre. Its small GLB and 140-seat layout are generated automatically before dev/build. The independent HTML website embeds the viewer from port 5173 (a different origin), with sample seat buttons and a full-viewer link. Connection settings can point to a different viewer origin or venue manifest. The standalone `demo-host/index.html` can later be placed on another website; update its default viewer origin for deployment.
+Open **http://127.0.0.1:4174**. This independent HTML sample embeds the 140-seat demo fixture from port 5173 (a different origin), with sample seat buttons and a full-viewer link. The Lantern is a separate 225-seat fictional theatre in the managed demo (`npm run demo:viewer`). Connection settings can point to a different viewer origin or venue manifest. The standalone `demo-host/index.html` can later be placed on another website; update its default viewer origin for deployment.
 
 Direct demo link:
 `http://127.0.0.1:5173/viewer?venue=%2Fvenues%2Fdemo-theatre%2Fv1%2Fvenue.json&seat=r6-s7`
@@ -347,7 +352,9 @@ For an affected Pilot proposal, **Prepare a Pilot fix request** fills the brief 
 
 ### Focused Studio and frontpage refresh
 
-Project now separates **Materials** (saved plans/photos/measurements) from **Pilot** (analysis, briefs and proposals). Both stay mounted when switching, preserving drafts and in-flight work. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
+Project shows **Venue references** (saved plans/photos/measurements) followed by **Pilot** (analysis, briefs and proposals) in one flow. Model controls live in the Model step; **Apply and build** opens that step automatically to show progress. Manual layout editing remains available without Pilot. Starting briefs, source/estimate options, proposed action details, geometry checks and model file settings are collapsed until needed.
+
+Saved reference changes now refresh Pilot's file list and input counts automatically. When four or fewer saved files fit the 12 MB analysis limit, they are selected for review by default; nothing is sent until **Analyse selected files** is clicked. A changed source clears an unapplied proposal. After a reviewed proposal is applied, **Apply and build 3D model** passes the exact approved layout to Blender and reports build/import failures rather than presenting them as a completed model. The layout remains editable if the build fails. The input count distinguishes measured dimensions from estimates; it does not certify seat coordinates or photo accuracy.
 
 The frontpage includes an interactive, illustrative seating diagram with three position choices and a plan/spatial toggle. It makes no seat-quality score claims. The visual uses local CSS and React, with keyboard-accessible buttons and reduced-motion support; no external images, libraries or tracking were added. Mobile styles retain the selection controls and simplify decorative labels.
 

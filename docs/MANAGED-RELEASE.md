@@ -34,6 +34,8 @@ Preview http://127.0.0.1:4174. The demo build is explicitly labelled and is not 
 
 Follow `PRODUCTION_BLENDER.md` to create the verified build directory from contract v1. Keep input/source evidence, review records and build manifests in private operator storage. Never put that directory under a public web root. Resolve every missing-input requirement. Do not turn inferred values into measured evidence without actual measurement.
 
+The public customer manifest is version 2. It carries the vertical field of view for every seat (an explicit calibrated value or the clearly illustrative 65° default), and the viewer rejects a GLB whose camera lens differs. Repackage older version 1 public bundles from their verified private builds before using this viewer; changing the JSON version by hand is not a review or verification step.
+
 Review every seat camera against measured eye positions and reference photos, review obstructions and geometry, and confirm publication rights. Save this private review JSON, replacing hashes with the exact values from `manifest.json` and using the actual reviewer/date:
 
 ```json

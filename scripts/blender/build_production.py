@@ -1,6 +1,8 @@
 """Internal worker for validated local build packets. No external resources or code."""
 import json
+import hashlib
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -14,9 +16,28 @@ def vector(value, positive=False):
 def validate(packet):
     if not isinstance(packet, dict) or packet.get('format') != 'venuetwin-build-packet' or type(packet.get('version')) is not int or packet['version'] != 1:
         raise ValueError('Unsupported build packet')
-    for group in ('boxes', 'seats'):
-        items = packet.get(group)
-        if not isinstance(items, list) or not 1 <= len(items) <= 2000:
+    meshes = packet.get('meshes', [])
+    materials = packet.get('materials', [])
+    if not isinstance(materials, list) or len(materials) > 100:
+        raise ValueError('Invalid material count')
+    material_ids = set()
+    for item in materials:
+        if not isinstance(item, dict) or not isinstance(item.get('id'), str) or not 1 <= len(item['id']) <= 100 or item['id'] in material_ids:
+            raise ValueError('Invalid material ID')
+        material_ids.add(item['id'])
+        color = item.get('base_color_linear')
+        if not isinstance(color, list) or len(color) != 3 or any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1 for value in color):
+            raise ValueError('Invalid material color')
+        if any(type(item.get(key)) not in (int, float) or not math.isfinite(item[key]) or not 0 <= item[key] <= 1 for key in ('roughness', 'metallic')):
+            raise ValueError('Invalid material surface')
+        sha = item.get('texture_sha256')
+        if sha is not None and (not isinstance(sha, str) or not re.fullmatch(r'[a-f0-9]{64}', sha)):
+            raise ValueError('Invalid texture hash')
+    if not isinstance(meshes, list) or len(meshes) > 2000 or not 1 <= len(packet.get('boxes', [])) + len(meshes) <= 2000:
+        raise ValueError('Invalid mesh count')
+    for group in ('boxes', 'seats', 'meshes'):
+        items = meshes if group == 'meshes' else packet.get(group)
+        if not isinstance(items, list) or (group == 'seats' and not 1 <= len(items) <= 2000) or len(items) > 2000:
             raise ValueError('Invalid object count')
         ids = set()
         for item in items:
@@ -25,11 +46,51 @@ def validate(packet):
             ids.add(item['id'])
             if not vector(item.get('position')) or type(item.get('rotation')) not in (float, int) or not math.isfinite(item['rotation']) or abs(item['rotation']) > math.tau:
                 raise ValueError('Invalid transform')
-            if group == 'boxes' and not vector(item.get('size'), True):
+            if group in ('boxes', 'meshes') and item.get('material_id') is not None and item['material_id'] not in material_ids:
+                raise ValueError('Unknown structure material')
+            if group in ('boxes', 'meshes') and not vector(item.get('size'), True):
                 raise ValueError('Invalid box dimensions')
+            if group == 'meshes':
+                vertices, triangles, triangle_uv = item.get('vertices'), item.get('triangles'), item.get('triangle_uv')
+                if not isinstance(vertices, list) or not 4 <= len(vertices) <= 4096 or any(not vector(vertex) for vertex in vertices):
+                    raise ValueError('Invalid mesh vertices')
+                if len({tuple(vertex) for vertex in vertices}) != len(vertices):
+                    raise ValueError('Duplicate mesh vertex')
+                if not isinstance(triangles, list) or not 4 <= len(triangles) <= 8192:
+                    raise ValueError('Invalid mesh triangles')
+                for face in triangles:
+                    if not isinstance(face, list) or len(face) != 3 or any(type(i) is not int or i < 0 or i >= len(vertices) for i in face) or len(set(face)) != 3:
+                        raise ValueError('Invalid mesh triangle')
+                    a, b, c = (vertices[i] for i in face)
+                    u = [b[i] - a[i] for i in range(3)]
+                    v = [c[i] - a[i] for i in range(3)]
+                    cross = (u[1]*v[2]-u[2]*v[1], u[2]*v[0]-u[0]*v[2], u[0]*v[1]-u[1]*v[0])
+                    if sum(x*x for x in cross) < 1e-12:
+                        raise ValueError('Degenerate mesh triangle')
+                if len({tuple(sorted(face)) for face in triangles}) != len(triangles):
+                    raise ValueError('Duplicate mesh triangle')
+                if triangle_uv is not None:
+                    if not isinstance(triangle_uv, list) or len(triangle_uv) != len(triangles) or any(
+                        not isinstance(face, list) or len(face) != 3 or any(
+                            not isinstance(uv, list) or len(uv) != 2 or any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1 for value in uv)
+                            for uv in face) for face in triangle_uv):
+                        raise ValueError('Invalid mesh UVs')
+                for axis in range(3):
+                    values = [vertex[axis] for vertex in vertices]
+                    half = item['size'][axis] / 2
+                    if abs(min(values) + half) > 1e-4 or abs(max(values) - half) > 1e-4:
+                        raise ValueError('Mesh bounds do not match size')
             if group == 'seats':
                 if not vector(item.get('eye')) or not vector(item.get('target')) or sum((a-b)**2 for a, b in zip(item['eye'], item['target'])) < 1e-8:
                     raise ValueError('Invalid seat camera')
+                fov = item.get('vertical_fov_deg')
+                if type(fov) not in (int, float) or not math.isfinite(fov) or not 10 <= fov <= 120:
+                    raise ValueError('Invalid vertical camera FOV')
+    if len({item['id'] for item in packet['boxes'] + meshes}) != len(packet['boxes']) + len(meshes):
+        raise ValueError('Duplicate structure ID')
+    textured = {item['id'] for item in materials if item.get('texture_sha256') is not None}
+    if any(item.get('material_id') in textured for item in packet['boxes']) or any(item.get('material_id') in textured and item.get('triangle_uv') is None for item in meshes):
+        raise ValueError('Textured structure requires explicit mesh UVs')
     return packet
 
 
@@ -49,11 +110,25 @@ def build(directory):
     import bpy
     from mathutils import Vector
     created = []
-    material = bpy.data.materials.new('Unverified neutral draft material')
-    material.use_nodes = True
-    shader = material.node_tree.nodes.get('Principled BSDF')
-    shader.inputs['Base Color'].default_value = (.18, .24, .3, 1)
-    shader.inputs['Roughness'].default_value = .8
+    def pbr(name, color, roughness, metallic, texture_sha=None):
+        material = bpy.data.materials.new(name)
+        material.use_nodes = True
+        shader = material.node_tree.nodes.get('Principled BSDF')
+        shader.inputs['Base Color'].default_value = (*color, 1)
+        shader.inputs['Roughness'].default_value = roughness
+        shader.inputs['Metallic'].default_value = metallic
+        if texture_sha is not None:
+            image_path = directory / 'textures' / f'{texture_sha}.png'
+            if image_path.is_symlink() or not image_path.is_file() or image_path.stat().st_size > 4 * 1024 * 1024 or hashlib.sha256(image_path.read_bytes()).hexdigest() != texture_sha:
+                raise ValueError('Texture asset is missing or differs from validated source')
+            image = bpy.data.images.load(str(image_path), check_existing=False)
+            node = material.node_tree.nodes.new('ShaderNodeTexImage')
+            node.image = image
+            material.node_tree.links.new(node.outputs['Color'], shader.inputs['Base Color'])
+        return material
+    neutral = pbr('Unverified neutral draft material', (.18, .24, .3), .8, 0)
+    palette = {item['id']: pbr('VT_' + item['id'], item['base_color_linear'], item['roughness'], item['metallic'], item.get('texture_sha256'))
+               for item in packet.get('materials', [])}
     for index, box in enumerate(packet['boxes']):
         bpy.ops.mesh.primitive_cube_add(size=1, location=to_blender(box['position']))
         obj = bpy.context.object
@@ -62,7 +137,28 @@ def build(directory):
         obj.rotation_euler[2] = box['rotation']
         obj['venueTwinStructureId'] = box['id']
         obj['venueTwinStatus'] = 'draft-unverified'
-        obj.data.materials.append(material)
+        if box.get('material_id'):
+            obj['venueTwinMaterialId'] = box['material_id']
+        obj.data.materials.append(palette.get(box.get('material_id'), neutral))
+        created.append(obj)
+    for index, item in enumerate(packet.get('meshes', [])):
+        mesh = bpy.data.meshes.new(f'MeasuredMesh_{index:04d}')
+        mesh.from_pydata([to_blender(vertex) for vertex in item['vertices']], [], item['triangles'])
+        mesh.update()
+        if item.get('triangle_uv') is not None:
+            layer = mesh.uv_layers.new(name='VenueTwinUV')
+            for polygon, face_uv in zip(mesh.polygons, item['triangle_uv']):
+                for loop_index, uv in zip(polygon.loop_indices, face_uv):
+                    layer.data[loop_index].uv = uv
+        obj = bpy.data.objects.new(f'StructureMesh_{index:04d}', mesh)
+        obj.location = to_blender(item['position'])
+        obj.rotation_euler[2] = item['rotation']
+        obj['venueTwinStructureId'] = item['id']
+        obj['venueTwinStatus'] = 'draft-unverified'
+        if item.get('material_id'):
+            obj['venueTwinMaterialId'] = item['material_id']
+        mesh.materials.append(palette.get(item.get('material_id'), neutral))
+        bpy.context.scene.collection.objects.link(obj)
         created.append(obj)
     for index, seat in enumerate(packet['seats']):
         anchor = bpy.data.objects.new(f'Seat_{index:04d}', None)
@@ -74,10 +170,10 @@ def build(directory):
         created.append(anchor)
         camera_data = bpy.data.cameras.new(f'Eye_{index:04d}')
         camera_data.type = 'PERSP'
-        # Explicit illustrative lens policy; not claimed as a calibrated camera.
+        # Supplied calibrated FOV when available; otherwise explicitly illustrative.
         camera_data.sensor_fit = 'VERTICAL'
         camera_data.sensor_height = 24
-        camera_data.lens = 24 / (2 * math.tan(math.radians(65) / 2))
+        camera_data.lens = 24 / (2 * math.tan(math.radians(seat['vertical_fov_deg']) / 2))
         camera_data.clip_start = .05
         camera_data.clip_end = 2000
         camera = bpy.data.objects.new(f'Camera_{index:04d}', camera_data)
@@ -98,7 +194,7 @@ def build(directory):
                               export_yup=True, export_animations=False, export_cameras=True,
                               export_lights=False, export_extras=True)
     (directory / 'builder.json').write_text(json.dumps({'blender_version': bpy.app.version_string,
-        'lens_policy': 'illustrative-65deg-vertical', 'draft': True}, sort_keys=True) + '\n')
+        'lens_policy': 'per-seat-explicit-or-illustrative-65deg-vertical', 'draft': True}, sort_keys=True) + '\n')
 
 
 if __name__ == '__main__':

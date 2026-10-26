@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 const venue = '/venue?venue=/venues/demo/v1/venue.json'
+const prague = '/venue?venue=/venues/prague-national-theatre-study/v1/venue.json'
 test.beforeEach(async ({ page }) => {
   await page.route('**/*', route => new URL(route.request().url()).hostname === '127.0.0.1' ? route.continue() : route.abort())
 })
@@ -61,4 +62,13 @@ test('devices without WebGL retain keyboard seat selection and map', async ({ pa
   await page.getByRole('button', { name: 'Select seat A1', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('button', { name: 'Select seat A1', exact: true })).toHaveAttribute('aria-pressed', 'true')
+})
+test('public-source Prague study is visible but never labelled reviewed', async ({ page }, info) => {
+  await page.goto(prague + '&seat=stalls-r13-s15')
+  await expect(page.getByText('UNVERIFIED VENUE STUDY')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Seat Parterre · 13/15' })).toBeVisible()
+  await expect(page.getByText(/PUBLIC-SOURCE STUDY ONLY/)).toBeVisible()
+  await expect(page.getByText('263 seats · Version 1')).toBeVisible()
+  await expect(page.getByTestId('scene-status')).toHaveText('3D ready')
+  await page.screenshot({ path: `test-results/prague-study-${info.project.name}.png`, fullPage: true })
 })

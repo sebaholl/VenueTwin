@@ -1,6 +1,8 @@
 import copy
 import math
+import json
 import unittest
+from pathlib import Path
 from build_national_theatre import validate, make_geometry
 
 
@@ -29,6 +31,18 @@ class DetailTests(unittest.TestCase):
     def test_requires_detailed_export(self):
         data=blueprint(); del data['detail']
         with self.assertRaisesRegex(ValueError,'detailed theatre JSON'): validate(data)
+
+    def test_original_showcase_uses_the_same_geometry_contract(self):
+        data=blueprint(); data['detail']['profile']='original-showcase-v1'; data['detail']['dedication']='LANTERN OPERA HOUSE'
+        geometry,_=make_geometry(data)
+        self.assertIn(('Curtain','velvet'),geometry.parts)
+        spec=json.loads((Path(__file__).resolve().parents[2] / 'venue-data/lantern-opera-house/chair-spec.json').read_text())
+        self.assertEqual(spec['units'],'metres')
+        for material in ('wood','velvet'):
+            count=sum(part['material']==material for part in spec['parts'])
+            self.assertEqual(len(geometry.parts[('Seats',material)][0]),count*8)
+        data['detail']['dedication']='x'*61
+        with self.assertRaisesRegex(ValueError,'short dedication'): validate(data)
 
     def test_rejects_changed_centres_instead_of_misalignment(self):
         data=blueprint(); r=copy.deepcopy(data['detail']['rows'][0]); r['offsetY']=1

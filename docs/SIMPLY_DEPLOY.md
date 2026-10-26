@@ -47,7 +47,7 @@ dist/
   assets/
 ```
 
-The `.htaccess` file makes direct visits to `/studio` and `/share/:token` work, prevents directory listings, preserves Let's Encrypt validation, and adds conservative browser security headers.
+The `.htaccess` file makes direct visits to `/studio` and `/share/:token` work, prevents directory listings, preserves Let's Encrypt validation, and adds conservative browser security headers. `/studio` is the customer demonstration. The `/studio/workspace` editing route is omitted from production builds by default; enabling it with `VITE_ENABLE_WORKSPACE=true` requires real owner authentication and API authorization before public deployment.
 
 ## 3. Upload to Simply.com
 

@@ -5,6 +5,7 @@ import { generateSeatLayout } from './venue'
 import { blenderBlueprint } from './blenderBridge'
 import { pilotHandover } from './pilotHandover'
 import { emptyPilotSession, loadPilotSession, parsePilotSession, savePilotSession } from '../lib/pilotSession'
+import { approvalIsCurrent, evidenceSha256 } from '../lib/ownerApproval'
 import { generatePilotPlan } from '../../server/studioPilot'
 const evidence = { basis: 'provided' as const, source: 'Test fixture: supplied measurements and explicit edits' }
 const plan = (actions: PilotAction[]): PilotPlan => ({ summary: 'Fixture proposal', actions, questions: [], limitations: [], expectedSeatCount: null })
@@ -83,6 +84,19 @@ describe('Local drafts and handover', () => {
     expect(pilotHandover({ ...base, stageWidth: 20 }, last, 'source A').evidence.status).toBe('layout-or-references-changed')
     expect(pilotHandover(base, last, 'source B').evidence.status).toBe('layout-or-references-changed')
     expect(pilotHandover(base, null, '').status).toBe('requires-human-review')
+  })
+  it('migrates old drafts and rejects a saved approval when geometry or evidence changes', async () => {
+    const previous = { ...emptyPilotSession(), version: 1 }
+    const migrated = parsePilotSession(JSON.stringify(previous))
+    expect(migrated.version).toBe(2)
+    expect(migrated.pendingApproval).toBeNull()
+    const evidence = await evidenceSha256('accepted reference A')
+    const packet = { id: 'proposal-one', requestedAt: '2026-10-26T12:00:00Z', brief: 'Keep the stage', plan: plan([]), base: pilotSnapshot(base), evidenceSha256: evidence, allowEstimates: false }
+    const session = parsePilotSession(JSON.stringify({ ...emptyPilotSession(), pendingApproval: packet }))
+    expect(approvalIsCurrent(session.pendingApproval!, base, evidence)).toBe(true)
+    expect(approvalIsCurrent(session.pendingApproval!, { ...base, stageWidth: base.stageWidth + 1 }, evidence)).toBe(false)
+    expect(approvalIsCurrent(session.pendingApproval!, base, await evidenceSha256('accepted reference B'))).toBe(false)
+    expect(() => parsePilotSession(JSON.stringify({ ...emptyPilotSession(), pendingApproval: { ...packet, evidenceSha256: 'invalid' } }))).toThrow()
   })
 })
 it('runs a supplied-material fixture through the API boundary, apply, blueprint and handover', async () => {
