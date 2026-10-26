@@ -28,6 +28,9 @@ for (const image of doc.images) {
 for (const mesh of doc.meshes) for (const primitive of mesh.primitives) {
   assert.equal(doc.accessors[primitive.attributes.TEXCOORD_0].count, doc.accessors[primitive.attributes.POSITION].count)
 }
+for (const group of ['Stage set', 'Stage furniture', 'Stage footlights']) {
+  assert.ok(doc.meshes.some(mesh => mesh.name.startsWith(`${group} `)), `Missing ${group} geometry`)
+}
 for (const name of ['plaster', 'velvet', 'carpet', 'wood']) {
   const material = doc.materials.find(item => item.name === name)
   assert.ok(material?.pbrMetallicRoughness.baseColorTexture && material.normalTexture, `Missing ${name} textures`)

@@ -292,6 +292,29 @@ def make_geometry(data):
         g.box('Stage set','panel',(0,portal_h/2,-6.1),(w-.6,portal_h-.5,.12))
         g.box('Stage set','gold',(0,portal_h-.5,-5.98),(w-.7,.12,.16))
         g.box('Stage set','wood',(0,.16,-5.45),(w-2,.18,1.05))
+        # Original scenic interior: an inset doorway, panelled wall and practical
+        # lights, all specified in scene metres rather than painted into a photo.
+        g.box('Stage set','black',(0,2.55,-5.99),(3.2,4.8,.035))
+        g.box('Stage set','wood',(0,2.45,-5.965),(2.9,4.55,.04))
+        for x in [-1.58,1.58]:
+            g.box('Stage set','gold',(x,2.55,-5.91),(.09,5.05,.09))
+        g.box('Stage set','gold',(0,5.02,-5.91),(3.35,.1,.1))
+        g.box('Stage set','gold',(0,.16,-5.91),(3.35,.14,.14))
+        for side in [-1,1]:
+            for x in [2.25,3.48,4.68]:
+                g.box('Stage set','plaster',(side*x,2.55,-5.95),(1.05,4.65,.06))
+                for edge in [-.49,.49]:
+                    g.box('Stage set','gold',(side*x+edge,2.55,-5.9),(.035,4.7,.06))
+                for height in [.27,4.86]:
+                    g.box('Stage set','gold',(side*x,height,-5.9),(1.05,.045,.07))
+            g.box('Stage furniture','wood',(side*3.5,.52,-4.25),(1.1,.09,.48))
+            for dx in [-.45,.45]:
+                g.box('Stage furniture','wood',(side*3.5+dx,.25,-4.25),(.065,.49,.43))
+            g.box('Stage set','gold',(side*3.2,3.38,-5.79),(.2,.38,.11))
+            g.ellipsoid('Stage set','lamp',(side*3.2,3.57,-5.78),(.1,.14,.1),8,6)
+        for x in [-4.6,-3.45,-2.3,-1.15,0,1.15,2.3,3.45,4.6]:
+            g.box('Stage footlights','black',(x,.09,-1.05),(.23,.13,.23))
+            g.ellipsoid('Stage footlights','lamp',(x,.17,-1.05),(.075,.04,.075),8,6)
         for side in [-1,1]:
             x=side*(w/2-1.05)
             g.box('Curtain','velvet',(x,portal_h/2,z-.22),(1.9,portal_h-.45,.12))
@@ -389,11 +412,19 @@ def make_geometry(data):
             p=(radius*math.cos(a),cy+dy,centre_z+radius*math.sin(a))
             g.tube('Chandelier','gold',[(0,cy+.55,centre_z),p],.018,6)
             g.ellipsoid('Chandelier','lamp',(p[0],p[1]-.16,p[2]),(.055,.17,.055),8,6)
-    # Detailed seats in .blend only; web uses the exact same exported transforms.
+    # The original showcase shares chair dimensions with the interactive viewer.
+    chair_spec = None
+    if detail['profile']=='original-showcase-v1':
+        chair_path = Path(__file__).resolve().parents[2] / 'venue-data' / 'lantern-opera-house' / 'chair-spec.json'
+        chair_spec = json.loads(chair_path.read_text())['parts']
     for seat in data['seats'] + data.get('serviceSeats', []):
         x,y,z=seat['position']; a=seat['rotation']
         def point(dx,dy,dz):
             return (x+dx*math.cos(a)+dz*math.sin(a),y+dy,z-dx*math.sin(a)+dz*math.cos(a))
+        if chair_spec:
+            for part in chair_spec:
+                g.box('Seats',part['material'],point(*part['centre']),tuple(part['size']),a)
+            continue
         for mat,centre,size in [('wood',point(0,.35,.16),(.5,.68,.1)),('velvet',point(0,.36,.095),(.43,.57,.105)),('velvet',point(0,.16,-.065),(.44,.13,.43))]:
             g.box('Seats',mat,centre,size,a)
         for side in [-1,1]:
@@ -500,7 +531,8 @@ def build(filepath, render=False):
         scene.world=bpy.data.worlds.new('Warm theatre world'); scene.world.use_nodes=True
         scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.12,.1,.075,1)
         scene.world.node_tree.nodes['Background'].inputs[1].default_value=.3
-        scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=24
+        scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=64
+        # The local Blender 3.4 container lacks an OIDN device entirely.
         scene.cycles.use_denoising=bpy.app.version >= (4, 0, 0)
         scene.render.resolution_x=1440; scene.render.resolution_y=1000; scene.render.resolution_percentage=100
         scene.view_settings.view_transform='AgX' if 'AgX' in [item.identifier for item in scene.view_settings.bl_rna.properties['view_transform'].enum_items] else 'Filmic'

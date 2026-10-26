@@ -1,6 +1,8 @@
 import copy
 import math
+import json
 import unittest
+from pathlib import Path
 from build_national_theatre import validate, make_geometry
 
 
@@ -34,6 +36,11 @@ class DetailTests(unittest.TestCase):
         data=blueprint(); data['detail']['profile']='original-showcase-v1'; data['detail']['dedication']='LANTERN OPERA HOUSE'
         geometry,_=make_geometry(data)
         self.assertIn(('Curtain','velvet'),geometry.parts)
+        spec=json.loads((Path(__file__).resolve().parents[2] / 'venue-data/lantern-opera-house/chair-spec.json').read_text())
+        self.assertEqual(spec['units'],'metres')
+        for material in ('wood','velvet'):
+            count=sum(part['material']==material for part in spec['parts'])
+            self.assertEqual(len(geometry.parts[('Seats',material)][0]),count*8)
         data['detail']['dedication']='x'*61
         with self.assertRaisesRegex(ValueError,'short dedication'): validate(data)
 

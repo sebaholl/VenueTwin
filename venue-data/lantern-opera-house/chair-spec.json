@@ -1,0 +1,14 @@
+{
+  "format": "venuetwin-chair",
+  "version": 1,
+  "units": "metres",
+  "parts": [
+    {"material": "wood", "centre": [0, 0.35, 0.16], "size": [0.5, 0.68, 0.1]},
+    {"material": "velvet", "centre": [0, 0.36, 0.095], "size": [0.43, 0.57, 0.105]},
+    {"material": "velvet", "centre": [0, 0.16, -0.065], "size": [0.44, 0.13, 0.43]},
+    {"material": "wood", "centre": [-0.245, 0.24, -0.025], "size": [0.055, 0.08, 0.5]},
+    {"material": "wood", "centre": [0.245, 0.24, -0.025], "size": [0.055, 0.08, 0.5]},
+    {"material": "wood", "centre": [-0.18, -0.045, 0], "size": [0.045, 0.39, 0.06]},
+    {"material": "wood", "centre": [0.18, -0.045, 0], "size": [0.045, 0.39, 0.06]}
+  ]
+}
