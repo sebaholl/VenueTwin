@@ -137,7 +137,7 @@ def glb_for(geometry, seats):
                 normal=unit(cross(tuple(triangle[1][j]-triangle[0][j] for j in range(3)),
                                   tuple(triangle[2][j]-triangle[0][j] for j in range(3)))) if triangle[0]!=triangle[1] and triangle[0]!=triangle[2] else (0,1,0)
                 positions.extend(triangle);normals.extend([normal]*3)
-                axis=max(range(3),key=lambda j:abs(normal[j]))
+                axis=max(range(3),key=lambda j:round(abs(normal[j]),6))
                 for point in triangle:
                     u,v=((point[0],point[2]) if axis==1 else (point[0],point[1]) if axis==2 else (point[2],point[1]))
                     tile=TILE_METRES.get(mat,1)

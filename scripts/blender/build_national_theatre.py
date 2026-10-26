@@ -470,7 +470,7 @@ def build(filepath, render=False):
                 tile=SHOWCASE_TILE_METRES.get(mat,1)
                 for polygon in mesh.polygons:
                     normal=polygon.normal
-                    axis=max(range(3),key=lambda j:abs(normal[j]))
+                    axis=max(range(3),key=lambda j:round(abs(normal[j]),6))
                     for loop_index in polygon.loop_indices:
                         bx,by,bz=mesh.vertices[mesh.loops[loop_index].vertex_index].co
                         # Blender coordinates are (x,-z,y) from the Y-up blueprint.
