@@ -51,7 +51,7 @@ def authored_blueprint():
     public = []
     levels = [('stalls', 'Stalls'), ('circle', 'Grand circle'), ('gallery', 'Gallery')]
     for row in range(9):
-        floor = .22 + row*.12
+        floor = round(.22 + row*.12,4)
         z = .8 + row*.78
         rows.append({'row':row, 'floor':floor})
         for number in range(17):
@@ -62,7 +62,7 @@ def authored_blueprint():
         ('circle',9,3.75,10.4,130), ('gallery',11,6.45,12.1,142)
     ]):
         for offset in range(2):
-            row = start+offset; height=floor+offset*.17; r=radius+offset*.72
+            row = start+offset; height=round(floor+offset*.17,4); r=round(radius+offset*.72,4)
             rows.append({'row':row,'floor':height,'arcRadius':r,'arcDegrees':span,'offsetY':-1.4,'levelId':level,'parapetHeight':.83})
             count = 17+offset*2
             for number in range(count):
@@ -81,7 +81,7 @@ def add_seat(blueprint_seats, public, level, row, number, p, unused):
     del unused
     sid=f'{level}-r{row+1:02d}-s{number+1:02d}'
     target=(0,2.8,-3.25)
-    yaw=math.atan2(target[0]-p[0],p[2]-target[2])
+    yaw=round(math.atan2(target[0]-p[0],p[2]-target[2]),8)
     eye=[p[0],round(p[1]+.9,4),p[2]]
     blueprint_seats.append({'label':sid,'row':row,'position':p,'rotation':yaw})
     public.append({'id':sid,'label':str(number+1),'row':str(row+1),'level_id':level,'position':p,'eye':eye,'yaw':yaw,'vertical_fov_deg':65})
@@ -92,6 +92,7 @@ def glb_for(geometry, seats):
          'nodes':[],'meshes':[],'materials':[],'accessors':[],'bufferViews':[],'buffers':[],'cameras':[]}
     binary=bytearray()
     def positions_accessor(points):
+        points=[[round(float(value),5) for value in point] for point in points]
         offset=len(binary)
         for p in points: binary.extend(struct.pack('<fff',*p))
         view=len(doc['bufferViews']);doc['bufferViews'].append({'buffer':0,'byteOffset':offset,'byteLength':len(binary)-offset,'target':34962})
@@ -101,7 +102,7 @@ def glb_for(geometry, seats):
     materials={}
     for name,(hex_color,rough,metal) in MATERIALS.items():
         rgb=[int(hex_color[i:i+2],16)/255 for i in (1,3,5)]
-        linear=[v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4 for v in rgb]
+        linear=[round(v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4,8) for v in rgb]
         materials[name]=len(doc['materials'])
         doc['materials'].append({'name':name,'doubleSided':True,'pbrMetallicRoughness':{
             'baseColorFactor':linear+[1],'metallicFactor':metal,'roughnessFactor':rough},
@@ -126,7 +127,8 @@ def glb_for(geometry, seats):
             'extras':{'venueTwinSeatId':seat['id']}});doc['scenes'][0]['nodes'].append(node)
         camera=len(doc['cameras']);doc['cameras'].append({'type':'perspective','perspective':{'yfov':math.radians(65),'znear':.05,'zfar':2000}})
         node=len(doc['nodes']);doc['nodes'].append({'name':'Camera '+seat['id'],'camera':camera,'translation':seat['eye'],
-            'rotation':camera_rotation(seat['eye'],(0,2.8,-3.25)),'extras':{'venueTwinCameraSeatId':seat['id']}})
+            'rotation':[round(value,8) for value in camera_rotation(seat['eye'],(0,2.8,-3.25))],
+            'extras':{'venueTwinCameraSeatId':seat['id']}})
         doc['scenes'][0]['nodes'].append(node)
     doc['buffers']=[{'byteLength':len(binary)}]
     raw=json.dumps(doc,separators=(',',':'),ensure_ascii=False).encode()
