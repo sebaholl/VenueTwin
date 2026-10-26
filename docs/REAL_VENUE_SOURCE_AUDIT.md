@@ -14,12 +14,29 @@ Checked 26 October 2026 for a real VenueTwin demonstration. This is a research r
 
 The owner explicitly warns on its downloads page that seating plans are subject to update and that users should confirm the latest version. Its photograph gallery does not identify camera positions, lenses or seat IDs. Public downloads do not state permission to redistribute the CAD/model files, create and publish a derived photorealistic model, or reuse photos as textures. Those permissions must be obtained before a public or customer demo using these assets.
 
+## Local source conversion and measured features
+
+The official SKP was parsed locally with OpenSKP into a 31,793,180-byte GLB. It contains 2,477 glTF primitives and 83 material definitions. Its axis-aligned Y-up bounds are approximately 81.932 × 20.248 × 59.417 metres; this is a design-model bounding box, **not** a surveyed as-built auditorium measurement. The file exceeds VenueTwin's 25 MiB managed-viewer limit and has no VenueTwin seat cameras. Neither the SKP nor its derived GLB is committed or published.
+
+The official seating DWG was read directly and converted offline to DXF. The drawing has 441,275 LINE entities, millimetre units, no named seat objects or text labels, and flattened Z=0 linework. The conversion preserves that entity count. The DXF SHA-256 is `f47b876ca8d4f9734fe6d0595a05887718bac839c80dc551f77fd3eef069ac4c`.
+
+With the explicit main-auditorium crop X=[-30,000, 30,000] mm and Y=[-16,000, 10,000] mm, [the local CAD feature extractor](../scripts/inspect-seating-dxf.py) identifies **2,386 unique 400 mm horizontal chair-line midpoints**. Candidate coordinates span X=-27,710.610 to 28,489.389 mm and Y=-14,665.399 to 9,334.601 mm. These are reproducible drawing features, not yet verified seat centres. The count does not equal any of the workbook's 2,693/2,999/2,094 layout totals; the DWG and workbook must not be assumed to describe the same configuration. The cropped region also omits rear seating shown in the drawing. The candidate list stays outside the repository.
+
+Reproduce the local extraction after obtaining the source DWG and converting it to DXF with a local DWG reader:
+
+```bash
+python3 -m pip install ezdxf
+python3 scripts/inspect-seating-dxf.py /path/to/seating.dxf \
+  --output /private/tmp/agenda-seat-features.json \
+  --bounds-mm -30000 -16000 30000 10000
+```
+
 ## Gate before calling this a 1:1 replica
 
 1. Confirm a single current fixed seating configuration and obtain the dated, as-built coordinate system, dimensional tolerance and seat centres. The 2,693/2,999/2,094 workbook layouts cannot be blended into one seat inventory.
 2. Obtain the seat-eye height/offset method or surveyed eye coordinates, plus stage target, rails and every relevant obstruction. CAD geometry alone does not establish the seated human eye.
 3. Obtain original photographs from identified seats with camera pose/lens/crop and rights for private comparison and public appearance use. General marketing images can guide appearance but cannot calibrate a named seat.
-4. Convert and inspect the SKP/DWG locally, check measured dimensions against the venue's plan/sections, and record any mesh simplification error. The temporary SKP and DWG were identified as genuine file types, but no Blender conversion or geometry accuracy check has yet been completed.
+4. Align the converted SKP and DWG coordinate systems, compare dimensions with dated plans/sections, and record any mesh simplification error. Local conversion and basic file inspection are complete; coordinate registration and physical accuracy checks are not.
 5. Have the venue review the exact final model revision and rendered views. An official download page is evidence of provenance, not visual approval or publication consent.
 
 VenueTwin's contract, Blender exporter and Three.js checks can process reviewed metre-scale meshes, seats, source-linked PNG textures and calibrated camera/photo landmarks. They cannot supply missing physical measurements or owner rights. Until all five gates are met, an Agenda model belongs in a clearly marked **study**, never the `reviewed` customer release.
