@@ -27,6 +27,7 @@ pnpm-debug.log*
 
 # Generated, reproducible demo package (prepared before dev/build)
 public/venues/demo-theatre/v1/
+public/venues/reduta-study/v1/
 
 # Python / Blender bytecode cache
 __pycache__/
