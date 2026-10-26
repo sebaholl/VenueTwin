@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 import { Vector3 } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { inspectEmbeddedTextures } from './embedded-textures.mjs'
 
 const [buildDirectory, reviewFile, photoFile] = process.argv.slice(2)
 assert.ok(buildDirectory && reviewFile && photoFile, 'Usage: node scripts/photo-alignment.mjs BUILD_DIR REVIEW.json PHOTO_FILE')
@@ -56,15 +57,18 @@ for (const point of review.landmarks) {
 const model = await readFile(resolve(buildDirectory, 'venue.glb'))
 assert.ok(model.length <= 25 * 1024 * 1024, 'GLB exceeds 25 MiB')
 assert.equal(createHash('sha256').update(model).digest('hex'), review.glb_sha256, 'GLB hash differs')
+const input = JSON.parse(await readFile(resolve(buildDirectory, 'input.json'), 'utf8'))
+const gltfJson = JSON.parse(model.subarray(20, 20 + model.readUInt32LE(12)).toString())
+const parseBytes = gltfJson.images?.length ? inspectEmbeddedTextures(model, input).parseBytes : model
+assert.ok(!gltfJson.images?.some(image => image.uri) && !gltfJson.buffers?.some(buffer => buffer.uri), 'External GLB assets are forbidden')
 globalThis.fetch = async () => { throw new Error('Network forbidden in photo alignment') }
-const gltf = await new GLTFLoader().parseAsync(model.buffer.slice(model.byteOffset, model.byteOffset + model.byteLength), '')
+const gltf = await new GLTFLoader().parseAsync(parseBytes.buffer.slice(parseBytes.byteOffset, parseBytes.byteOffset + parseBytes.byteLength), '')
 gltf.scene.updateMatrixWorld(true)
 const cameras = []
 gltf.scene.traverse(object => { if (object.userData.venueTwinCameraSeatId === review.seat_id) cameras.push(object) })
 assert.equal(cameras.length, 1, 'Expected exactly one camera for seat')
 const camera = cameras[0]
 assert.ok(camera.isPerspectiveCamera)
-const input = JSON.parse(await readFile(resolve(buildDirectory, 'input.json'), 'utf8'))
 const seat = input.seats.find(item => item.id === review.seat_id)
 assert.ok(seat && seat.camera_source_id, 'Seat needs a photo-linked calibrated camera')
 assert.equal(seat.camera_source_id, review.photo_source_id, 'Wrong photo source for camera')
@@ -82,12 +86,14 @@ const errors = review.landmarks.map(point => {
   assert.ok(Math.abs(ndc.x) <= 1 && Math.abs(ndc.y) <= 1, `Landmark outside photo frame: ${point.id}`)
   const x = (ndc.x * .5 + .5) * review.image_width_px
   const y = (-ndc.y * .5 + .5) * review.image_height_px
-  return { id: point.id, error_px: Math.hypot(x - point.image_px[0], y - point.image_px[1]) }
+  return { id: point.id, observed_px: point.image_px, projected_px: [x, y],
+    error_px: Math.hypot(x - point.image_px[0], y - point.image_px[1]) }
 })
 const maximum = Math.max(...errors.map(item => item.error_px))
+const rms = Math.sqrt(errors.reduce((total, item) => total + item.error_px ** 2, 0) / errors.length)
 const report = { format: 'venuetwin-photo-alignment-report', version: 1, seat_id: review.seat_id,
   photo_sha256: review.photo_sha256, glb_sha256: review.glb_sha256,
-  maximum_error_px: maximum, threshold_px: review.maximum_error_px,
+  maximum_error_px: maximum, rms_error_px: rms, threshold_px: review.maximum_error_px,
   passed: maximum <= review.maximum_error_px, landmarks: errors,
   note: 'Manual landmark reprojection only; does not prove texture quality, survey truth, or all seat views.' }
 await writeFile(resolve(buildDirectory, `photo-alignment-${review.seat_id}.json`), JSON.stringify(report, null, 2) + '\n', { flag: 'wx' })

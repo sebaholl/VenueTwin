@@ -93,12 +93,21 @@ for (const structure of source.structures) {
       const name = canonical(face)
       faces.set(name, (faces.get(name) ?? 0) + 1)
     }
+    const faceUv = new Map(structure.mesh.triangle_uv?.map((corners, faceIndex) =>
+      [canonical(structure.mesh.triangles[faceIndex]), new Map(structure.mesh.triangles[faceIndex].map((vertex, corner) => [vertex, corners[corner]]))]) ?? [])
     const count = index ? index.count : attribute.count
     assert.equal(count, structure.mesh.triangles.length * 3, `Mesh triangle count ${structure.id}`)
     for (let i = 0; i < count; i += 3) {
-      const face = [0, 1, 2].map(offset => mapped[index ? index.getX(i + offset) : i + offset])
+      const indices = [0, 1, 2].map(offset => index ? index.getX(i + offset) : i + offset)
+      const face = indices.map(vertex => mapped[vertex])
       const name = canonical(face), left = faces.get(name) ?? 0
       assert.ok(left > 0, `Unexpected triangle ${structure.id}`)
+      if (uv) for (let corner = 0; corner < 3; corner++) {
+        const expected = faceUv.get(name)?.get(face[corner])
+        assert.ok(expected && Math.abs(uv.getX(indices[corner]) - expected[0]) < tolerance &&
+          Math.abs(uv.getY(indices[corner]) - (1 - expected[1])) < tolerance,
+        `UV mismatch ${structure.id} triangle ${i / 3} corner ${corner}`)
+      }
       faces.set(name, left - 1)
     }
     assert.ok([...faces.values()].every(count => count === 0), `Missing triangle ${structure.id}`)

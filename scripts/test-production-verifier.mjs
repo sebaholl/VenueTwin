@@ -11,6 +11,8 @@ try {
   const verifier = resolve('scripts/verify-production.mjs')
   const kinds = ['eye', 'geometry', 'identity', 'header', 'fov']
   if (original.materials?.length) kinds.push('material')
+  if (original.structures.some(item => item.mesh?.triangle_uv)) kinds.push('uv')
+  if (original.materials?.some(item => item.base_color_texture_source_id)) kinds.push('texture-source')
   for (const kind of kinds) {
     const input = structuredClone(original)
     await copyFile(join(source, 'venue.glb'), join(directory, 'venue.glb'))
@@ -19,6 +21,8 @@ try {
     if (kind === 'identity') input.seats[0].id = 'missing-seat'
     if (kind === 'fov') input.seats[0].vertical_fov_deg = 52
     if (kind === 'material') input.materials[0].roughness = .99
+    if (kind === 'uv') input.structures.find(item => item.mesh?.triangle_uv).mesh.triangle_uv[0][0][0] += .2
+    if (kind === 'texture-source') input.sources.find(item => item.id === input.materials.find(material => material.base_color_texture_source_id).base_color_texture_source_id).sha256 = '0'.repeat(64)
     if (kind === 'header') {
       const bytes = await readFile(join(directory, 'venue.glb'))
       bytes.writeUInt32LE(0, 0)
@@ -30,5 +34,5 @@ try {
     assert.equal(result.status, 1, `${kind}: verifier must reject corruption`)
     assert.match(result.stderr, /AssertionError/)
   }
-  console.log(`Production verifier rejected all ${kinds.length} corrupted geometry/camera/identity/header/FOV/material cases.`)
+  console.log(`Production verifier rejected all ${kinds.length} corrupted geometry/camera/identity/header/FOV/material/UV/texture cases.`)
 } finally { await rm(directory, { recursive: true, force: true }) }

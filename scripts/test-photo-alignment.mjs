@@ -53,7 +53,10 @@ try {
   await writeFile(join(directory, 'review.json'), JSON.stringify(review))
   const passed = run()
   assert.equal(passed.status, 0, passed.stderr)
-  assert.equal(JSON.parse(await readFile(join(directory, 'photo-alignment-a1.json'))).passed, true)
+  const report = JSON.parse(await readFile(join(directory, 'photo-alignment-a1.json')))
+  assert.equal(report.passed, true)
+  assert.ok(report.rms_error_px < 1e-8)
+  assert.deepEqual(report.landmarks[0].projected_px, [50, 50])
   await rm(join(directory, 'photo-alignment-a1.json'))
   review.landmarks[0].image_px[0] += 20
   await writeFile(join(directory, 'review.json'), JSON.stringify(review))
@@ -61,5 +64,32 @@ try {
   assert.equal(failed.status, 1)
   assert.match(failed.stderr, /Photo alignment exceeds/)
   assert.equal(JSON.parse(await readFile(join(directory, 'photo-alignment-a1.json'))).passed, false)
+  await rm(join(directory, 'photo-alignment-a1.json'))
+  const textured = structuredClone(gltf)
+  textured.buffers = [{ byteLength: png.length }]
+  textured.bufferViews = [{ buffer: 0, byteOffset: 0, byteLength: png.length }]
+  textured.images = [{ mimeType: 'image/png', bufferView: 0 }]
+  textured.textures = [{ source: 0 }]
+  textured.materials = [{ name: 'VT_surface', pbrMetallicRoughness: { baseColorTexture: { index: 0 } } }]
+  const textureJson = Buffer.from(JSON.stringify(textured))
+  const textureJsonPadded = Buffer.concat([textureJson, Buffer.alloc((4 - textureJson.length % 4) % 4, 32)])
+  const imagePadded = Buffer.concat([png, Buffer.alloc((4 - png.length % 4) % 4)])
+  const texturedGlb = Buffer.alloc(20 + textureJsonPadded.length + 8 + imagePadded.length)
+  texturedGlb.writeUInt32LE(0x46546c67, 0); texturedGlb.writeUInt32LE(2, 4)
+  texturedGlb.writeUInt32LE(texturedGlb.length, 8); texturedGlb.writeUInt32LE(textureJsonPadded.length, 12)
+  texturedGlb.writeUInt32LE(0x4e4f534a, 16); textureJsonPadded.copy(texturedGlb, 20)
+  const binaryAt = 20 + textureJsonPadded.length
+  texturedGlb.writeUInt32LE(imagePadded.length, binaryAt); texturedGlb.writeUInt32LE(0x004e4942, binaryAt + 4)
+  imagePadded.copy(texturedGlb, binaryAt + 8)
+  await writeFile(join(directory, 'venue.glb'), texturedGlb)
+  await writeFile(join(directory, 'input.json'), JSON.stringify({ seats: [{ id: 'a1', vertical_fov_deg: 65,
+    camera_source_id: 'photo' }], sources: [{ id: 'photo', kind: 'photo', sha256: digest(png) },
+      { id: 'texture', kind: 'photo', sha256: digest(png) }],
+  materials: [{ id: 'surface', base_color_texture_source_id: 'texture' }] }))
+  review.landmarks[0].image_px[0] -= 20
+  review.glb_sha256 = digest(texturedGlb)
+  await writeFile(join(directory, 'review.json'), JSON.stringify(review))
+  const texturedPass = run()
+  assert.equal(texturedPass.status, 0, texturedPass.stderr)
   console.log('Photo alignment accepted a calibrated synthetic camera and rejected a 20px mismatch.')
 } finally { await rm(directory, { recursive: true, force: true }) }
