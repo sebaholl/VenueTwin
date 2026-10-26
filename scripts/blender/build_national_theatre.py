@@ -24,6 +24,9 @@ MATERIALS = {
     'ceiling': ('#aca992', .9, 0), 'panel': ('#455a58', .88, 0),
     'black': ('#14131a', .95, 0), 'lamp': ('#ffe8b5', .2, .1),
 }
+SHOWCASE_TEXTURES = {'plaster': 'painted_plaster_wall', 'velvet': 'velour_velvet',
+                     'carpet': 'velour_velvet', 'wood': 'dark_wood'}
+SHOWCASE_TILE_METRES = {'plaster': 2.0, 'velvet': .75, 'carpet': 1.5, 'wood': 1.5}
 
 
 def finite(value, low, high):
@@ -272,7 +275,8 @@ def make_geometry(data):
                 a=side*(span-.06)
                 for dr in [0,.14]:
                     g.tube('Gallery columns','gold',[radial(r+.04+dr,a,y+.85,cz),radial(r+.04+dr,a,y+2.7,cz)],.06,10)
-    # Stage and architectural proscenium; painted curtain left as a blank panel.
+    # Stage and architectural proscenium. The fictional showcase has an open
+    # stage set; the photo-informed study keeps its deliberately blank curtain.
     w=detail['stageWidth']; portal_h=min(11.2,top-3); z=-3.25
     # Close the front of the hall around the portal, including the upper wall.
     for side in [-1,1]:
@@ -283,11 +287,26 @@ def make_geometry(data):
         for y in [1.1,3.4,6.6,9.8,13]:
             g.box('Front wall','gold',(side*(w/2+wing/2),y,z-.4),(wing,.08,.12))
     g.box('Front wall','plaster',(0,(portal_h+top)/2,z-.65),(w,top-portal_h,.3))
-    g.box('Stage','wood',(0,-.01,-2.8),(w,.44,3.6))
-    g.box('Curtain','velvet',(0,portal_h/2,z-.22),(w-.5,portal_h-.45,.12))
-    for i in range(90):
-        x=-(w-.55)/2+(w-.55)*i/89
-        g.ellipsoid('Curtain folds','velvet',(x,portal_h/2,z-.12),(.065,(portal_h-.55)/2,.075),8,12)
+    if detail['profile']=='original-showcase-v1':
+        g.box('Stage','wood',(0,-.01,-3.5),(w,.44,5.2))
+        g.box('Stage set','panel',(0,portal_h/2,-6.1),(w-.6,portal_h-.5,.12))
+        g.box('Stage set','gold',(0,portal_h-.5,-5.98),(w-.7,.12,.16))
+        g.box('Stage set','wood',(0,.16,-5.45),(w-2,.18,1.05))
+        for side in [-1,1]:
+            x=side*(w/2-1.05)
+            g.box('Curtain','velvet',(x,portal_h/2,z-.22),(1.9,portal_h-.45,.12))
+            for i in range(18):
+                dx=(i-8.5)*.1
+                g.ellipsoid('Curtain folds','velvet',(x+dx,portal_h/2,z-.12),(.06,(portal_h-.55)/2,.075),8,12)
+            for height in [.62,portal_h-1.1]:
+                g.box('Stage set','plaster',(side*(w/2-2.2),height,-5.9),(.55,.32,.4))
+            g.box('Stage set','gold',(side*(w/2-2.2),portal_h/2,-5.85),(.16,portal_h-2,.14))
+    else:
+        g.box('Stage','wood',(0,-.01,-2.8),(w,.44,3.6))
+        g.box('Curtain','velvet',(0,portal_h/2,z-.22),(w-.5,portal_h-.45,.12))
+        for i in range(90):
+            x=-(w-.55)/2+(w-.55)*i/89
+            g.ellipsoid('Curtain folds','velvet',(x,portal_h/2,z-.12),(.065,(portal_h-.55)/2,.075),8,12)
     for side in [-1,1]:
         for offset,width,depth,mat in [(0,.52,.55,'plaster'),(.35,.11,.64,'gold'),(-.32,.12,.67,'gold'),(.55,.24,.35,'plaster')]:
             x=side*(w/2+offset)
@@ -411,6 +430,25 @@ def build(filepath, render=False):
             shader.inputs['Base Color'].default_value=rgba
             shader.inputs['Roughness'].default_value=rough
             shader.inputs['Metallic'].default_value=metal
+            if showcase and name in SHOWCASE_TEXTURES:
+                asset=SHOWCASE_TEXTURES[name]
+                for suffix in ('diff','nor_gl'):
+                    image_path=path.parent/'materials'/f'{asset}_{suffix}_1k.jpg'
+                    if not image_path.is_file(): raise ValueError(f'Missing showcase texture: {image_path}')
+                    image=bpy.data.images.load(str(image_path),check_existing=True)
+                    image.pack()
+                    texture=m.node_tree.nodes.new('ShaderNodeTexImage')
+                    texture.image=image
+                    texture.extension='REPEAT'
+                    if suffix=='diff':
+                        shader.inputs['Base Color'].default_value=(1,1,1,1)
+                        m.node_tree.links.new(texture.outputs['Color'],shader.inputs['Base Color'])
+                    else:
+                        image.colorspace_settings.name='Non-Color'
+                        normal=m.node_tree.nodes.new('ShaderNodeNormalMap')
+                        normal.inputs['Strength'].default_value=.45
+                        m.node_tree.links.new(texture.outputs['Color'],normal.inputs['Color'])
+                        m.node_tree.links.new(normal.outputs['Normal'],shader.inputs['Normal'])
             if name=='lamp':
                 emission=shader.inputs.get('Emission Color') or shader.inputs.get('Emission')
                 if emission: emission.default_value=rgba
@@ -427,6 +465,17 @@ def build(filepath, render=False):
             mesh.update()
             bm=bmesh.new(); bm.from_mesh(mesh)
             bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(mesh); bm.free()
+            if showcase:
+                uv=mesh.uv_layers.new(name='Venue metres')
+                tile=SHOWCASE_TILE_METRES.get(mat,1)
+                for polygon in mesh.polygons:
+                    normal=polygon.normal
+                    axis=max(range(3),key=lambda j:abs(normal[j]))
+                    for loop_index in polygon.loop_indices:
+                        bx,by,bz=mesh.vertices[mesh.loops[loop_index].vertex_index].co
+                        # Blender coordinates are (x,-z,y) from the Y-up blueprint.
+                        u,v=((bx,-by) if axis==2 else (bx,bz) if axis==1 else (-by,bz))
+                        uv.data[loop_index].uv=(u/tile,v/tile)
             obj=bpy.data.objects.new(group+' '+mat,mesh); scene.collection.objects.link(obj)
             obj.data.materials.append(mats[mat]); obj.parent=root
             if group=='Seats':

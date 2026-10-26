@@ -1,13 +1,23 @@
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Color, Euler, InstancedMesh, Object3D, PerspectiveCamera, Quaternion, Vector3 } from 'three'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Color, Euler, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera, Quaternion, Vector3 } from 'three'
 import type { LoadedProduction } from '../lib/productionAssets'
 import type { ProductionSeat } from '../utils/productionViewer'
 
 type Props = { loaded: LoadedProduction; selected: ProductionSeat | null; inside: boolean; onSelect: (seat: ProductionSeat) => void; onExit: () => void; onReady: () => void; onFailure: () => void }
-function Chairs({ seats, selected, onSelect }: { seats: ProductionSeat[]; selected: string | undefined; onSelect: Props['onSelect'] }) {
+function Chairs({ loaded, seats, selected, onSelect }: { loaded: LoadedProduction; seats: ProductionSeat[]; selected: string | undefined; onSelect: Props['onSelect'] }) {
   const bases = useRef<InstancedMesh>(null), backs = useRef<InstancedMesh>(null), leftArms = useRef<InstancedMesh>(null), rightArms = useRef<InstancedMesh>(null)
+  const upholstery = useMemo(() => {
+    let map: MeshStandardMaterial['map'] = null
+    loaded.model.traverse(object => {
+      if (map || !(object instanceof Mesh)) return
+      const materials = Array.isArray(object.material) ? object.material : [object.material]
+      const velvet = materials.find(material => material.name === 'velvet')
+      if (velvet instanceof MeshStandardMaterial) map = velvet.map
+    })
+    return map
+  }, [loaded])
   useLayoutEffect(() => {
     for (const [i, seat] of seats.entries()) {
       const place = (ref: InstancedMesh, x: number, y: number, z: number) => {
@@ -19,7 +29,7 @@ function Chairs({ seats, selected, onSelect }: { seats: ProductionSeat[]; select
       place(backs.current!, 0, .48, .19)
       place(leftArms.current!, -.27, .29, -.02)
       place(rightArms.current!, .27, .29, -.02)
-      const color = new Color(seat.id === selected ? '#efb980' : '#852e43')
+      const color = new Color(seat.id === selected ? '#efb980' : upholstery ? '#ffffff' : '#852e43')
       bases.current!.setColorAt(i, color); backs.current!.setColorAt(i, color)
     }
     for (const ref of [bases, backs, leftArms, rightArms]) {
@@ -27,9 +37,9 @@ function Chairs({ seats, selected, onSelect }: { seats: ProductionSeat[]; select
       if (ref.current!.instanceColor) ref.current!.instanceColor.needsUpdate = true
       ref.current!.computeBoundingSphere()
     }
-  }, [seats, selected])
+  }, [seats, selected, upholstery])
   const pick = (event: ThreeEvent<MouseEvent>) => { if (event.instanceId !== undefined && event.delta < 6) { event.stopPropagation(); onSelect(seats[event.instanceId]) } }
-  return <><instancedMesh ref={bases} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.47, .14, .44]} /><meshStandardMaterial roughness={.9} /></instancedMesh><instancedMesh ref={backs} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.47, .58, .11]} /><meshStandardMaterial roughness={.92} /></instancedMesh><instancedMesh ref={leftArms} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.07, .16, .48]} /><meshStandardMaterial color="#59402e" roughness={.48} /></instancedMesh><instancedMesh ref={rightArms} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.07, .16, .48]} /><meshStandardMaterial color="#59402e" roughness={.48} /></instancedMesh></>
+  return <><instancedMesh ref={bases} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.47, .14, .44]} /><meshStandardMaterial map={upholstery} roughness={.9} /></instancedMesh><instancedMesh ref={backs} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.47, .58, .11]} /><meshStandardMaterial map={upholstery} roughness={.92} /></instancedMesh><instancedMesh ref={leftArms} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.07, .16, .48]} /><meshStandardMaterial color="#59402e" roughness={.48} /></instancedMesh><instancedMesh ref={rightArms} args={[undefined, undefined, seats.length]} onClick={pick}><boxGeometry args={[.07, .16, .48]} /><meshStandardMaterial color="#59402e" roughness={.48} /></instancedMesh></>
 }
 function CameraRig({ loaded, selected, inside, look, onReady, onFailure }: Props & { look: [number, number] }) {
   const { camera, gl, invalidate } = useThree()
@@ -78,7 +88,7 @@ export function ProductionScene(props: Props) {
       <color attach="background" args={['#17131b']} />
       <ambientLight intensity={.75} /><hemisphereLight args={['#ffe7c0', '#291820', 1.25]} /><directionalLight position={[0, 14, 2]} color="#ffe2ab" intensity={2.2} /><spotLight position={[0, 9, -1]} color="#ffe8cb" intensity={90} angle={.65} penumbra={.65} distance={30} />
       <ModelCutaway loaded={props.loaded} inside={props.inside} />
-      <Chairs seats={props.loaded.manifest.seats} selected={props.selected?.id} onSelect={props.onSelect} />
+      <Chairs loaded={props.loaded} seats={props.loaded.manifest.seats} selected={props.selected?.id} onSelect={props.onSelect} />
       <CameraRig {...props} look={look} />
     </Canvas>
     {props.inside && <button className="managed-reset" onClick={() => setLook([0, 0])}>Face stage</button>}

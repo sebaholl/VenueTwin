@@ -17,23 +17,32 @@ export function inspectEmbeddedTextures(bytes, source = null) {
     return [`VT_${material.id}`, record.sha256]
   }))
   const seenImages = new Set(), seenTextures = new Set(), seenMaterials = new Set()
-  for (const material of json.materials ?? []) {
-    const texture = material.pbrMetallicRoughness?.baseColorTexture
-    assert.ok(!material.normalTexture && !material.occlusionTexture && !material.emissiveTexture &&
-      !material.pbrMetallicRoughness?.metallicRoughnessTexture, 'Unsupported material texture map')
-    if (!texture) continue
-    const sha = expected.get(material.name)
-    assert.ok((source === null || sha) && !seenMaterials.has(material.name), `Unexpected textured material ${material.name}`)
+  const inspect = (texture, material, sha = null) => {
     assert.equal(texture.texCoord ?? 0, 0, 'Texture must use primary UV channel')
     const entry = json.textures?.[texture.index], image = json.images?.[entry?.source]
-    assert.ok(entry && image?.mimeType === 'image/png' && Number.isInteger(image.bufferView), 'Texture must embed PNG')
+    assert.ok(entry && image && Number.isInteger(image.bufferView) &&
+      ['image/png', 'image/jpeg'].includes(image.mimeType), 'Texture must embed PNG or JPEG')
+    if (source !== null) assert.equal(image.mimeType, 'image/png', 'Reviewed source texture must embed PNG')
     const view = json.bufferViews?.[image.bufferView]
-    assert.ok(view && (view.buffer ?? 0) === 0 && Number.isInteger(view.byteLength) && view.byteLength > 0, 'Invalid PNG buffer view')
+    assert.ok(view && (view.buffer ?? 0) === 0 && Number.isInteger(view.byteLength) && view.byteLength > 0, 'Invalid image buffer view')
     const start = binStart + (view.byteOffset ?? 0), end = start + view.byteLength
-    assert.ok(start >= binStart && end <= binStart + binLength, 'PNG exceeds GLB binary chunk')
-    const actual = createHash('sha256').update(bytes.subarray(start, end)).digest('hex')
-    if (source !== null) assert.equal(actual, sha, `Embedded texture differs from source ${material.name}`)
-    seenMaterials.add(material.name); seenTextures.add(texture.index); seenImages.add(entry.source)
+    assert.ok(start >= binStart && end <= binStart + binLength, 'Image exceeds GLB binary chunk')
+    const imageBytes = bytes.subarray(start, end)
+    assert.ok(image.mimeType === 'image/jpeg' ? imageBytes[0] === 0xff && imageBytes[1] === 0xd8 : imageBytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])), 'Image signature does not match MIME type')
+    const actual = createHash('sha256').update(imageBytes).digest('hex')
+    if (sha) assert.equal(actual, sha, `Embedded texture differs from source ${material.name}`)
+    seenTextures.add(texture.index); seenImages.add(entry.source)
+  }
+  for (const material of json.materials ?? []) {
+    const texture = material.pbrMetallicRoughness?.baseColorTexture
+    assert.ok((source === null || !material.normalTexture) && !material.occlusionTexture && !material.emissiveTexture &&
+      !material.pbrMetallicRoughness?.metallicRoughnessTexture, 'Unsupported material texture map')
+    if (!texture && !material.normalTexture) continue
+    const sha = expected.get(material.name)
+    assert.ok((source === null || sha) && !seenMaterials.has(material.name), `Unexpected textured material ${material.name}`)
+    if (texture) inspect(texture, material, sha)
+    if (material.normalTexture) inspect(material.normalTexture, material)
+    seenMaterials.add(material.name)
   }
   if (source !== null) assert.equal(seenMaterials.size, expected.size, 'Missing source-linked texture')
   assert.equal(seenTextures.size, json.textures?.length ?? 0, 'Unexpected texture')
@@ -41,7 +50,7 @@ export function inspectEmbeddedTextures(bytes, source = null) {
   // Node has no DOM image decoder. Strip texture references only in the copy used
   // for numeric Three.js checks; the original GLB is hashed and published intact.
   const stripped = structuredClone(json)
-  for (const material of stripped.materials ?? []) delete material.pbrMetallicRoughness?.baseColorTexture
+  for (const material of stripped.materials ?? []) { delete material.pbrMetallicRoughness?.baseColorTexture; delete material.normalTexture }
   delete stripped.images; delete stripped.textures; delete stripped.samplers
   const encoded = Buffer.from(JSON.stringify(stripped))
   const padding = (4 - encoded.length % 4) % 4

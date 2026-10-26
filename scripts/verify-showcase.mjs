@@ -12,8 +12,43 @@ assert.equal(manifest.quality, 'demonstration')
 assert.match(manifest.notice, /FICTIONAL SHOWCASE/)
 assert.equal(createHash('sha256').update(bytes).digest('hex'), manifest.model.sha256)
 assert.ok(bytes.length < 25 * 1024 * 1024)
+const jsonLength = bytes.readUInt32LE(12)
+const doc = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString('utf8'))
+const expectedImages = ['dark_wood_diff_1k.jpg', 'dark_wood_nor_gl_1k.jpg', 'painted_plaster_wall_diff_1k.jpg', 'painted_plaster_wall_nor_gl_1k.jpg', 'velour_velvet_diff_1k.jpg', 'velour_velvet_nor_gl_1k.jpg']
+assert.deepEqual(doc.images.map(image => image.name), expectedImages)
+const binaryOffset = 20 + jsonLength + 8
+for (const image of doc.images) {
+  assert.equal(image.mimeType, 'image/jpeg')
+  assert.equal(image.uri, undefined)
+  const slice = doc.bufferViews[image.bufferView]
+  const embedded = bytes.subarray(binaryOffset + slice.byteOffset, binaryOffset + slice.byteOffset + slice.byteLength)
+  const source = await readFile(resolve('venue-data/lantern-opera-house/materials', image.name))
+  assert.equal(createHash('sha256').update(embedded).digest('hex'), createHash('sha256').update(source).digest('hex'))
+}
+for (const mesh of doc.meshes) for (const primitive of mesh.primitives) {
+  assert.equal(doc.accessors[primitive.attributes.TEXCOORD_0].count, doc.accessors[primitive.attributes.POSITION].count)
+}
+for (const name of ['plaster', 'velvet', 'carpet', 'wood']) {
+  const material = doc.materials.find(item => item.name === name)
+  assert.ok(material?.pbrMetallicRoughness.baseColorTexture && material.normalTexture, `Missing ${name} textures`)
+}
 globalThis.fetch = async () => { throw new Error('Remote asset forbidden in showcase') }
-const view = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+// Node has no image decoder. Parse the same geometry/cameras after removing only
+// texture references; the embedded image bytes above are checked byte-for-byte.
+const geometryDoc = structuredClone(doc)
+geometryDoc.images = []; geometryDoc.textures = []
+for (const material of geometryDoc.materials) {
+  delete material.pbrMetallicRoughness.baseColorTexture
+  delete material.normalTexture
+}
+const json = Buffer.from(JSON.stringify(geometryDoc))
+const padded = Buffer.concat([json, Buffer.alloc((4 - json.length % 4) % 4, 0x20)])
+const bin = bytes.subarray(binaryOffset)
+const viewBytes = Buffer.concat([Buffer.alloc(12), Buffer.alloc(8), padded, Buffer.alloc(8), bin])
+viewBytes.write('glTF', 0); viewBytes.writeUInt32LE(2, 4); viewBytes.writeUInt32LE(viewBytes.length, 8)
+viewBytes.writeUInt32LE(padded.length, 12); viewBytes.write('JSON', 16)
+viewBytes.writeUInt32LE(bin.length, 20 + padded.length); viewBytes.write('BIN\0', 24 + padded.length)
+const view = viewBytes.buffer.slice(viewBytes.byteOffset, viewBytes.byteOffset + viewBytes.byteLength)
 const scene = (await new GLTFLoader().parseAsync(view, '')).scene
 scene.updateMatrixWorld(true)
 const anchors = new Map(), cameras = new Map(); let meshes = 0

@@ -176,7 +176,7 @@ npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
 npm run demo:host
 ```
 
-Open **http://127.0.0.1:4174**. The Lantern is an original fictional demonstration theatre, not a reconstruction of the National Theatre. Its small GLB and 140-seat layout are generated automatically before dev/build. The independent HTML website embeds the viewer from port 5173 (a different origin), with sample seat buttons and a full-viewer link. Connection settings can point to a different viewer origin or venue manifest. The standalone `demo-host/index.html` can later be placed on another website; update its default viewer origin for deployment.
+Open **http://127.0.0.1:4174**. This independent HTML sample embeds the 140-seat demo fixture from port 5173 (a different origin), with sample seat buttons and a full-viewer link. The Lantern is a separate 225-seat fictional theatre in the managed demo (`npm run demo:viewer`). Connection settings can point to a different viewer origin or venue manifest. The standalone `demo-host/index.html` can later be placed on another website; update its default viewer origin for deployment.
 
 Direct demo link:
 `http://127.0.0.1:5173/viewer?venue=%2Fvenues%2Fdemo-theatre%2Fv1%2Fvenue.json&seat=r6-s7`
