@@ -103,6 +103,13 @@ jobs:
           contracts/fixtures/fictional-material-venue.json /tmp/venuetwin-material-roundtrip
           --container-image venuetwin-pilot:ci --allow-unverified
       - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-material-roundtrip
+      - name: Verify source-linked PNG and UVs through Blender and Three.js offline
+        run: >-
+          PYTHONPATH=services/planner python -m venuetwin_planner.build
+          contracts/fixtures/fictional-texture-venue.json /tmp/venuetwin-texture-roundtrip
+          --container-image venuetwin-pilot:ci --allow-unverified
+          --assets contracts/fixtures/textures
+      - run: node scripts/test-production-verifier.mjs /tmp/venuetwin-texture-roundtrip
 
   managed-viewer:
     runs-on: ubuntu-latest

@@ -1,5 +1,11 @@
 # Validated local production-to-Blender draft pipeline
 
+## Source-linked appearance in contract 1.3.0
+
+The offline builder now accepts an explicit `triangle_uv` value for each custom-mesh triangle and a `base_color_texture_source_id` on a material. The referenced source must be a `photo` record in that material's evidence. Put a local 8-bit RGB/RGBA PNG in an assets directory under its SHA-256 filename (`<sha256>.png`) and pass `--assets /absolute/path/to/assets`. The builder accepts at most 2048 × 2048 pixels, 4 MiB per PNG and 16 MiB in total. It checks PNG structure and the source hash before Blender starts; the exported GLB must embed the same bytes. Neither the builder nor the verifier fetches an image URL. Textured structures must have explicit mesh UVs; no automatic photo projection or texture generation is implied.
+
+The fictional fixture `contracts/fixtures/fictional-texture-venue.json` and `contracts/fixtures/textures/` exercise the complete local path. Its two-pixel pattern is synthetic test data, not a venue photo. Build it with the ordinary command plus `--assets contracts/fixtures/textures`. The Three.js round-trip verifier checks embedded PNG identity and UV presence while checking geometry and cameras; the managed release build accepts self-contained GLBs and publishes the original bytes. Before using real venue photos, the operator must obtain usage rights, map them onto measured geometry, and visually compare the rendered seat views with calibrated reference images and the venue owner. None of those checks has happened for the Prague study.
+
 This extends the Phase 1 branch in PR #52. It does not replace the existing Studio exporter, alter saved projects, expose an HTTP build route, change Supabase, or enable paid providers. The separate draft PR should be reviewed after Phase 1; retarget it to main once that dependency lands.
 
 ## What works

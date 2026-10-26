@@ -387,6 +387,32 @@
           "minItems": 4,
           "title": "Triangles",
           "type": "array"
+        },
+        "triangle_uv": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "items": {
+                    "maximum": 1,
+                    "minimum": 0,
+                    "type": "number"
+                  },
+                  "maxItems": 2,
+                  "minItems": 2,
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              "maxItems": 8192,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Triangle Uv"
         }
       },
       "required": [
@@ -436,6 +462,21 @@
           "title": "Metallic",
           "type": "number"
         },
+        "base_color_texture_source_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.:-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base Color Texture Source Id"
+        },
         "evidence": {
           "$ref": "#/$defs/Evidence"
         }
@@ -463,7 +504,8 @@
       "enum": [
         "1.0.0",
         "1.1.0",
-        "1.2.0"
+        "1.2.0",
+        "1.3.0"
       ],
       "title": "Version",
       "type": "string"

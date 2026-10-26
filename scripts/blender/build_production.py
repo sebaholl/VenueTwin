@@ -1,6 +1,8 @@
 """Internal worker for validated local build packets. No external resources or code."""
 import json
+import hashlib
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -28,6 +30,9 @@ def validate(packet):
             raise ValueError('Invalid material color')
         if any(type(item.get(key)) not in (int, float) or not math.isfinite(item[key]) or not 0 <= item[key] <= 1 for key in ('roughness', 'metallic')):
             raise ValueError('Invalid material surface')
+        sha = item.get('texture_sha256')
+        if sha is not None and (not isinstance(sha, str) or not re.fullmatch(r'[a-f0-9]{64}', sha)):
+            raise ValueError('Invalid texture hash')
     if not isinstance(meshes, list) or len(meshes) > 2000 or not 1 <= len(packet.get('boxes', [])) + len(meshes) <= 2000:
         raise ValueError('Invalid mesh count')
     for group in ('boxes', 'seats', 'meshes'):
@@ -46,7 +51,7 @@ def validate(packet):
             if group in ('boxes', 'meshes') and not vector(item.get('size'), True):
                 raise ValueError('Invalid box dimensions')
             if group == 'meshes':
-                vertices, triangles = item.get('vertices'), item.get('triangles')
+                vertices, triangles, triangle_uv = item.get('vertices'), item.get('triangles'), item.get('triangle_uv')
                 if not isinstance(vertices, list) or not 4 <= len(vertices) <= 4096 or any(not vector(vertex) for vertex in vertices):
                     raise ValueError('Invalid mesh vertices')
                 if len({tuple(vertex) for vertex in vertices}) != len(vertices):
@@ -64,6 +69,12 @@ def validate(packet):
                         raise ValueError('Degenerate mesh triangle')
                 if len({tuple(sorted(face)) for face in triangles}) != len(triangles):
                     raise ValueError('Duplicate mesh triangle')
+                if triangle_uv is not None:
+                    if not isinstance(triangle_uv, list) or len(triangle_uv) != len(triangles) or any(
+                        not isinstance(face, list) or len(face) != 3 or any(
+                            not isinstance(uv, list) or len(uv) != 2 or any(type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 1 for value in uv)
+                            for uv in face) for face in triangle_uv):
+                        raise ValueError('Invalid mesh UVs')
                 for axis in range(3):
                     values = [vertex[axis] for vertex in vertices]
                     half = item['size'][axis] / 2
@@ -77,6 +88,9 @@ def validate(packet):
                     raise ValueError('Invalid vertical camera FOV')
     if len({item['id'] for item in packet['boxes'] + meshes}) != len(packet['boxes']) + len(meshes):
         raise ValueError('Duplicate structure ID')
+    textured = {item['id'] for item in materials if item.get('texture_sha256') is not None}
+    if any(item.get('material_id') in textured for item in packet['boxes']) or any(item.get('material_id') in textured and item.get('triangle_uv') is None for item in meshes):
+        raise ValueError('Textured structure requires explicit mesh UVs')
     return packet
 
 
@@ -96,16 +110,24 @@ def build(directory):
     import bpy
     from mathutils import Vector
     created = []
-    def pbr(name, color, roughness, metallic):
+    def pbr(name, color, roughness, metallic, texture_sha=None):
         material = bpy.data.materials.new(name)
         material.use_nodes = True
         shader = material.node_tree.nodes.get('Principled BSDF')
         shader.inputs['Base Color'].default_value = (*color, 1)
         shader.inputs['Roughness'].default_value = roughness
         shader.inputs['Metallic'].default_value = metallic
+        if texture_sha is not None:
+            image_path = directory / 'textures' / f'{texture_sha}.png'
+            if image_path.is_symlink() or not image_path.is_file() or image_path.stat().st_size > 4 * 1024 * 1024 or hashlib.sha256(image_path.read_bytes()).hexdigest() != texture_sha:
+                raise ValueError('Texture asset is missing or differs from validated source')
+            image = bpy.data.images.load(str(image_path), check_existing=False)
+            node = material.node_tree.nodes.new('ShaderNodeTexImage')
+            node.image = image
+            material.node_tree.links.new(node.outputs['Color'], shader.inputs['Base Color'])
         return material
     neutral = pbr('Unverified neutral draft material', (.18, .24, .3), .8, 0)
-    palette = {item['id']: pbr('VT_' + item['id'], item['base_color_linear'], item['roughness'], item['metallic'])
+    palette = {item['id']: pbr('VT_' + item['id'], item['base_color_linear'], item['roughness'], item['metallic'], item.get('texture_sha256'))
                for item in packet.get('materials', [])}
     for index, box in enumerate(packet['boxes']):
         bpy.ops.mesh.primitive_cube_add(size=1, location=to_blender(box['position']))
@@ -123,6 +145,11 @@ def build(directory):
         mesh = bpy.data.meshes.new(f'MeasuredMesh_{index:04d}')
         mesh.from_pydata([to_blender(vertex) for vertex in item['vertices']], [], item['triangles'])
         mesh.update()
+        if item.get('triangle_uv') is not None:
+            layer = mesh.uv_layers.new(name='VenueTwinUV')
+            for polygon, face_uv in zip(mesh.polygons, item['triangle_uv']):
+                for loop_index, uv in zip(polygon.loop_indices, face_uv):
+                    layer.data[loop_index].uv = uv
         obj = bpy.data.objects.new(f'StructureMesh_{index:04d}', mesh)
         obj.location = to_blender(item['position'])
         obj.rotation_euler[2] = item['rotation']

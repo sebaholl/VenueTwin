@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react'
 import { parseProductionManifest, productionCameras } from '../src/utils/productionViewer.ts'
 import { validateGlb } from '../src/utils/localGlb.ts'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { inspectEmbeddedTextures } from './embedded-textures.mjs'
 const demo = process.argv.includes('--demo')
 const venueIndex = process.argv.indexOf('--venues')
 const sourceRoot = venueIndex >= 0 ? resolve(process.argv[venueIndex + 1] ?? '') : null
@@ -44,7 +45,8 @@ for (const item of packages) {
   if (bytes.length > 25 * 1024 * 1024 || createHash('sha256').update(bytes).digest('hex') !== manifest.model.sha256) throw new Error('Customer model integrity check failed.')
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
   validateGlb(buffer)
-  const loaded = await new GLTFLoader().parseAsync(buffer, '')
+  const { parseBytes } = inspectEmbeddedTextures(bytes)
+  const loaded = await new GLTFLoader().parseAsync(parseBytes.buffer.slice(parseBytes.byteOffset, parseBytes.byteOffset + parseBytes.byteLength), '')
   productionCameras(loaded.scene, manifest)
   item.hash = manifest.model.sha256
 }

@@ -10,6 +10,7 @@ Angle = Annotated[float, Field(ge=-6.283185307179586, le=6.283185307179586, allo
 Vector = Annotated[list[Coordinate], Field(min_length=3, max_length=3)]
 Size = Annotated[list[Positive], Field(min_length=3, max_length=3)]
 Unit = Annotated[float, Field(ge=0, le=1, allow_inf_nan=False)]
+UV = Annotated[list[Unit], Field(min_length=2, max_length=2)]
 
 
 class StrictModel(BaseModel):
@@ -69,6 +70,7 @@ class StructureMesh(StrictModel):
     """Local Y-up triangle mesh; structure position/yaw place it in the venue."""
     vertices_m: Annotated[list[Vector], Field(min_length=4, max_length=4096)]
     triangles: Annotated[list[list[Annotated[int, Field(strict=True, ge=0)]]], Field(min_length=4, max_length=8192)]
+    triangle_uv: Annotated[list[list[UV]], Field(max_length=8192)] | None = None
 
     @model_validator(mode='after')
     def valid_triangles(self):
@@ -85,6 +87,8 @@ class StructureMesh(StrictModel):
                 raise ValueError('Degenerate mesh triangle')
         if len({tuple(sorted(face)) for face in self.triangles}) != len(self.triangles):
             raise ValueError('Duplicate mesh triangle')
+        if self.triangle_uv is not None and (len(self.triangle_uv) != len(self.triangles) or any(len(face) != 3 for face in self.triangle_uv)):
+            raise ValueError('Mesh UVs require three corners per triangle')
         return self
 
 
@@ -94,6 +98,7 @@ class SurfaceMaterial(StrictModel):
     base_color_linear: Annotated[list[Unit], Field(min_length=3, max_length=3)]
     roughness: Unit
     metallic: Unit
+    base_color_texture_source_id: Identifier | None = None
     evidence: Evidence
 
 
@@ -128,7 +133,7 @@ class Coverage(StrictModel):
 
 class VenueDocument(StrictModel):
     format: Literal['venuetwin-production']
-    version: Literal['1.0.0', '1.1.0', '1.2.0']
+    version: Literal['1.0.0', '1.1.0', '1.2.0', '1.3.0']
     venue_id: Identifier
     revision: Annotated[int, Field(ge=1, le=9007199254740991)]
     name: Text
@@ -148,8 +153,10 @@ class VenueDocument(StrictModel):
     def references(self):
         if self.version == '1.0.0' and any(structure.mesh is not None for structure in self.structures):
             raise ValueError('Measured meshes require production contract 1.1.0')
-        if self.version != '1.2.0' and (self.materials or any(structure.material_id is not None for structure in self.structures)):
+        if self.version not in ('1.2.0', '1.3.0') and (self.materials or any(structure.material_id is not None for structure in self.structures)):
             raise ValueError('Surface materials require production contract 1.2.0')
+        if self.version != '1.3.0' and (any(material.base_color_texture_source_id is not None for material in self.materials) or any(structure.mesh is not None and structure.mesh.triangle_uv is not None for structure in self.structures)):
+            raise ValueError('Photo textures and UVs require production contract 1.3.0')
         for name in ('sources', 'levels', 'seats', 'structures'):
             values = getattr(self, name)
             if len({item.id for item in values}) != len(values):
@@ -172,6 +179,13 @@ class VenueDocument(StrictModel):
         if any(source not in sources for item in evidence for source in item.source_ids):
             raise ValueError('Unknown evidence source')
         photo_sources = {s.id for s in self.sources if s.kind == 'photo'}
+        if any(material.base_color_texture_source_id is not None and
+               (material.base_color_texture_source_id not in photo_sources or material.base_color_texture_source_id not in material.evidence.source_ids)
+               for material in self.materials):
+            raise ValueError('Texture requires its own photo source in material evidence')
+        textured = {material.id for material in self.materials if material.base_color_texture_source_id is not None}
+        if any(structure.material_id in textured and (structure.mesh is None or structure.mesh.triangle_uv is None) for structure in self.structures):
+            raise ValueError('Textured structure requires measured mesh triangle UVs')
         if any(material.evidence.status == 'documented' and not photo_sources.intersection(material.evidence.source_ids) for material in self.materials):
             raise ValueError('Documented surface material requires a photo source')
         if any(seat.camera_source_id is not None and seat.camera_source_id not in photo_sources for seat in self.seats):

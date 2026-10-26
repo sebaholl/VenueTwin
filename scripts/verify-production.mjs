@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
 import { Vector3, Matrix4, REVISION } from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { inspectEmbeddedTextures } from './embedded-textures.mjs'
 
 const directory = resolve(process.argv[2] ?? '')
 const source = JSON.parse(await readFile(resolve(directory, 'input.json'), 'utf8'))
@@ -16,11 +17,9 @@ assert.equal(bytes.readUInt32LE(0), 0x46546c67)
 assert.equal(bytes.readUInt32LE(4), 2)
 assert.equal(bytes.readUInt32LE(8), bytes.length)
 assert.equal(bytes.readUInt32LE(16), 0x4e4f534a)
-const json = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString())
-assert.ok(!json.images?.length && !json.buffers?.some(buffer => buffer.uri), 'External resources are forbidden')
-assert.ok(!json.extensionsRequired?.length, 'Unexpected glTF extensions')
+const { parseBytes, textureCount } = inspectEmbeddedTextures(bytes, source)
 globalThis.fetch = async () => { throw new Error('Network forbidden in production verification') }
-const gltf = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '')
+const gltf = await new GLTFLoader().parseAsync(parseBytes.buffer.slice(parseBytes.byteOffset, parseBytes.byteOffset + parseBytes.byteLength), '')
 gltf.scene.updateMatrixWorld(true)
 const groups = { structures: new Map(), seats: new Map(), cameras: new Map() }
 gltf.scene.traverse(object => {
@@ -55,7 +54,7 @@ for (const structure of source.structures) {
   const expectedRoughness = surface?.roughness ?? .8, expectedMetallic = surface?.metallic ?? 0
   const material = mesh.material
   assert.ok(!Array.isArray(material) && material?.isMeshStandardMaterial && !material.map && !material.normalMap, `Unexpected material ${structure.id}`)
-  for (const [index, component] of ['r', 'g', 'b'].entries()) {
+  if (!surface?.base_color_texture_source_id) for (const [index, component] of ['r', 'g', 'b'].entries()) {
     assert.ok(Math.abs(material.color[component] - expectedColor[index]) < .001, `Material color ${structure.id}`)
   }
   assert.ok(Math.abs(material.roughness - expectedRoughness) < .0001, `Material roughness ${structure.id}`)
@@ -71,6 +70,9 @@ for (const structure of source.structures) {
       bucket.set(name, [...(bucket.get(name) ?? []), i])
     }
     const attribute = mesh.geometry.getAttribute('position'), index = mesh.geometry.index
+    const uv = mesh.geometry.getAttribute('uv')
+    assert.equal(Boolean(uv), Boolean(structure.mesh.triangle_uv), `UV presence ${structure.id}`)
+    if (uv) assert.equal(uv.count, attribute.count, `UV vertex count ${structure.id}`)
     const actual = Array.from({ length: attribute.count }, (_, i) => new Vector3().fromBufferAttribute(attribute, i).applyMatrix4(mesh.matrixWorld))
     const mapped = actual.map(point => {
       const rounded = point.toArray().map(value => Math.round(value * 1000))
@@ -126,7 +128,7 @@ for (const seat of source.seats) {
 }
 const report = { format: 'venuetwin-roundtrip', version: 1, three_revision: REVISION, structures: groups.structures.size,
   seats: groups.seats.size, cameras: groups.cameras.size, position_tolerance_m: tolerance, direction_vector_tolerance: tolerance,
-  maximum_numeric_error: maxError, glb_sha256: createHash('sha256').update(bytes).digest('hex'),
+  maximum_numeric_error: maxError, embedded_textures: textureCount, glb_sha256: createHash('sha256').update(bytes).digest('hex'),
   note: 'Numeric coordinate round-trip only; not a venue accuracy or sightline certification.' }
 await writeFile(resolve(directory, 'verification.json'), JSON.stringify(report, null, 2) + '\n')
 console.log(`Production GLB verified: ${report.structures} structures, ${report.seats} seats, ${report.cameras} cameras.`)

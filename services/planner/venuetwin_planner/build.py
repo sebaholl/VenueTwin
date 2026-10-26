@@ -9,6 +9,7 @@ import subprocess
 import tempfile
 from uuid import uuid4
 from .contract import VenueDocument, missing_inputs
+from .textures import load_textures
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKER = ROOT / 'scripts/blender/build_production.py'
@@ -45,13 +46,16 @@ def prepare(value, allow_unverified=False):
     packet = {
         'format': 'venuetwin-build-packet', 'version': 1, 'notice': NOTICE,
         'materials': [{'id': m.id, 'base_color_linear': m.base_color_linear,
-                       'roughness': m.roughness, 'metallic': m.metallic}
+                       'roughness': m.roughness, 'metallic': m.metallic,
+                       **({'texture_sha256': next(s.sha256 for s in venue.sources if s.id == m.base_color_texture_source_id)}
+                          if m.base_color_texture_source_id else {})}
                       for m in sorted(venue.materials, key=lambda m: m.id)],
         'boxes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad,
                    'material_id': s.material_id}
                   for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is None],
         'meshes': [{'id': s.id, 'position': s.position_m, 'size': s.size_m, 'rotation': s.yaw_rad,
                     'vertices': s.mesh.vertices_m, 'triangles': s.mesh.triangles,
+                    'triangle_uv': s.mesh.triangle_uv,
                     'material_id': s.material_id}
                    for s in sorted(venue.structures, key=lambda s: s.id) if s.mesh is not None],
         'seats': [{'id': s.id, 'position': s.position_m, 'rotation': s.yaw_rad,
@@ -62,7 +66,7 @@ def prepare(value, allow_unverified=False):
     return venue, packet, requirements
 
 
-def build(source: Path, output: Path, *, blender=None, container_image=None, allow_unverified=False):
+def build(source: Path, output: Path, *, blender=None, container_image=None, allow_unverified=False, assets: Path | None = None):
     if bool(blender) == bool(container_image):
         raise ValueError('Choose exactly one local Blender executable or existing container image')
     with source.open('rb') as stream:
@@ -70,6 +74,7 @@ def build(source: Path, output: Path, *, blender=None, container_image=None, all
     if len(raw) > 2 * 1024 * 1024:
         raise ValueError('Input exceeds 2 MiB')
     venue, packet, requirements = prepare(json.loads(raw), allow_unverified)
+    textures = load_textures(venue, assets)
     output = output.resolve()
     # Exclusive reservation: never overwrite an existing directory or follow its symlink.
     output.mkdir(parents=False, exist_ok=False)
@@ -78,6 +83,10 @@ def build(source: Path, output: Path, *, blender=None, container_image=None, all
             job = Path(temporary)
             (job / 'input.json').write_bytes(encoded(venue.model_dump()))
             (job / 'packet.json').write_bytes(encoded(packet))
+            if textures:
+                (job / 'textures').mkdir()
+                for sha, data in textures.items():
+                    (job / 'textures' / f'{sha}.png').write_bytes(data)
             env = {k: os.environ[k] for k in ('PATH', 'SystemRoot', 'TEMP', 'TMP', 'TMPDIR') if k in os.environ}
             env['HOME'] = tempfile.gettempdir()
             container_name = 'venuetwin-draft-' + uuid4().hex
@@ -114,6 +123,7 @@ def build(source: Path, output: Path, *, blender=None, container_image=None, all
                 'venue_id': venue.venue_id, 'revision': venue.revision, 'notice': NOTICE,
                 'requires_human_review': True, 'verified_venue': False,
                 'allow_unverified': allow_unverified, 'requirements': requirements,
+                'embedded_texture_sources_sha256': sorted(textures),
                 'source_file_sha256': digest(raw),
                 'compiler_sha256': digest(Path(__file__).read_bytes()),
                 'contract_sha256': digest((Path(__file__).parent / 'contract.py').read_bytes()),
@@ -137,6 +147,7 @@ def main():
     runner.add_argument('--blender')
     runner.add_argument('--container-image', help='Already-installed local Docker image containing Blender; never pulled')
     parser.add_argument('--allow-unverified', action='store_true', help='Explicitly build unverified draft geometry without claiming survey accuracy')
+    parser.add_argument('--assets', type=Path, help='Local directory containing SHA-256-named PNG textures; no network access')
     args = parser.parse_args()
     result = build(**vars(args))
     print(json.dumps({'output': str(args.output), 'notice': result['notice'], 'requirements': len(result['requirements'])}))
