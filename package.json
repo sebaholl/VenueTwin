@@ -20,6 +20,8 @@
     "test:blender": "node scripts/smoke-blender.mjs",
     "demo": "vite --host 127.0.0.1 --port 5173",
     "demo:viewer": "npm run build:managed:demo && node scripts/serve-managed.mjs",
+    "showcase:build": "python3 scripts/build-showcase.py",
+    "showcase:verify": "node scripts/verify-showcase.mjs",
     "build:managed": "tsc -b && node --experimental-strip-types scripts/managed-release.mjs",
     "build:managed:demo": "tsc -b && node --experimental-strip-types scripts/managed-release.mjs --demo",
     "test:e2e": "playwright test"

@@ -3,8 +3,10 @@ import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { resolve, extname, sep } from 'node:path'
 const root = resolve('dist-managed')
+const port = Number(process.env.PORT ?? 4174)
+if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be a number from 1 to 65535.')
 const headers = (await readFile(resolve(root, '_headers'), 'utf8')).split('\n').filter(s => s.startsWith('  ')).map(s => { const i = s.indexOf(':'); return [s.slice(2, i), s.slice(i + 1).trim()] })
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   try {
     if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); res.end(); return }
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)
@@ -16,4 +18,10 @@ createServer(async (req, res) => {
     res.writeHead(200, { ...Object.fromEntries(headers), 'Content-Type': types[extname(file)] ?? 'application/octet-stream', 'Content-Length': data.length })
     res.end(req.method === 'HEAD' ? undefined : data)
   } catch { res.writeHead(404); res.end() }
-}).listen(4174, '127.0.0.1', () => console.log('Managed release preview: http://127.0.0.1:4174'))
+})
+server.on('error', error => {
+  if (error.code === 'EADDRINUSE') console.error(`Port ${port} is already in use. Try PORT=${port + 1} npm run demo:viewer.`)
+  else console.error(error)
+  process.exitCode = 1
+})
+server.listen(port, '127.0.0.1', () => console.log(`Managed release preview: http://127.0.0.1:${port}`))

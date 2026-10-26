@@ -2,7 +2,9 @@
 
 Run `npm run demo` and open the local address printed by Vite. This opens the **existing VenueTwin front page and Studio**; click **Start with Pilot in Studio** to add plans, photos and measurements, describe the venue, review Pilot's proposal, and build/check the 3D model. Pilot AI requests require a separately configured API key and can incur API charges; opening the app or saving materials does not call the API. Press Ctrl+C to stop.
 
-The separate customer-only viewer is available with `npm run demo:viewer` at http://127.0.0.1:4174. It does not contain the front page or Studio. If that port is already in use, stop the earlier viewer process before starting it again.
+The separate customer-only viewer is available with `npm run demo:viewer` at http://127.0.0.1:4174. It does not contain the front page or Studio. If that port is already in use, run `PORT=4175 npm run demo:viewer` and open http://127.0.0.1:4175.
+
+The viewer now includes [Lantern Opera House](docs/ORIGINAL_SHOWCASE.md), an original 225-seat, multi-level interactive demonstration built from one offline blueprint for Blender and Three.js. Its measurements are authored fiction; it is not a surveyed 1:1 real-venue replica or a photorealistic render.
 
 Managed customer release: [review workflow, separate viewer build and launch gates](docs/MANAGED-RELEASE.md).
 

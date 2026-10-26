@@ -20,6 +20,7 @@ if (!demo) {
 const packages = []
 if (demo) {
   packages.push({ dir: resolve('tests/fixtures/production'), destination: 'demo/v1', expectedQuality: 'demonstration' })
+  packages.push({ dir: resolve('venue-data/lantern-opera-house/public-demo'), destination: 'lantern-opera-house/v1', expectedQuality: 'demonstration' })
   packages.push({ dir: resolve('venue-data/national-theatre-prague/public-study'), destination: 'prague-national-theatre-study/v1', expectedQuality: 'study' })
 }
 else {

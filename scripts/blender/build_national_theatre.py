@@ -34,8 +34,10 @@ def validate(data):
     if not isinstance(data, dict) or data.get('format') != 'venuetwin-blender' or data.get('version') != 1 or data.get('axes') != 'three-y-up' or data.get('units') != 'metres':
         raise ValueError('Choose the detailed theatre JSON exported from Studio.')
     detail = data.get('detail', {})
-    if not isinstance(detail, dict) or detail.get('profile') != 'nd-photo-study-v1':
+    if not isinstance(detail, dict) or detail.get('profile') not in ('nd-photo-study-v1', 'original-showcase-v1'):
         raise ValueError('Use Export detailed theatre JSON, not the basic export.')
+    if detail.get('profile') == 'original-showcase-v1' and (not isinstance(detail.get('dedication'), str) or len(detail['dedication']) > 60):
+        raise ValueError('The original showcase needs a short dedication.')
     rows = detail.get('rows')
     if not isinstance(rows, list) or not 1 <= len(rows) <= 50:
         raise ValueError('Expected 1–50 rows.')
@@ -393,8 +395,9 @@ def build(filepath, render=False):
     if bpy.context.mode != 'OBJECT':
         raise ValueError('Switch to Object Mode before running.')
     suffix=uuid4().hex[:8]; stem=path.with_name(path.stem+'-detailed-'+suffix)
-    scene=bpy.data.scenes.new('National Theatre photo study '+suffix)
-    scene['provenance']='Photo-informed estimated geometry. Interpreted ornament; no mural reproductions or official seat mapping.'
+    showcase=data['detail']['profile']=='original-showcase-v1'
+    scene=bpy.data.scenes.new(('Original theatre showcase ' if showcase else 'National Theatre photo study ')+suffix)
+    scene['provenance']='Original fictional demonstration geometry; no real-venue measurements or approval.' if showcase else 'Photo-informed estimated geometry. Interpreted ornament; no mural reproductions or official seat mapping.'
     scene.unit_settings.system='METRIC'
     previous=bpy.context.window.scene
     bpy.context.window.scene=scene
@@ -409,11 +412,13 @@ def build(filepath, render=False):
             shader.inputs['Roughness'].default_value=rough
             shader.inputs['Metallic'].default_value=metal
             if name=='lamp':
-                shader.inputs['Emission Color'].default_value=rgba
-                shader.inputs['Emission Strength'].default_value=2.5
+                emission=shader.inputs.get('Emission Color') or shader.inputs.get('Emission')
+                if emission: emission.default_value=rgba
+                strength=shader.inputs.get('Emission Strength')
+                if strength: strength.default_value=2.5
             m.diffuse_color=rgba; mats[name]=m
         root=bpy.data.objects.new('VT_ND_DETAIL_ROOT',None); scene.collection.objects.link(root)
-        root['venueTwinDetail']='nd-photo-study-v1'
+        root['venueTwinDetail']=data['detail']['profile']
         root['estimated']=True
         export_objects=[root]
         for (group,mat),(vertices,faces) in geometry.parts.items():
@@ -429,7 +434,7 @@ def build(filepath, render=False):
             obj['venueTwinShell']=group in ('Shell','Ceiling')
             if group!='Seats': export_objects.append(obj)
         # Text is geometry in both Blender and GLB; no external fonts.
-        curve=bpy.data.curves.new('Dedication','FONT'); curve.body='NÁROD SOBĚ'; curve.align_x='CENTER'; curve.size=.5; curve.extrude=.006
+        curve=bpy.data.curves.new('Dedication','FONT'); curve.body=data['detail']['dedication'] if showcase else 'NÁROD SOBĚ'; curve.align_x='CENTER'; curve.size=.5; curve.extrude=.006
         text=bpy.data.objects.new('Proscenium dedication',curve); scene.collection.objects.link(text)
         text.location=(0,2.91,meta['portal_height']+.42); text.rotation_euler=(PI/2,0,0); text.data.materials.append(mats['gilt_light']); text.parent=root
         bpy.context.view_layer.objects.active=text; text.select_set(True); bpy.ops.object.convert(target='MESH'); export_objects.append(bpy.context.object)
@@ -447,9 +452,9 @@ def build(filepath, render=False):
         scene.world.node_tree.nodes['Background'].inputs[0].default_value=(.12,.1,.075,1)
         scene.world.node_tree.nodes['Background'].inputs[1].default_value=.3
         scene.render.engine='CYCLES'; scene.cycles.device='CPU'; scene.cycles.samples=24
-        scene.cycles.use_denoising=True
+        scene.cycles.use_denoising=bpy.app.version >= (4, 0, 0)
         scene.render.resolution_x=1440; scene.render.resolution_y=1000; scene.render.resolution_percentage=100
-        scene.view_settings.view_transform='AgX'
+        scene.view_settings.view_transform='AgX' if 'AgX' in [item.identifier for item in scene.view_settings.bl_rna.properties['view_transform'].enum_items] else 'Filmic'
         bpy.ops.object.select_all(action='DESELECT')
         for obj in export_objects: obj.select_set(True)
         bpy.context.view_layer.objects.active=root
