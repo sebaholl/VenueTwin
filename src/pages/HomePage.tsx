@@ -4,9 +4,9 @@ import { Link } from 'react-router-dom'
 import { MiniVenue } from '../components/MiniVenue'
 
 const workflow = [
-  { icon: Upload, step: '01', title: 'Upload the plan', text: 'Start from a PDF, image or a blank venue. Your source stays under your control.' },
-  { icon: ScanLine, step: '02', title: 'Shape the twin', text: 'Review rows, sections, aisles and dimensions in one visual workspace.' },
-  { icon: Eye, step: '03', title: 'See every seat', text: 'Explore the venue in 3D and preview the experience before a ticket is sold.' },
+  { icon: Upload, step: '01', title: 'Give Pilot the evidence', text: 'Add plans, photos and measurements with one brief describing the venue.' },
+  { icon: ScanLine, step: '02', title: 'Review prepared changes', text: 'Pilot proposes bounded edits, lists missing facts and checks the resulting layout.' },
+  { icon: Eye, step: '03', title: 'Approve and inspect', text: 'You approve a saved proposal before it changes Studio or starts a model build. Then inspect seat views.' },
 ]
 
 export function HomePage() {
@@ -16,7 +16,7 @@ export function HomePage() {
         <div className="hero-glow" />
         <div className="eyebrow"><Sparkles size={15} /> Spatial intelligence for venues</div>
         <h1>Every seat,<br /><em>seen before booking.</em></h1>
-        <p className="hero-copy">Describe your venue and add plans, photos and measurements. Pilot helps turn that evidence into a 3D model you can inspect, correct and validate seat by seat.</p>
+        <p className="hero-copy">Give Pilot a brief, plans, photos and measurements. It prepares a source-aware proposal for your approval, then Studio builds a model you can inspect seat by seat.</p>
         <div className="hero-actions">
           <Link className="button button-primary" to="/studio">Start with Pilot in Studio <ArrowRight size={18} /></Link>
           <a className="text-link" href="#workflow">See how it works <ArrowRight size={16} /></a>
@@ -39,8 +39,8 @@ export function HomePage() {
       </section>
 
       <section className="section workflow-section" id="workflow">
-        <div className="section-kicker light">From source plan to seat view</div>
-        <div className="split-heading light"><h2>A focused workflow.<br /><em>No CAD expertise required.</em></h2><p>VenueTwin is designed to make spatial planning understandable for venue operators, sales teams and visitors—not only architects.</p></div>
+        <div className="section-kicker light">From evidence to owner approval</div>
+        <div className="split-heading light"><h2>Your venue, prepared by Pilot.<br /><em>Approved by you.</em></h2><p>The proposal and evidence version stay together in Studio. If the venue or sources change, Pilot asks for a fresh review before applying the work.</p></div>
         <div className="workflow-grid">
           {workflow.map(({ icon: Icon, step, title, text }) => (
             <article key={step}><span>{step}</span><Icon /><h3>{title}</h3><p>{text}</p></article>
